@@ -31,6 +31,8 @@ require_once 'includes/lib/class-wordpress-plugin-template-post-type.php';
 require_once 'includes/lib/class-wordpress-plugin-template-taxonomy.php';
 require_once 'manage-booking.php';
 require_once 'public-services-booking.php';
+require_once 'landing_page.php';
+require_once 'footer-landing.php';
 
 /**
  * Returns the main instance of WordPress_Plugin_Template to prevent the need to use globals.
