@@ -849,12 +849,14 @@ function modern_barbershop_landing_shortcode() {
         </section>
 
         <!-- Footer -->
+        <div style="clear: both; overflow: hidden;">
         <?php
         $footer_path = plugin_dir_path(__FILE__) . 'footer-landing.php';
         if (file_exists($footer_path)) {
             include $footer_path;
         }
         ?>
+        </div>
     </div>
 
     <script>

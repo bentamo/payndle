@@ -222,5 +222,3 @@ $business_hours = function_exists('wordpress_plugin_template_get_business_hours'
         </div>
     </div>
 </footer>
-
-<?php wp_footer(); ?>
