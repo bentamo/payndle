@@ -1,8 +1,8 @@
 /* Manager Business Panel Frontend Styles - Modern UI */
 
 :root {
-    --primary-color: #3b82f6;
-    --primary-hover: #2563eb;
+    --primary-color: #c9a74d;
+    --primary-hover: #b8964a;
     --secondary-color: #6b7280;
     --success-color: #10b981;
     --danger-color: #ef4444;
@@ -126,18 +126,21 @@
 /* Subtle focus ring */
 .btn:focus {
     outline: none;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+    box-shadow: 0 0 0 3px rgba(201, 167, 77, 0.25);
 }
 
 .manager-panel-wrapper .btn-primary {
-    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+    background: linear-gradient(135deg, #c9a74d, #d4b968);
     color: white;
     border: 2px solid transparent;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .manager-panel-wrapper .btn-primary:hover {
-    background: linear-gradient(135deg, var(--primary-hover) 0%, #1d4ed8 100%);
+    background: linear-gradient(135deg, #b8964a, #c9a74d);
     color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(201, 167, 77, 0.3);
 }
 
 .manager-panel-wrapper .btn-secondary {
@@ -197,7 +200,7 @@
     transition: var(--transition);
 }
 
-.info-group:hover { border-color: var(--primary-color); transform: translateY(-1px); }
+.info-group:hover { border-color: #c9a74d; transform: translateY(-1px); }
 
 .info-group h4 {
     margin: 0 0 16px 0;
@@ -1242,10 +1245,57 @@
 .modal-actions {
     display: flex;
     justify-content: flex-end;
-    gap: 10px;
+    gap: 12px;
     margin-top: 20px;
     padding-top: 20px;
     border-top: 1px solid #e9ecef;
+}
+
+.modal-actions .btn {
+    padding: 14px 28px;
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    min-width: 120px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.modal-actions .btn-primary {
+    background: linear-gradient(135deg, #c9a74d, #d4b968);
+    color: white;
+    border: none;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.modal-actions .btn-primary:hover {
+    background: linear-gradient(135deg, #b8964a, #c9a74d);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(201, 167, 77, 0.3);
+}
+
+.modal-actions .btn-secondary {
+    background: #6c757d;
+    color: white;
+    border: 1px solid #6c757d;
+}
+
+.modal-actions .btn-secondary:hover {
+    background: #5a6268;
+    border-color: #5a6268;
+    transform: translateY(-1px);
+}
+
+.modal-actions .btn-danger {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    border: none;
+}
+
+.modal-actions .btn-danger:hover {
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
 }
 
 /* Thumbnail Upload Styles - Modal Interface */
