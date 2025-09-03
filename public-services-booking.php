@@ -273,6 +273,8 @@ class PublicServicesBooking {
             'customer_name' => $customer_name,
             'customer_email' => $customer_email,
             'customer_phone' => sanitize_text_field($_POST['customer_phone'] ?? ''),
+            'payment_method' => sanitize_text_field($_POST['payment_method'] ?? 'cash'),
+            'payment_status' => 'pending',
             'preferred_date' => !empty($_POST['preferred_date']) ? sanitize_text_field($_POST['preferred_date']) : null,
             'preferred_time' => !empty($_POST['preferred_time']) ? sanitize_text_field($_POST['preferred_time']) : null,
             'message' => sanitize_textarea_field($_POST['message'] ?? ''),
@@ -440,6 +442,47 @@ class PublicServicesBooking {
                         <div class="form-group">
                             <label for="booking_message">Additional Message</label>
                             <textarea id="booking_message" name="message" rows="3" placeholder="Any special requests or questions..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h4>Payment Method</h4>
+                        <div class="payment-methods">
+                            <div class="payment-option">
+                                <input type="radio" id="payment_cash" name="payment_method" value="cash" checked>
+                                <label for="payment_cash">
+                                    <i class="fas fa-money-bill-wave"></i>
+                                    Cash Payment
+                                </label>
+                            </div>
+                            <div class="payment-option">
+                                <input type="radio" id="payment_card" name="payment_method" value="card">
+                                <label for="payment_card">
+                                    <i class="fas fa-credit-card"></i>
+                                    Credit/Debit Card
+                                </label>
+                            </div>
+                            <div class="payment-option">
+                                <input type="radio" id="payment_gcash" name="payment_method" value="gcash">
+                                <label for="payment_gcash">
+                                    <i class="fas fa-mobile-alt"></i>
+                                    GCash
+                                </label>
+                            </div>
+                            <div class="payment-option">
+                                <input type="radio" id="payment_paymaya" name="payment_method" value="paymaya">
+                                <label for="payment_paymaya">
+                                    <i class="fas fa-mobile-alt"></i>
+                                    PayMaya
+                                </label>
+                            </div>
+                            <div class="payment-option">
+                                <input type="radio" id="payment_online" name="payment_method" value="online">
+                                <label for="payment_online">
+                                    <i class="fas fa-globe"></i>
+                                    Online Payment
+                                </label>
+                            </div>
                         </div>
                     </div>
 

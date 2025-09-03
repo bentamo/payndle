@@ -1,14 +1,85 @@
 [![Build Status](https://www.travis-ci.org/wpugph/WordPress-Plugin-Template.svg?branch=master)](https://www.travis-ci.org/wpugph/WordPress-Plugin-Template)
 
-WordPress Plugin Template
-=========================
+WordPress Plugin Template - Payndle (Elite Barber)
+=================================================
 
-A robust and GPL-licensed code template for creating a standards-compliant WordPress plugin.
+A comprehensive WordPress plugin for barbershop management with booking system, service management, and customer interface.
 
+## Features
 
-## Why this template?
+### Landing Page
+- Modern, responsive barbershop landing page
+- Service showcase with booking integration
+- Professional design with customizable branding
+- **Shortcode:** `[modern_barbershop_landing]`
 
-After writing many WordPress plugins I slowly developed my own coding style and way of doing things - this template is the culmination of what I've learnt along the way. I use this template as a base for any plugin that I start building and I thought it might benefit more people if I shared it around.
+### Service Management
+- Complete business and service management panel
+- Add, edit, and manage services
+- Business information and contact details
+- **Shortcode:** `[manager_panel]`
+
+### Public Booking System
+- Customer-facing service booking interface
+- Real-time service selection and booking
+- Payment method selection
+- **Shortcode:** `[services_booking]`
+
+### Booking History Management ⭐ NEW
+- Comprehensive booking history view
+- Advanced filtering by service, status, payment method, and date
+- Booking status management (pending, confirmed, completed, cancelled)
+- Payment method tracking (cash, card, GCash, PayMaya, online)
+- **Shortcode:** `[booking_history]`
+
+## Shortcodes Reference
+
+| Shortcode | Purpose | Parameters |
+|-----------|---------|------------|
+| `[modern_barbershop_landing]` | Main landing page | None |
+| `[manager_panel]` | Business management | None |
+| `[services_booking]` | Public booking form | None |
+| `[booking_history]` | Booking management | service_id, status, limit, show_filters |
+
+### Booking History Parameters
+
+```php
+[booking_history service_id="5" status="pending" limit="50" show_filters="yes"]
+```
+
+- **service_id**: Filter by specific service ID
+- **status**: Filter by booking status (pending, confirmed, completed, cancelled)
+- **limit**: Maximum bookings to display (default: 20)
+- **show_filters**: Show filter controls (yes/no, default: yes)
+
+## Payment Methods Supported
+
+- Cash Payment
+- Credit/Debit Card
+- GCash
+- PayMaya
+- Online Payment
+
+## Database Tables
+
+The plugin creates and manages several database tables:
+- `wp_service_bookings` - Customer booking requests with payment info
+- `wp_manager_services` - Available services
+- `wp_manager_business` - Business information and settings
+
+## Design Features
+
+### Consistent Branding
+- Gold accent color (#c9a74d) throughout all interfaces
+- Professional dark theme elements
+- Poppins and Playfair Display typography
+- Responsive design for all screen sizes
+
+### User Experience
+- AJAX-powered interactions
+- Real-time filtering and updates
+- Mobile-friendly interface
+- Accessibility considerations
 
 ## How do I use it?
 

@@ -50,8 +50,7 @@ class ManagerBusinessPanel {
         // Initialize any necessary setup
         $this->create_manager_tables();
         
-        // Add sample data if table is empty (for testing)
-        $this->maybe_add_sample_data();
+        // Sample data generation removed for production
     }
     
     /**
@@ -113,72 +112,6 @@ class ManagerBusinessPanel {
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         dbDelta($business_sql);
         dbDelta($services_sql);
-    }
-    
-    /**
-     * Add sample data for testing purposes
-     */
-    private function maybe_add_sample_data() {
-        global $wpdb;
-        
-        $business_table = $wpdb->prefix . 'manager_business';
-        $services_table = $wpdb->prefix . 'manager_services';
-        
-        // Check if business table is empty
-        $business_count = $wpdb->get_var("SELECT COUNT(*) FROM $business_table");
-        
-        if ($business_count == 0) {
-            // Add sample business info
-            $wpdb->insert($business_table, [
-                'business_name' => 'Sample Business',
-                'business_description' => 'A professional service business providing quality solutions to our clients.',
-                'business_email' => 'info@samplebusiness.com',
-                'business_phone' => '+1 (555) 123-4567',
-                'business_address' => '123 Business St, City, State 12345',
-                'business_hours' => 'Mon-Fri: 9:00 AM - 6:00 PM, Sat: 10:00 AM - 4:00 PM',
-                'business_website' => 'https://samplebusiness.com'
-            ]);
-        }
-        
-        // Check if services table is empty
-        $services_count = $wpdb->get_var("SELECT COUNT(*) FROM $services_table");
-        
-        if ($services_count == 0) {
-            // Add sample services
-            $sample_services = [
-                [
-                    'service_name' => 'Consultation',
-                    'service_description' => 'Professional consultation services to help you achieve your goals.',
-                    'service_price' => 100.00,
-                    'service_duration' => '1 hour',
-                    'service_category' => 'consulting',
-                    'is_featured' => 1,
-                    'sort_order' => 1
-                ],
-                [
-                    'service_name' => 'Strategy Planning',
-                    'service_description' => 'Comprehensive strategy planning to guide your business forward.',
-                    'service_price' => 250.00,
-                    'service_duration' => '2 hours',
-                    'service_category' => 'consulting',
-                    'is_featured' => 1,
-                    'sort_order' => 2
-                ],
-                [
-                    'service_name' => 'Implementation Support',
-                    'service_description' => 'Hands-on support to implement solutions and strategies.',
-                    'service_price' => 150.00,
-                    'service_duration' => '1.5 hours',
-                    'service_category' => 'support',
-                    'is_featured' => 0,
-                    'sort_order' => 3
-                ]
-            ];
-            
-            foreach ($sample_services as $service) {
-                $wpdb->insert($services_table, $service);
-            }
-        }
     }
     
     /**
@@ -752,7 +685,7 @@ class ManagerBusinessPanel {
                         </div>
                     </div>
 
-                    <div class="modal-actions" style="padding: 0 24px 24px 24px; border-top: 1px solid #eee; margin-top: 20px; padding-top: 20px;">
+                    <div class="modal-actions">
                         <button type="button" class="btn btn-secondary" id="cancel-service">Cancel</button>
                         <button type="button" class="btn btn-danger" id="delete-service-form" style="display: none;" data-service-id="">Delete Service</button>
                         <button type="submit" class="btn btn-primary">Save Service</button>
