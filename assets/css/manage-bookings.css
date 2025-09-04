@@ -1,0 +1,248 @@
+/* Manage Bookings Page Styles */
+.manage-bookings-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+    font-family: 'Poppins', sans-serif;
+}
+
+.manage-bookings-container h1 {
+    color: #2c3e50;
+    margin-bottom: 2rem;
+    font-weight: 600;
+    font-size: 2rem;
+}
+
+/* Filters Section */
+.booking-filters {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.booking-filters form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-end;
+}
+
+.filter-group {
+    flex: 1;
+    min-width: 200px;
+}
+
+.filter-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #495057;
+}
+
+.filter-group input[type="date"],
+.filter-group select {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    height: 40px;
+}
+
+/* Table Styles */
+.bookings-table-container {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+}
+
+.bookings-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.bookings-table th {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    color: #495057;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.bookings-table td {
+    padding: 1rem;
+    border-bottom: 1px solid #e9ecef;
+    vertical-align: top;
+}
+
+.bookings-table tr:last-child td {
+    border-bottom: none;
+}
+
+.bookings-table tr:hover {
+    background-color: #f8f9fa;
+}
+
+/* Status Badges */
+.booking-status {
+    padding: 0.35rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    border: 1px solid #dee2e6;
+    background-color: #fff;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.booking-status[value="pending"] {
+    color: #ffc107;
+    border-color: #ffc107;
+}
+
+.booking-status[value="confirmed"] {
+    color: #17a2b8;
+    border-color: #17a2b8;
+}
+
+.booking-status[value="completed"] {
+    color: #28a745;
+    border-color: #28a745;
+}
+
+.booking-status[value="cancelled"],
+.booking-status[value="no-show"] {
+    color: #dc3545;
+    border-color: #dc3545;
+}
+
+/* Action Buttons */
+.actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.actions .button {
+    padding: 0.4rem 0.6rem;
+    border-radius: 4px;
+    border: none;
+    background: #f8f9fa;
+    color: #6c757d;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.actions .button:hover {
+    background: #e9ecef;
+    color: #495057;
+}
+
+.actions .button.delete-booking {
+    color: #dc3545;
+}
+
+.actions .button.delete-booking:hover {
+    background: #fff5f5;
+}
+
+/* Service List */
+.service-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.service-list li {
+    padding: 0.25rem 0;
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+
+/* No Bookings Message */
+.no-bookings {
+    text-align: center;
+    padding: 3rem;
+    color: #6c757d;
+    font-style: italic;
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    overflow: auto;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background-color: #fff;
+    margin: 2rem;
+    padding: 2rem;
+    border-radius: 8px;
+    max-width: 800px;
+    width: 100%;
+    position: relative;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.close-modal {
+    position: absolute;
+    right: 1.5rem;
+    top: 1rem;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #6c757d;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.close-modal:hover {
+    color: #495057;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 992px) {
+    .bookings-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+    
+    .filter-group {
+        min-width: 150px;
+    }
+}
+
+@media (max-width: 768px) {
+    .manage-bookings-container {
+        padding: 1rem;
+    }
+    
+    .booking-filters form {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .filter-group {
+        width: 100%;
+    }
+    
+    .actions {
+        flex-wrap: wrap;
+    }
+}
