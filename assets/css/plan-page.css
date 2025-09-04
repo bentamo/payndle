@@ -1,0 +1,95 @@
+.plan-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 30px;
+    justify-content: center;
+    margin: 40px 0;
+    font-family: Arial, sans-serif;
+}
+
+.plan-box {
+    background: #fff;
+    border: 2px solid #000;
+    border-radius: 12px;
+    padding: 30px;
+    flex: 1;
+    min-width: 280px;
+    max-width: 400px;
+    text-align: center;
+    box-shadow: 5px 5px 0 #000;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.plan-box:hover {
+    transform: translateY(-5px);
+    box-shadow: 8px 8px 0 #000;
+}
+
+.plan-box h2 {
+    font-size: 24px;
+    margin-bottom: 10px;
+    color: #000;
+}
+
+.plan-box p.price {
+    font-size: 28px;
+    font-weight: bold;
+    margin: 15px 0;
+    color: #000;
+}
+
+.plan-box ul {
+    list-style: none;
+    padding: 0;
+    margin: 20px 0;
+    text-align: left;
+}
+
+.plan-box ul li {
+    margin: 8px 0;
+    padding-left: 20px;
+    position: relative;
+    color: #000;
+}
+
+.plan-box ul li::before {
+    content: "✔";
+    position: absolute;
+    left: 0;
+    color: #000;
+}
+
+.plan-button {
+    display: inline-block;
+    padding: 12px 25px;
+    background: #000;
+    color: #fff;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.3s ease;
+    border: none;
+}
+
+.plan-button:hover {
+    background: #444;
+}
+
+/* Highlight Premium */
+.plan-box:nth-child(2) {
+    background: #000;
+    color: #fff;
+}
+.plan-box:nth-child(2) h2,
+.plan-box:nth-child(2) p.price,
+.plan-box:nth-child(2) ul li,
+.plan-box:nth-child(2) ul li::before {
+    color: #fff;
+}
+.plan-box:nth-child(2) .plan-button {
+    background: #fff;
+    color: #000;
+}
+.plan-box:nth-child(2) .plan-button:hover {
+    background: #ddd;
+}
