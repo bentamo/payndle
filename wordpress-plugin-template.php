@@ -24,6 +24,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Load plugin class files.
 require_once 'includes/class-wordpress-plugin-template.php';
 require_once 'includes/class-wordpress-plugin-template-settings.php';
+require_once 'includes/class-custom-login.php';
 
 // Load plugin libraries.
 require_once 'includes/lib/class-wordpress-plugin-template-admin-api.php';
@@ -33,6 +34,8 @@ require_once 'manage-booking.php';
 require_once 'public-services-booking.php';
 require_once 'landing_page.php';
 require_once 'booking-history.php';
+require_once 'custom-login.php';
+require_once 'plan-page.php';
 
 /*/ Load booking history with error handling
 if (file_exists(__DIR__ . '/booking-history.php')) {
