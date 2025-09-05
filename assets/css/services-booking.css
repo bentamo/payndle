@@ -142,11 +142,11 @@
 .services-booking-wrapper .img img{width:100%;height:100%;object-fit:cover;transition:transform .5s}
 .services-booking-wrapper .card:hover .img img{transform:scale(1.05)}
 .services-booking-wrapper .info{padding:20px;display:flex;flex-direction:column;flex:1 1 auto;min-height:0;min-width:0}
-.services-booking-wrapper .cat{font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#71717A;margin-bottom:5px;max-width:100%;word-break:break-word;overflow-wrap:anywhere;hyphens:auto}
-.services-booking-wrapper .title{font-size:18px;font-weight:700;color:#18181B;margin:0 0 10px;letter-spacing:-.5px;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.4em;max-width:100%;word-break:break-word;overflow-wrap:anywhere;hyphens:auto}
-.services-booking-wrapper .desc{font-size:16px;color:#52525B;line-height:1.4;margin-bottom:12px;display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;min-height:4.2em;max-width:100%;word-break:break-word;overflow-wrap:anywhere;hyphens:auto}
+.services-booking-wrapper .cat{font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#71717A;margin-bottom:5px;max-width:100%;word-break:break-word;overflow-wrap:anywhere;-webkit-hyphens:auto;hyphens:auto}
+.services-booking-wrapper .title{font-size:18px;font-weight:700;color:#18181B;margin:0 0 10px;letter-spacing:-.5px;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.4em;max-width:100%;word-break:break-word;overflow-wrap:anywhere;-webkit-hyphens:auto;hyphens:auto}
+.services-booking-wrapper .desc{font-size:16px;color:#52525B;line-height:1.4;margin-bottom:12px;display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;min-height:4.2em;max-width:100%;word-break:break-word;overflow-wrap:anywhere;-webkit-hyphens:auto;hyphens:auto}
 .services-booking-wrapper .feats{display:flex;gap:6px;margin-bottom:15px;flex-wrap:wrap}
-.services-booking-wrapper .feat{font-size:10px;background:#F4F4F5;color:#71717A;padding:3px 8px;border-radius:10px;font-weight:500;max-width:100%;word-break:break-word;overflow-wrap:anywhere;hyphens:auto}
+.services-booking-wrapper .feat{font-size:10px;background:#F4F4F5;color:#71717A;padding:3px 8px;border-radius:10px;font-weight:500;max-width:100%;word-break:break-word;overflow-wrap:anywhere;-webkit-hyphens:auto;hyphens:auto}
 .services-booking-wrapper .bottom{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-shrink:0}
 .services-booking-wrapper .meta{display:flex;justify-content:space-between;align-items:center;border-top:1px solid #F4F4F5;padding-top:12px;margin-top:auto;flex-shrink:0}
 .services-booking-wrapper .price{display:flex;flex-direction:column}
