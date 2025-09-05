@@ -1,0 +1,893 @@
+<?php
+/**
+ * User Booking Information Form
+ * Description: A dedicated page for user information input when booking services
+ * Version: 1.0.0
+ * Shortcode: [user_booking_form]
+ */
+
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+class UserBookingForm {
+    
+    public function __construct() {
+        add_action('init', [$this, 'init']);
+        add_shortcode('user_booking_form', [$this, 'render_booking_form']);
+        add_action('wp_enqueue_scripts', [$this, 'enqueue_assets']);
+        
+        // Register AJAX actions
+        add_action('wp_ajax_submit_user_booking', [$this, 'submit_user_booking_ajax']);
+        add_action('wp_ajax_nopriv_submit_user_booking', [$this, 'submit_user_booking_ajax']);
+        add_action('wp_ajax_get_selected_service_info', [$this, 'get_selected_service_info_ajax']);
+        add_action('wp_ajax_nopriv_get_selected_service_info', [$this, 'get_selected_service_info_ajax']);
+        add_action('wp_ajax_test_booking_system', [$this, 'test_booking_system']);
+        add_action('wp_ajax_nopriv_test_booking_system', [$this, 'test_booking_system']);
+    }
+    
+    public function init() {
+        // Ensure required tables exist
+        $this->ensure_booking_tables_exist();
+        // Update existing booking table structure
+        $this->update_booking_table_structure();
+    }
+    
+    /**
+     * Enqueue frontend assets
+     */
+    public function enqueue_assets() {
+        wp_enqueue_style(
+            'user-booking-form-css',
+            plugin_dir_url(__FILE__) . 'assets/css/user-booking-form.css',
+            [],
+            '1.0.0'
+        );
+        
+        wp_enqueue_script(
+            'user-booking-form-js',
+            plugin_dir_url(__FILE__) . 'assets/js/user-booking-form.js',
+            ['jquery'],
+            '1.0.0',
+            true
+        );
+        
+        // Localize script for AJAX
+        wp_localize_script('user-booking-form-js', 'userBookingAjax', [
+            'ajaxurl' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('user_booking_nonce'),
+            'messages' => [
+                'success' => 'Your booking request has been submitted successfully! We will contact you soon to confirm your appointment.',
+                'error' => 'Something went wrong. Please try again.',
+                'validation_error' => 'Please fill in all required fields.',
+                'email_error' => 'Please enter a valid email address.'
+            ]
+        ]);
+    }
+    
+    /**
+     * Ensure booking tables exist
+     */
+    private function ensure_booking_tables_exist() {
+        global $wpdb;
+        
+        $booking_table = $wpdb->prefix . 'service_bookings';
+        $services_table = $wpdb->prefix . 'manager_services';
+        
+        $charset_collate = $wpdb->get_charset_collate();
+        
+        // Create services table if it doesn't exist (use existing manager_services structure)
+        $services_sql = "CREATE TABLE IF NOT EXISTS $services_table (
+            id mediumint(9) NOT NULL AUTO_INCREMENT,
+            service_name varchar(255) NOT NULL,
+            service_description text DEFAULT '',
+            service_price decimal(10,2) DEFAULT 0.00,
+            service_duration varchar(50) DEFAULT '',
+            service_category varchar(100) DEFAULT '',
+            service_image varchar(255) DEFAULT '',
+            is_featured tinyint(1) NOT NULL DEFAULT 0,
+            is_active tinyint(1) NOT NULL DEFAULT 1,
+            sort_order int(11) NOT NULL DEFAULT 0,
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id)
+        ) $charset_collate;";
+        
+        // Create bookings table if it doesn't exist
+        $booking_sql = "CREATE TABLE IF NOT EXISTS $booking_table (
+            id int(11) NOT NULL AUTO_INCREMENT,
+            service_id int(11),
+            customer_name varchar(255) NOT NULL,
+            customer_email varchar(255) NOT NULL,
+            customer_phone varchar(50),
+            preferred_date date,
+            preferred_time time,
+            message text,
+            payment_method varchar(50) DEFAULT 'cash',
+            payment_status varchar(20) DEFAULT 'pending',
+            booking_status varchar(50) DEFAULT 'pending',
+            total_amount decimal(10,2) DEFAULT 0.00,
+            created_at timestamp DEFAULT CURRENT_TIMESTAMP,
+            booking_date timestamp DEFAULT CURRENT_TIMESTAMP,
+            confirmed_date datetime,
+            notes text,
+            PRIMARY KEY (id),
+            FOREIGN KEY (service_id) REFERENCES $services_table(id) ON DELETE SET NULL
+        ) $charset_collate;";
+        
+        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        dbDelta($services_sql);
+        dbDelta($booking_sql);
+    }
+    
+    /**
+     * Update existing booking table structure to ensure compatibility
+     */
+    private function update_booking_table_structure() {
+        global $wpdb;
+        
+        $booking_table = $wpdb->prefix . 'service_bookings';
+        
+        // Check if table exists
+        if ($wpdb->get_var("SHOW TABLES LIKE '{$booking_table}'") != $booking_table) {
+            return; // Table doesn't exist, will be created by ensure_booking_tables_exist
+        }
+        
+        // Check and add missing columns
+        $columns_to_add = [
+            'payment_status' => "ALTER TABLE {$booking_table} ADD COLUMN payment_status VARCHAR(20) DEFAULT 'pending'",
+            'booking_status' => "ALTER TABLE {$booking_table} ADD COLUMN booking_status VARCHAR(50) DEFAULT 'pending'",
+            'created_at' => "ALTER TABLE {$booking_table} ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+            'total_amount' => "ALTER TABLE {$booking_table} ADD COLUMN total_amount DECIMAL(10,2) DEFAULT 0.00",
+            'notes' => "ALTER TABLE {$booking_table} ADD COLUMN notes TEXT"
+        ];
+        
+        foreach ($columns_to_add as $column => $sql) {
+            $column_exists = $wpdb->get_results("SHOW COLUMNS FROM {$booking_table} LIKE '{$column}'");
+            if (empty($column_exists)) {
+                $result = $wpdb->query($sql);
+                if ($result === false) {
+                    error_log("Failed to add column {$column} to {$booking_table}: " . $wpdb->last_error);
+                } else {
+                    error_log("Successfully added column {$column} to {$booking_table}");
+                }
+            }
+        }
+    }
+    
+    /**
+     * Render the booking form
+     */
+    public function render_booking_form($atts) {
+        $atts = shortcode_atts([
+            'service_id' => '',
+            'redirect_url' => '',
+            'show_service_selector' => 'true'
+        ], $atts);
+        
+        ob_start();
+        ?>
+        
+        <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+        
+        <div class="user-booking-container">
+            <!-- Header Section -->
+            <div class="booking-header">
+                <div class="header-content">
+                    <h1 class="booking-title">
+                        <i class="fas fa-calendar-plus"></i>
+                        Book Your Appointment
+                    </h1>
+                    <p class="booking-subtitle">Fill out the form below and we'll get back to you to confirm your appointment</p>
+                </div>
+            </div>
+            
+            <!-- Main Booking Form -->
+            <div class="booking-form-wrapper">
+                <form id="user-booking-form" class="booking-form" novalidate>
+                    <?php wp_nonce_field('user_booking_nonce', 'booking_nonce'); ?>
+                    
+                    <!-- Service Selection (if enabled) -->
+                    <?php if ($atts['show_service_selector'] === 'true'): ?>
+                    <div class="form-section service-selection">
+                        <h3 class="section-title">
+                            <i class="fas fa-cut"></i>
+                            Select Service
+                        </h3>
+                        <div class="service-selector">
+                            <select id="service_id" name="service_id" required>
+                                <option value="">Choose a service...</option>
+                                <?php echo $this->get_services_options($atts['service_id']); ?>
+                            </select>
+                            <div class="select-icon">
+                                <i class="fas fa-chevron-down"></i>
+                            </div>
+                        </div>
+                        <div class="selected-service-info" id="selected-service-info" style="display: none;">
+                            <!-- Service details will be populated here -->
+                        </div>
+                    </div>
+                    <?php else: ?>
+                        <input type="hidden" id="service_id" name="service_id" value="<?php echo esc_attr($atts['service_id']); ?>">
+                    <?php endif; ?>
+                    
+                    <!-- Personal Information -->
+                    <div class="form-section personal-info">
+                        <h3 class="section-title">
+                            <i class="fas fa-user"></i>
+                            Your Information
+                        </h3>
+                        
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="customer_name">
+                                    Full Name <span class="required">*</span>
+                                </label>
+                                <div class="input-wrapper">
+                                    <i class="fas fa-user input-icon"></i>
+                                    <input type="text" id="customer_name" name="customer_name" required 
+                                           placeholder="Enter your full name">
+                                </div>
+                                <div class="form-error" id="customer_name_error"></div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="customer_email">
+                                    Email Address <span class="required">*</span>
+                                </label>
+                                <div class="input-wrapper">
+                                    <i class="fas fa-envelope input-icon"></i>
+                                    <input type="email" id="customer_email" name="customer_email" required 
+                                           placeholder="your.email@example.com">
+                                </div>
+                                <div class="form-error" id="customer_email_error"></div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="customer_phone">
+                                    Phone Number
+                                </label>
+                                <div class="input-wrapper">
+                                    <i class="fas fa-phone input-icon"></i>
+                                    <input type="tel" id="customer_phone" name="customer_phone" 
+                                           placeholder="+63 123 456 7890">
+                                </div>
+                                <div class="form-error" id="customer_phone_error"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Appointment Preferences -->
+                    <div class="form-section appointment-prefs">
+                        <h3 class="section-title">
+                            <i class="fas fa-clock"></i>
+                            Preferred Schedule
+                        </h3>
+                        <p class="section-description">Let us know your preferred date and time (optional)</p>
+                        
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="preferred_date">
+                                    Preferred Date
+                                </label>
+                                <div class="input-wrapper">
+                                    <i class="fas fa-calendar input-icon"></i>
+                                    <input type="date" id="preferred_date" name="preferred_date" 
+                                           min="<?php echo date('Y-m-d'); ?>"
+                                           max="<?php echo date('Y-m-d', strtotime('+3 months')); ?>">
+                                </div>
+                                <div class="form-error" id="preferred_date_error"></div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="preferred_time">
+                                    Preferred Time
+                                </label>
+                                <div class="input-wrapper">
+                                    <i class="fas fa-clock input-icon"></i>
+                                    <input type="time" id="preferred_time" name="preferred_time" 
+                                           min="08:00" max="18:00">
+                                </div>
+                                <div class="form-error" id="preferred_time_error"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group full-width">
+                            <label for="booking_message">
+                                Additional Message
+                            </label>
+                            <div class="textarea-wrapper">
+                                <i class="fas fa-comment input-icon"></i>
+                                <textarea id="booking_message" name="message" rows="4" 
+                                          placeholder="Any special requests, questions, or additional information..."></textarea>
+                            </div>
+                            <div class="form-error" id="booking_message_error"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Payment Method -->
+                    <div class="form-section payment-section">
+                        <h3 class="section-title">
+                            <i class="fas fa-credit-card"></i>
+                            Payment Method
+                        </h3>
+                        <p class="section-description">How would you like to pay for your service?</p>
+                        
+                        <div class="payment-methods">
+                            <div class="payment-option">
+                                <input type="radio" id="payment_cash" name="payment_method" value="cash" checked>
+                                <label for="payment_cash" class="payment-label">
+                                    <div class="payment-icon">
+                                        <i class="fas fa-money-bill-wave"></i>
+                                    </div>
+                                    <div class="payment-details">
+                                        <h4>Cash Payment</h4>
+                                        <p>Pay in cash when you arrive</p>
+                                    </div>
+                                </label>
+                            </div>
+                            
+                            <div class="payment-option">
+                                <input type="radio" id="payment_card" name="payment_method" value="card">
+                                <label for="payment_card" class="payment-label">
+                                    <div class="payment-icon">
+                                        <i class="fas fa-credit-card"></i>
+                                    </div>
+                                    <div class="payment-details">
+                                        <h4>Credit/Debit Card</h4>
+                                        <p>Pay with your card at the shop</p>
+                                    </div>
+                                </label>
+                            </div>
+                            
+                            <div class="payment-option">
+                                <input type="radio" id="payment_gcash" name="payment_method" value="gcash">
+                                <label for="payment_gcash" class="payment-label">
+                                    <div class="payment-icon">
+                                        <i class="fas fa-mobile-alt"></i>
+                                    </div>
+                                    <div class="payment-details">
+                                        <h4>GCash</h4>
+                                        <p>Pay via GCash mobile wallet</p>
+                                    </div>
+                                </label>
+                            </div>
+                            
+                            <div class="payment-option">
+                                <input type="radio" id="payment_paymaya" name="payment_method" value="paymaya">
+                                <label for="payment_paymaya" class="payment-label">
+                                    <div class="payment-icon">
+                                        <i class="fas fa-mobile-alt"></i>
+                                    </div>
+                                    <div class="payment-details">
+                                        <h4>PayMaya</h4>
+                                        <p>Pay via PayMaya digital wallet</p>
+                                    </div>
+                                </label>
+                            </div>
+                            
+                            <div class="payment-option">
+                                <input type="radio" id="payment_online" name="payment_method" value="online">
+                                <label for="payment_online" class="payment-label">
+                                    <div class="payment-icon">
+                                        <i class="fas fa-globe"></i>
+                                    </div>
+                                    <div class="payment-details">
+                                        <h4>Online Payment</h4>
+                                        <p>Pay securely online before your appointment</p>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Important Notice -->
+                    <div class="booking-notice">
+                        <div class="notice-icon">
+                            <i class="fas fa-info-circle"></i>
+                        </div>
+                        <div class="notice-content">
+                            <h4>Important Notice</h4>
+                            <p>This is a booking request. We will contact you within 24 hours to confirm your appointment and discuss any additional details.</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Form Actions -->
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" id="reset-form">
+                            <i class="fas fa-undo"></i>
+                            Reset Form
+                        </button>
+                        <button type="submit" class="btn btn-primary" id="submit-booking">
+                            <i class="fas fa-paper-plane"></i>
+                            Submit Booking Request
+                            <div class="btn-loader" style="display: none;">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </div>
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Success Message -->
+            <div class="booking-success" id="booking-success" style="display: none;">
+                <div class="success-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h3>Booking Request Submitted!</h3>
+                <p>Thank you for your booking request. We'll contact you soon to confirm your appointment.</p>
+                <div class="success-actions">
+                    <button type="button" class="btn btn-secondary" id="view-my-bookings">
+                        <i class="fas fa-history"></i>
+                        View My Bookings
+                    </button>
+                    <button type="button" class="btn btn-primary" id="book-another">
+                        <i class="fas fa-plus"></i>
+                        Book Another Service
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <?php
+        return ob_get_clean();
+    }
+    
+    /**
+     * Get services options for dropdown
+     */
+    private function get_services_options($selected_id = '') {
+        global $wpdb;
+        
+        $services_table = $wpdb->prefix . 'manager_services';
+        $services = $wpdb->get_results("SELECT * FROM $services_table WHERE is_active = 1 ORDER BY service_name ASC");
+        
+        $options = '';
+        foreach ($services as $service) {
+            $selected = ($selected_id == $service->id) ? 'selected' : '';
+            $price = $service->service_price ? '₱' . number_format($service->service_price, 2) : 'Price varies';
+            $options .= sprintf(
+                '<option value="%d" data-price="%s" data-duration="%s" data-description="%s" %s>%s - %s</option>',
+                $service->id,
+                $service->service_price,
+                $service->service_duration,
+                esc_attr($service->service_description),
+                $selected,
+                esc_html($service->service_name),
+                $price
+            );
+        }
+        
+        return $options;
+    }
+    
+    /**
+     * Handle AJAX service info request
+     */
+    public function get_selected_service_info_ajax() {
+        check_ajax_referer('user_booking_nonce', 'nonce');
+        
+        $service_id = intval($_POST['service_id']);
+        
+        global $wpdb;
+        $services_table = $wpdb->prefix . 'manager_services';
+        $service = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM $services_table WHERE id = %d AND is_active = 1",
+            $service_id
+        ));
+        
+        if ($service) {
+            $response = [
+                'success' => true,
+                'data' => [
+                    'name' => $service->service_name,
+                    'description' => $service->service_description,
+                    'price' => $service->service_price ? '₱' . number_format($service->service_price, 2) : 'Price varies',
+                    'duration' => $service->service_duration,
+                    'category' => $service->service_category
+                ]
+            ];
+        } else {
+            $response = [
+                'success' => false,
+                'message' => 'Service not found'
+            ];
+        }
+        
+        wp_send_json($response);
+    }
+    
+    /**
+     * Handle AJAX booking submission
+     */
+    public function submit_user_booking_ajax() {
+        // Log all received data for debugging
+        file_put_contents(
+            plugin_dir_path(__FILE__) . 'booking-debug.log', 
+            date('Y-m-d H:i:s') . " - Booking submission started\n" . 
+            "POST data: " . print_r($_POST, true) . "\n" .
+            "Headers: " . print_r(getallheaders(), true) . "\n\n", 
+            FILE_APPEND
+        );
+        
+        // Test database structure first
+        global $wpdb;
+        $booking_table = $wpdb->prefix . 'service_bookings';
+        
+        // Check table structure
+        $columns = $wpdb->get_results("DESCRIBE $booking_table");
+        if ($columns) {
+            $column_names = array_column($columns, 'Field');
+            file_put_contents(
+                plugin_dir_path(__FILE__) . 'booking-debug.log', 
+                date('Y-m-d H:i:s') . " - Booking table columns: " . implode(', ', $column_names) . "\n", 
+                FILE_APPEND
+            );
+        } else {
+            file_put_contents(
+                plugin_dir_path(__FILE__) . 'booking-debug.log', 
+                date('Y-m-d H:i:s') . " - Could not describe booking table or table does not exist\n", 
+                FILE_APPEND
+            );
+        }
+        
+        // Check nonce - be more lenient for debugging
+        $nonce_check = check_ajax_referer('user_booking_nonce', 'nonce', false);
+        if (!$nonce_check) {
+            file_put_contents(
+                plugin_dir_path(__FILE__) . 'booking-debug.log', 
+                date('Y-m-d H:i:s') . " - Nonce verification failed. Nonce received: " . ($_POST['nonce'] ?? 'none') . "\n", 
+                FILE_APPEND
+            );
+            
+            // For debugging, let's try to continue anyway but log it
+            // wp_send_json([
+            //     'success' => false,
+            //     'message' => 'Security check failed. Please refresh the page and try again.'
+            // ]);
+        }
+        
+        // Check if required POST data exists
+        if (!isset($_POST['service_id']) || !isset($_POST['customer_name']) || !isset($_POST['customer_email'])) {
+            file_put_contents(
+                plugin_dir_path(__FILE__) . 'booking-debug.log', 
+                date('Y-m-d H:i:s') . " - Missing required POST data\n", 
+                FILE_APPEND
+            );
+            wp_send_json([
+                'success' => false,
+                'message' => 'Missing required form data. Please fill out all required fields.'
+            ]);
+        }
+        
+        // Sanitize and validate input
+        $service_id = intval($_POST['service_id']);
+        $customer_name = sanitize_text_field($_POST['customer_name']);
+        $customer_email = sanitize_email($_POST['customer_email']);
+        $customer_phone = sanitize_text_field($_POST['customer_phone'] ?? '');
+        $preferred_date = sanitize_text_field($_POST['preferred_date'] ?? '');
+        $preferred_time = sanitize_text_field($_POST['preferred_time'] ?? '');
+        $message = sanitize_textarea_field($_POST['message'] ?? '');
+        $payment_method = sanitize_text_field($_POST['payment_method'] ?? 'cash');
+        
+        file_put_contents(
+            plugin_dir_path(__FILE__) . 'booking-debug.log', 
+            date('Y-m-d H:i:s') . " - Sanitized data: service_id=$service_id, customer_name=$customer_name, customer_email=$customer_email\n", 
+            FILE_APPEND
+        );
+        
+        // Validation
+        $errors = [];
+        
+        if (empty($customer_name)) {
+            $errors['customer_name'] = 'Full name is required';
+        }
+        
+        if (empty($customer_email) || !is_email($customer_email)) {
+            $errors['customer_email'] = 'Valid email address is required';
+        }
+        
+        if ($service_id <= 0) {
+            $errors['service_id'] = 'Please select a service';
+        }
+        
+        if (!empty($errors)) {
+            file_put_contents(
+                plugin_dir_path(__FILE__) . 'booking-debug.log', 
+                date('Y-m-d H:i:s') . " - Validation errors: " . print_r($errors, true) . "\n", 
+                FILE_APPEND
+            );
+            wp_send_json([
+                'success' => false,
+                'errors' => $errors
+            ]);
+        }
+        
+        // Check if tables exist
+        $services_table = $wpdb->prefix . 'manager_services';
+        
+        // Verify services table exists
+        if ($wpdb->get_var("SHOW TABLES LIKE '{$services_table}'") != $services_table) {
+            file_put_contents(
+                plugin_dir_path(__FILE__) . 'booking-debug.log', 
+                date('Y-m-d H:i:s') . " - Services table does not exist: $services_table\n", 
+                FILE_APPEND
+            );
+            wp_send_json([
+                'success' => false,
+                'message' => 'Services system not properly configured. Please contact administrator.'
+            ]);
+        }
+        
+        // Verify booking table exists
+        if ($wpdb->get_var("SHOW TABLES LIKE '{$booking_table}'") != $booking_table) {
+            file_put_contents(
+                plugin_dir_path(__FILE__) . 'booking-debug.log', 
+                date('Y-m-d H:i:s') . " - Booking table does not exist: $booking_table\n", 
+                FILE_APPEND
+            );
+            wp_send_json([
+                'success' => false,
+                'message' => 'Booking system not properly configured. Please contact administrator.'
+            ]);
+        }
+        
+        // Get service details
+        $service = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM $services_table WHERE id = %d AND is_active = 1",
+            $service_id
+        ));
+        
+        if ($wpdb->last_error) {
+            file_put_contents(
+                plugin_dir_path(__FILE__) . 'booking-debug.log', 
+                date('Y-m-d H:i:s') . " - Database error when fetching service: " . $wpdb->last_error . "\n", 
+                FILE_APPEND
+            );
+            wp_send_json([
+                'success' => false,
+                'message' => 'Database error occurred. Please try again later.'
+            ]);
+        }
+        
+        if (!$service) {
+            file_put_contents(
+                plugin_dir_path(__FILE__) . 'booking-debug.log', 
+                date('Y-m-d H:i:s') . " - Service not found or inactive. Service ID: $service_id\n", 
+                FILE_APPEND
+            );
+            wp_send_json([
+                'success' => false,
+                'message' => 'Selected service is not available. Please choose another service.'
+            ]);
+        }
+        
+        file_put_contents(
+            plugin_dir_path(__FILE__) . 'booking-debug.log', 
+            date('Y-m-d H:i:s') . " - Found service: " . $service->service_name . "\n", 
+            FILE_APPEND
+        );
+        
+        // Use basic required columns only
+        $insert_data = [
+            'service_id' => $service_id,
+            'customer_name' => $customer_name,
+            'customer_email' => $customer_email,
+            'customer_phone' => $customer_phone,
+            'preferred_date' => $preferred_date ?: null,
+            'preferred_time' => $preferred_time ?: null,
+            'message' => $message,
+            'payment_method' => $payment_method
+        ];
+        
+        // Try to add optional columns only if they exist
+        $existing_columns = array_column($wpdb->get_results("DESCRIBE $booking_table"), 'Field');
+        
+        if (in_array('payment_status', $existing_columns)) {
+            $insert_data['payment_status'] = 'pending';
+        }
+        if (in_array('booking_status', $existing_columns)) {
+            $insert_data['booking_status'] = 'pending';
+        }
+        if (in_array('total_amount', $existing_columns)) {
+            $insert_data['total_amount'] = $service->service_price ?: 0;
+        }
+        if (in_array('created_at', $existing_columns)) {
+            $insert_data['created_at'] = current_time('mysql');
+        }
+        
+        file_put_contents(
+            plugin_dir_path(__FILE__) . 'booking-debug.log', 
+            date('Y-m-d H:i:s') . " - Attempting to insert data: " . print_r($insert_data, true) . "\n" .
+            "Existing columns: " . implode(', ', $existing_columns) . "\n", 
+            FILE_APPEND
+        );
+        
+        // Insert the booking (let WordPress handle the format automatically)
+        $result = $wpdb->insert($booking_table, $insert_data);
+        
+        if ($wpdb->last_error) {
+            file_put_contents(
+                plugin_dir_path(__FILE__) . 'booking-debug.log', 
+                date('Y-m-d H:i:s') . " - Database insert error: " . $wpdb->last_error . "\n", 
+                FILE_APPEND
+            );
+            wp_send_json([
+                'success' => false,
+                'message' => 'Database error occurred while saving booking. Error: ' . $wpdb->last_error
+            ]);
+        }
+        
+        if ($result !== false) {
+            $booking_id = $wpdb->insert_id;
+            file_put_contents(
+                plugin_dir_path(__FILE__) . 'booking-debug.log', 
+                date('Y-m-d H:i:s') . " - Successfully inserted booking with ID: $booking_id\n", 
+                FILE_APPEND
+            );
+            
+            // Send notification email (optional)
+            try {
+                $this->send_booking_notification($booking_id, $service, [
+                    'customer_name' => $customer_name,
+                    'customer_email' => $customer_email,
+                    'customer_phone' => $customer_phone,
+                    'preferred_date' => $preferred_date,
+                    'preferred_time' => $preferred_time,
+                    'message' => $message,
+                    'payment_method' => $payment_method
+                ]);
+            } catch (Exception $e) {
+                file_put_contents(
+                    plugin_dir_path(__FILE__) . 'booking-debug.log', 
+                    date('Y-m-d H:i:s') . " - Email notification failed: " . $e->getMessage() . "\n", 
+                    FILE_APPEND
+                );
+                // Don't fail the booking if email fails
+            }
+            
+            wp_send_json([
+                'success' => true,
+                'message' => 'Booking request submitted successfully!',
+                'booking_id' => $booking_id
+            ]);
+        } else {
+            file_put_contents(
+                plugin_dir_path(__FILE__) . 'booking-debug.log', 
+                date('Y-m-d H:i:s') . " - Insert failed but no database error reported\n", 
+                FILE_APPEND
+            );
+            wp_send_json([
+                'success' => false,
+                'message' => 'Failed to submit booking request. Please check all required fields and try again.'
+            ]);
+        }
+    }
+    
+    /**
+     * Send booking notification email
+     */
+    private function send_booking_notification($booking_id, $service, $booking_data) {
+        $admin_email = get_option('admin_email');
+        $site_name = get_bloginfo('name');
+        
+        $subject = sprintf('[%s] New Booking Request #%d', $site_name, $booking_id);
+        
+        $message = sprintf(
+            "New booking request received:\n\n" .
+            "Booking ID: #%d\n" .
+            "Service: %s\n" .
+            "Customer: %s\n" .
+            "Email: %s\n" .
+            "Phone: %s\n" .
+            "Preferred Date: %s\n" .
+            "Preferred Time: %s\n" .
+            "Payment Method: %s\n" .
+            "Message: %s\n\n" .
+            "Please contact the customer to confirm the appointment.",
+            $booking_id,
+            $service->service_name,
+            $booking_data['customer_name'],
+            $booking_data['customer_email'],
+            $booking_data['customer_phone'] ?: 'Not provided',
+            $booking_data['preferred_date'] ?: 'Not specified',
+            $booking_data['preferred_time'] ?: 'Not specified',
+            ucfirst($booking_data['payment_method']),
+            $booking_data['message'] ?: 'None'
+        );
+        
+        wp_mail($admin_email, $subject, $message);
+        
+        // Send confirmation to customer
+        $customer_subject = sprintf('[%s] Booking Request Received', $site_name);
+        $customer_message = sprintf(
+            "Dear %s,\n\n" .
+            "Thank you for your booking request. We have received your request for:\n\n" .
+            "Service: %s\n" .
+            "Booking ID: #%d\n\n" .
+            "We will contact you within 24 hours to confirm your appointment.\n\n" .
+            "Best regards,\n%s Team",
+            $booking_data['customer_name'],
+            $service->service_name,
+            $booking_id,
+            $site_name
+        );
+        
+        wp_mail($booking_data['customer_email'], $customer_subject, $customer_message);
+    }
+    
+    /**
+     * Test booking system - for debugging purposes
+     */
+    public function test_booking_system() {
+        global $wpdb;
+        
+        $results = [];
+        
+        // Test 1: Check if tables exist
+        $services_table = $wpdb->prefix . 'manager_services';
+        $booking_table = $wpdb->prefix . 'service_bookings';
+        
+        $results['tables'] = [
+            'services_table_exists' => ($wpdb->get_var("SHOW TABLES LIKE '{$services_table}'") == $services_table),
+            'booking_table_exists' => ($wpdb->get_var("SHOW TABLES LIKE '{$booking_table}'") == $booking_table)
+        ];
+        
+        // Test 2: Check table structures
+        if ($results['tables']['services_table_exists']) {
+            $service_columns = $wpdb->get_results("DESCRIBE $services_table");
+            $results['service_table_columns'] = array_column($service_columns, 'Field');
+        }
+        
+        if ($results['tables']['booking_table_exists']) {
+            $booking_columns = $wpdb->get_results("DESCRIBE $booking_table");
+            $results['booking_table_columns'] = array_column($booking_columns, 'Field');
+        }
+        
+        // Test 3: Check if services exist
+        if ($results['tables']['services_table_exists']) {
+            $service_count = $wpdb->get_var("SELECT COUNT(*) FROM $services_table WHERE is_active = 1");
+            $results['active_services_count'] = $service_count;
+            
+            if ($service_count > 0) {
+                $sample_service = $wpdb->get_row("SELECT * FROM $services_table WHERE is_active = 1 LIMIT 1");
+                $results['sample_service'] = $sample_service;
+            }
+        }
+        
+        // Test 4: Test a minimal booking insert
+        if ($results['tables']['booking_table_exists'] && $results['active_services_count'] > 0) {
+            $test_data = [
+                'service_id' => $results['sample_service']->id,
+                'customer_name' => 'Test Customer',
+                'customer_email' => 'test@example.com',
+                'booking_status' => 'pending',
+                'created_at' => current_time('mysql')
+            ];
+            
+            $test_insert = $wpdb->insert($booking_table, $test_data);
+            
+            if ($test_insert) {
+                $test_booking_id = $wpdb->insert_id;
+                $results['test_insert'] = [
+                    'success' => true,
+                    'booking_id' => $test_booking_id
+                ];
+                
+                // Clean up test booking
+                $wpdb->delete($booking_table, ['id' => $test_booking_id]);
+            } else {
+                $results['test_insert'] = [
+                    'success' => false,
+                    'error' => $wpdb->last_error
+                ];
+            }
+        }
+        
+        wp_send_json($results);
+    }
+}
+
+// Initialize the plugin
+new UserBookingForm();
