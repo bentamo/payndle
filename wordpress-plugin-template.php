@@ -38,6 +38,7 @@ require_once 'custom-login.php';
 require_once 'plan-page.php';
 require_once 'assigned-bookings.php';
 require_once 'manage-bookings.php';
+require_once 'manage-staff.php';
 
 /*/ Load booking history with error handling
 if (file_exists(__DIR__ . '/booking-history.php')) {
