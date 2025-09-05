@@ -37,22 +37,26 @@ require_once 'booking-history.php';
 require_once 'custom-login.php';
 require_once 'plan-page.php';
 require_once 'assigned-bookings.php';
-<<<<<<< HEAD
 require_once 'user-booking-form.php';
-=======
 require_once 'manage-bookings.php';
->>>>>>> dd8a6d7123d4aea1b52b7592643b12f1b5fe8dbb
 
-/*/ Load booking history with error handling
+// Load booking history with error handling
 if (file_exists(__DIR__ . '/booking-history.php')) {
-    try {
+    try {		
         require_once 'booking-history.php';
     } catch (Exception $e) {
         error_log('Error loading booking-history.php: ' . $e->getMessage());
     }
 }
 
-*/
+// Load complete booking history
+if (file_exists(__DIR__ . '/complete-booking-history.php')) {
+    try {
+        require_once 'complete-booking-history.php';
+    } catch (Exception $e) {
+        error_log('Error loading complete-booking-history.php: ' . $e->getMessage());
+    }
+}
 
 /**
  * Returns the main instance of WordPress_Plugin_Template to prevent the need to use globals.
