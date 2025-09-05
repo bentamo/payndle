@@ -26,21 +26,20 @@ jQuery(document).ready(function($) {
         $(document).on('click', '.btn-book-service', function() {
             var serviceId = $(this).data('service-id');
             console.log('Book service clicked for service:', serviceId);
-            showBookingForm(serviceId);
+            redirectToBookingForm(serviceId);
         });
         
         // Modal events
-        $('.close, #close-details, #cancel-booking').on('click', function() {
+        $('.close, #close-details').on('click', function() {
             closeAllModals();
         });
         
         $('#book-service-btn').on('click', function() {
             var serviceId = getCurrentServiceId();
-            showBookingForm(serviceId);
+            redirectToBookingForm(serviceId);
         });
         
-        // Form submission
-        $('#booking-form').on('submit', handleBookingSubmit);
+        // Form submission (removed - now handled by separate booking form)
         
         // Close modal when clicking outside
         $('.modal').on('click', function(e) {
@@ -214,109 +213,31 @@ jQuery(document).ready(function($) {
         $('#book-service-btn').data('service-id', service.id);
     }
     
-    // Show booking form modal
-    function showBookingForm(serviceId) {
-        console.log('Showing booking form for service:', serviceId);
+    // Redirect to booking form page with selected service
+    function redirectToBookingForm(serviceId) {
+        console.log('Redirecting to booking form for service:', serviceId);
         
-        // Close details modal if open
-        $('#service-details-modal').hide();
+        // You can customize this URL based on where you place the booking form
+        // Option 1: If you have a dedicated booking page
+        var bookingPageUrl = '/booking/?service_id=' + serviceId;
         
-        // Load service details for booking form
-        $.ajax({
-            url: servicesBooking.ajaxUrl,
-            type: 'POST',
-            data: {
-                action: 'get_public_service_details',
-                service_id: serviceId,
-                nonce: servicesBooking.nonce
-            },
-            success: function(response) {
-                if (response.success) {
-                    populateBookingForm(response.data);
-                    loadBusinessContactInfo();
-                    $('#booking-modal').show();
-                } else {
-                    showError('Failed to load service details for booking');
-                }
-            },
-            error: function() {
-                showError('Failed to load service details for booking');
-            }
-        });
-    }
-    
-    // Populate booking form
-    function populateBookingForm(service) {
-        $('#booking-modal-title').text('Book: ' + service.name);
-        $('#booking_service_id').val(service.id);
+        // Option 2: If you want to stay on the same page and scroll to booking form
+        // (This assumes the booking form shortcode is somewhere on the same page)
+        if ($('[id*="user-booking-form"]').length > 0) {
+            // Pre-select the service in the form
+            $('#service_id').val(serviceId).trigger('change');
+            // Scroll to the booking form
+            $('html, body').animate({
+                scrollTop: $('[id*="user-booking-form"]').offset().top - 100
+            }, 800);
+            return;
+        }
         
-        var price = parseFloat(service.price || 0);
-        var duration = service.duration ? ` (${service.duration})` : '';
+        // Option 3: Open in a new tab/window
+        // window.open(bookingPageUrl, '_blank');
         
-        $('#booking-service-info').html(`
-            <div class="booking-service-summary">
-                <div class="booking-service-name">${service.name}${duration}</div>
-                <div class="booking-service-price">₱${price.toFixed(2)}</div>
-            </div>
-        `);
-    }
-    
-    // Load business contact info
-    function loadBusinessContactInfo() {
-        $.ajax({
-            url: servicesBooking.ajaxUrl,
-            type: 'POST',
-            data: {
-                action: 'get_business_contact_info',
-                nonce: servicesBooking.nonce
-            },
-            success: function(response) {
-                if (response.success && response.data) {
-                    $('#booking-contact-info').show();
-                }
-            }
-        });
-    }
-    
-    // Handle booking form submission
-    function handleBookingSubmit(e) {
-        e.preventDefault();
-        console.log('Submitting booking form');
-        
-        var $form = $(this);
-        var $submitBtn = $form.find('button[type="submit"]');
-        
-        // Disable submit button and show loading
-        $submitBtn.addClass('loading').prop('disabled', true);
-        
-        var formData = new FormData(this);
-        formData.append('action', 'submit_booking_request');
-        formData.append('nonce', servicesBooking.nonce);
-        
-        $.ajax({
-            url: servicesBooking.ajaxUrl,
-            type: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            success: function(response) {
-                console.log('Booking response:', response);
-                
-                if (response.success) {
-                    showSuccess(response.data.message);
-                    $('#booking-form')[0].reset();
-                    $('#booking-modal').hide();
-                } else {
-                    showError(response.data.message || 'Failed to submit booking request');
-                }
-            },
-            error: function() {
-                showError('Failed to submit booking request. Please try again.');
-            },
-            complete: function() {
-                $submitBtn.removeClass('loading').prop('disabled', false);
-            }
-        });
+        // Default: Navigate to booking page
+        window.location.href = bookingPageUrl;
     }
     
     // Close all modals

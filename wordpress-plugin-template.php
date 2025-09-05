@@ -37,6 +37,9 @@ require_once 'booking-history.php';
 require_once 'custom-login.php';
 require_once 'plan-page.php';
 require_once 'assigned-bookings.php';
+<<<<<<< HEAD
+require_once 'user-booking-form.php';
+=======
 require_once 'manage-bookings.php';
 
 /*/ Load booking history with error handling
