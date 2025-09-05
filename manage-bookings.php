@@ -1,0 +1,833 @@
+<?php
+/**
+ * Elite Cuts - Manage Bookings
+ * Admin interface for managing barbershop appointments
+ */
+
+if (!defined('ABSPATH')) {
+    exit; // Exit if accessed directly
+}
+
+function elite_cuts_manage_bookings_page() {
+    // Check user capabilities
+    if (!current_user_can('manage_options')) {
+        return;
+    }
+    ?>
+    <div class="wrap elite-cuts-admin">
+        <div class="elite-cuts-header">
+            <div class="shop-info">
+                <h1 class="shop-name">Elite Cuts Barbershop</h1>
+                <p class="shop-slogan">Precision Cuts & Grooming</p>
+            </div>
+            <div class="header-actions">
+                <h1 class="elite-cuts-title">
+                    <i class="fas fa-calendar-alt"></i> Manage Bookings
+                </h1>
+                <button id="add-booking-btn" class="elite-button primary">
+                    <i class="fas fa-plus"></i> New Booking
+                </button>
+            </div>
+        </div>
+
+        <!-- Filters and Search -->
+        <div class="elite-cuts-filters">
+            <div class="filter-row">
+                <div class="filter-group date-range">
+                    <div class="filter-item">
+                        <label for="filter-from">From</label>
+                        <input type="date" id="filter-from" class="elite-input date-input">
+                    </div>
+                    <div class="filter-item">
+                        <label for="filter-to">To</label>
+                        <input type="date" id="filter-to" class="elite-input date-input">
+                    </div>
+                </div>
+                
+                <div class="filter-group status-filter">
+                    <div class="filter-item">
+                        <label for="filter-status">Status</label>
+                        <select id="filter-status" class="elite-select">
+                            <option value="">All Statuses</option>
+                            <option value="pending">Pending</option>
+                            <option value="confirmed">Confirmed</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="filter-group search-filter">
+                    <div class="filter-item search-box">
+                        <label for="booking-search">Search</label>
+                        <div class="search-container">
+                            <i class="fas fa-search search-icon"></i>
+                            <input type="text" id="booking-search" class="elite-input search-input" placeholder="Search bookings...">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="filter-actions">
+                    <button type="button" id="apply-filters" class="elite-button primary">
+                        <i class="fas fa-filter"></i> Apply Filters
+                    </button>
+                    <button type="button" id="reset-filters" class="elite-button secondary">
+                        <i class="fas fa-undo"></i> Reset
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bookings Table -->
+        <div class="table-container">
+            <table class="elite-cuts-table">
+                <thead>
+                    <tr>
+                        <th>ID <i class="fas fa-sort"></i></th>
+                        <th>Customer <i class="fas fa-sort"></i></th>
+                        <th>Service <i class="fas fa-sort"></i></th>
+                        <th>Barber <i class="fas fa-sort"></i></th>
+                        <th>Date & Time <i class="fas fa-sort"></i></th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="bookings-list">
+                    <tr class="loading-row">
+                        <td colspan="7">
+                            <div class="loading-spinner"></div>
+                            <span>Loading bookings...</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Add/Edit Booking Modal -->
+    <div id="booking-modal" class="elite-modal" style="display: none;">
+        <div class="elite-modal-content">
+            <div class="elite-modal-header">
+                <h3>Add New Booking</h3>
+                <span class="elite-close">&times;</span>
+            </div>
+            <div class="elite-modal-body">
+                <form id="booking-form">
+                    <input type="hidden" id="booking-id" value="">
+                    
+                    <div class="form-group">
+                        <label for="customer">Customer</label>
+                        <select id="customer" class="elite-select" required>
+                            <option value="">Select Customer</option>
+                            <!-- Populated via AJAX -->
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="service">Service</label>
+                        <select id="service" class="elite-select" required>
+                            <option value="">Select Service</option>
+                            <!-- Populated via AJAX -->
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="barber">Barber</label>
+                        <select id="barber" class="elite-select" required>
+                            <option value="">Select Barber</option>
+                            <!-- Populated via AJAX -->
+                        </select>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="booking-date">Date</label>
+                            <input type="date" id="booking-date" class="elite-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="booking-time">Time</label>
+                            <input type="time" id="booking-time" class="elite-input" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="status">Status</label>
+                        <select id="status" class="elite-select" required>
+                            <option value="pending">Pending</option>
+                            <option value="confirmed">Confirmed</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="elite-button secondary" id="cancel-booking">Cancel</button>
+                        <button type="submit" class="elite-button primary">Save Booking</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        /* Modern Light Gray Theme with Gold Accents */
+        :root {
+            --bg-primary: #f5f5f5;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f0f0f0;
+            --text-primary: #333333;
+            --text-secondary: #666666;
+            --accent: #c9a74d;
+            --accent-hover: #b89846;
+            --border-color: #e0e0e0;
+            --success: #4caf50;
+            --warning: #ff9800;
+            --danger: #f44336;
+            --info: #2196f3;
+            --radius: 6px;
+            --shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            --card-bg: #ffffff;
+            --input-bg: #ffffff;
+        }
+
+        /* Base Styles */
+        .elite-cuts-admin {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            padding: 1.5rem;
+            font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        /* Header */
+        .elite-cuts-header {
+            background: var(--bg-secondary);
+            padding: 1.25rem 1.5rem;
+            border-radius: var(--radius);
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow);
+            border-left: 4px solid var(--accent);
+        }
+
+        .shop-name {
+            color: var(--accent);
+            margin: 0 0 0.25rem 0;
+            font-size: 1.5rem;
+            font-weight: 600;
+            font-family: 'Playfair Display', serif;
+            letter-spacing: 0.5px;
+        }
+
+        .shop-slogan {
+            color: var(--text-secondary);
+            margin: 0;
+            font-size: 0.875rem;
+            font-weight: 400;
+        }
+
+        /* Stats Cards */
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            transition: all 0.3s ease;
+            border: 1px solid var(--border-color);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            border-color: var(--accent);
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: rgba(201, 167, 77, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            color: var(--accent);
+        }
+
+        .stat-info h3 {
+            margin: 0 0 0.25rem 0;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .stat-info p {
+            margin: 0;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            font-weight: 400;
+        }
+
+        /* Filters */
+        .elite-cuts-filters {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+        }
+
+        .filter-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: flex-end;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .filter-item {
+            width: 100%;
+        }
+
+        .filter-item label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .date-range {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .date-range .filter-item {
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .search-filter {
+            min-width: 250px;
+            max-width: 350px;
+        }
+
+        .search-container {
+            position: relative;
+            width: 100%;
+            display: flex;
+            align-items: center;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 5px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            pointer-events: none;
+            z-index: 2;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.6rem 1rem 0.6rem 3rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            background-color: var(--input-bg);
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+            position: relative;
+            z-index: 1;
+            box-sizing: border-box;
+            text-indent: 0.5rem;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(201, 167, 77, 0.2);
+        }
+
+        .filter-actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-left: auto;
+            align-self: flex-end;
+        }
+
+        .filter-actions .elite-button {
+            min-width: 120px;
+            justify-content: center;
+            padding: 0.6rem 1rem;
+            font-size: 0.85rem;
+        }
+
+        .filter-actions .elite-button i {
+            margin-right: 0.5rem;
+        }
+
+        @media (max-width: 1024px) {
+            .filter-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filter-group {
+                min-width: 100%;
+            }
+
+            .search-filter {
+                max-width: 100%;
+            }
+
+            .filter-actions {
+                margin-left: 0;
+                margin-top: 0.5rem;
+                justify-content: flex-end;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .date-range {
+                flex-direction: column;
+                gap: 0.75rem;
+            }
+
+            .filter-actions {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .filter-actions .elite-button {
+                width: 100%;
+            }
+        }
+
+        /* Table */
+        .table-container {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+        }
+
+        .elite-cuts-table {
+            width: 100%;
+            border-collapse: collapse;
+            color: var(--text-primary);
+        }
+
+        .elite-cuts-table th {
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            font-weight: 500;
+            text-align: left;
+            padding: 1rem 1.25rem;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .elite-cuts-table td {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+
+        .elite-cuts-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .elite-cuts-table tbody tr:hover {
+            background: rgba(201, 167, 77, 0.05);
+        }
+
+        /* Status Badges */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.35rem 0.85rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+        }
+
+        .status-pending {
+            background: rgba(255, 193, 7, 0.1);
+            color: #ffc107;
+            border: 1px solid rgba(255, 193, 7, 0.2);
+        }
+
+        .status-confirmed {
+            background: rgba(201, 167, 77, 0.1);
+            color: var(--accent);
+            border: 1px solid rgba(201, 167, 77, 0.3);
+        }
+
+        .status-completed {
+            background: rgba(76, 175, 80, 0.1);
+            color: var(--success);
+            border: 1px solid rgba(76, 175, 80, 0.2);
+        }
+
+        .status-cancelled {
+            background: rgba(244, 67, 54, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(244, 67, 54, 0.2);
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            background: var(--input-bg);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: var(--accent);
+            color: #1e1e1e;
+            border-color: var(--accent);
+            transform: translateY(-1px);
+        }
+
+        .btn-view {
+            color: var(--info);
+        }
+
+        .btn-edit {
+            color: var(--accent);
+        }
+
+        .btn-delete {
+            color: var(--danger);
+        }
+
+        /* Buttons */
+        .elite-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--accent);
+            color: #1e1e1e;
+            border: none;
+            padding: 0.6rem 1.25rem;
+            border-radius: 4px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 0.8rem;
+        }
+
+        .elite-button:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(201, 167, 77, 0.3);
+        }
+
+        .elite-button.secondary {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        .elite-button.secondary:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border-color: var(--text-secondary);
+        }
+
+        /* Loading State */
+        .loading-row td {
+            text-align: center;
+            padding: 2.5rem;
+            color: var(--text-secondary);
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 1.5rem;
+            height: 1.5rem;
+            border: 2px solid rgba(201, 167, 77, 0.1);
+            border-radius: 50%;
+            border-top-color: var(--accent);
+            animation: spin 0.8s linear infinite;
+            margin-right: 0.5rem;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .stats-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .elite-cuts-admin {
+                padding: 1rem;
+            }
+
+            .elite-cuts-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+
+            .elite-cuts-filters {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filters-left {
+                flex-direction: column;
+                gap: 0.75rem;
+            }
+
+            .filter-group {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .search-container {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats-container {
+                grid-template-columns: 1fr;
+            }
+
+            .elite-button {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+
+    <script>
+    jQuery(document).ready(function($) {
+        // Initialize the date pickers
+        const today = new Date();
+        $('#date-from').val(today.toISOString().split('T')[0]);
+        
+        const nextWeek = new Date();
+        nextWeek.setDate(today.getDate() + 7);
+        $('#date-to').val(nextWeek.toISOString().split('T')[0]);
+
+        // Modal functionality
+        const modal = document.getElementById('booking-modal');
+        const addBtn = document.getElementById('add-booking-btn');
+        const closeBtn = document.getElementsByClassName('elite-close')[0];
+        const cancelBtn = document.getElementById('cancel-booking');
+
+        // Open modal for new booking
+        addBtn.onclick = function() {
+            document.querySelector('#booking-form h3').textContent = 'Add New Booking';
+            document.getElementById('booking-form').reset();
+            modal.style.display = 'flex';
+        }
+
+        // Close modal
+        function closeModal() {
+            modal.style.display = 'none';
+        }
+
+        closeBtn.onclick = closeModal;
+        cancelBtn.onclick = closeModal;
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                closeModal();
+            }
+        }
+
+        // Form submission
+        $('#booking-form').on('submit', function(e) {
+            e.preventDefault();
+            // Add form submission logic here
+            alert('Booking saved successfully!');
+            closeModal();
+        });
+
+        // Load bookings (this would be an AJAX call in a real implementation)
+        function loadBookings() {
+            // Simulated data - replace with actual AJAX call
+            const bookings = [
+                { id: 1, customer: 'John Doe', service: 'Haircut', barber: 'Mike Johnson', datetime: '2023-06-15 14:30', status: 'confirmed' },
+                { id: 2, customer: 'Jane Smith', service: 'Beard Trim', barber: 'Sarah Williams', datetime: '2023-06-15 15:00', status: 'pending' },
+                { id: 3, customer: 'Robert Brown', service: 'Haircut & Beard', barber: 'Alex Davis', datetime: '2023-06-16 10:00', status: 'completed' },
+                { id: 4, customer: 'Emily Wilson', service: 'Hair Color', barber: 'Mike Johnson', datetime: '2023-06-16 11:30', status: 'cancelled' },
+            ];
+
+            const tbody = $('#bookings-list');
+            tbody.empty();
+
+            if (bookings.length === 0) {
+                tbody.append('<tr><td colspan="7" class="no-bookings">No bookings found</td></tr>');
+                return;
+            }
+
+            bookings.forEach(booking => {
+                const row = `
+                    <tr>
+                        <td>#${booking.id}</td>
+                        <td>${booking.customer}</td>
+                        <td>${booking.service}</td>
+                        <td>${booking.barber}</td>
+                        <td>${formatDateTime(booking.datetime)}</td>
+                        <td><span class="status-badge status-${booking.status}">${booking.status}</span></td>
+                        <td class="actions">
+                            <button class="elite-button small edit-booking" data-id="${booking.id}">
+                                <i class="fas fa-edit"></i> Edit
+                            </button>
+                            <button class="elite-button small delete-booking" data-id="${booking.id}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                tbody.append(row);
+            });
+
+            // Add event listeners for edit/delete buttons
+            $('.edit-booking').on('click', function() {
+                const bookingId = $(this).data('id');
+                // In a real implementation, load the booking data and populate the form
+                document.querySelector('#booking-form h3').textContent = 'Edit Booking';
+                // Populate form with booking data
+                modal.style.display = 'flex';
+            });
+
+            $('.delete-booking').on('click', function() {
+                if (confirm('Are you sure you want to delete this booking?')) {
+                    const bookingId = $(this).data('id');
+                    // In a real implementation, make an AJAX call to delete the booking
+                    alert(`Booking #${bookingId} deleted`);
+                    // Reload bookings
+                    loadBookings();
+                }
+            });
+        }
+
+        // Helper function to format date and time
+        function formatDateTime(datetime) {
+            const [date, time] = datetime.split(' ');
+            const [year, month, day] = date.split('-');
+            return `${month}/${day}/${year} ${formatTime(time)}`;
+        }
+
+        // Helper function to format time (24h to 12h)
+        function formatTime(time) {
+            const [hours, minutes] = time.split(':');
+            const h = parseInt(hours);
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            const hh = h % 12 || 12;
+            return `${hh}:${minutes} ${ampm}`;
+        }
+
+        // Initial load
+        loadBookings();
+    });
+    </script>
+    <?php
+}
+
+// Add the menu item
+function elite_cuts_add_admin_menu() {
+    add_menu_page(
+        'Manage Bookings',
+        'Bookings',
+        'manage_options',
+        'elite-cuts-bookings',
+        'elite_cuts_manage_bookings_page',
+        'dashicons-calendar-alt',
+        30
+    );
+}
+add_action('admin_menu', 'elite_cuts_add_admin_menu');
+
+// Enqueue admin styles and scripts
+function elite_cuts_admin_enqueue_scripts($hook) {
+    if ('toplevel_page_elite-cuts-bookings' !== $hook) {
+        return;
+    }
+    
+    // Enqueue jQuery and jQuery UI
+    wp_enqueue_script('jquery');
+    wp_enqueue_script('jquery-ui-datepicker');
+    
+    // Enqueue Font Awesome
+    wp_enqueue_style('font-awesome', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css');
+    
+    // Enqueue Google Fonts
+    wp_enqueue_style('google-fonts', 'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+}
+add_action('admin_enqueue_scripts', 'elite_cuts_admin_enqueue_scripts');
+
+// Add shortcode for the frontend booking management
+function elite_cuts_manage_bookings_shortcode() {
+    // Check if user is logged in and has the right permissions
+    if (!is_user_logged_in() || !current_user_can('manage_options')) {
+        return '<p>You need to be logged in with the right permissions to view this page.</p>';
+    }
+    
+    // Start output buffering to capture the HTML
+    ob_start();
+    
+    // Call the booking management function
+    elite_cuts_manage_bookings_page();
+    
+    // Return the buffered content
+    return ob_get_clean();
+}
+add_shortcode('elite_cuts_manage_bookings', 'elite_cuts_manage_bookings_shortcode');

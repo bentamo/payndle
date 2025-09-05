@@ -31,13 +31,13 @@ require_once 'includes/class-assigned-bookings.php';
 require_once 'includes/lib/class-wordpress-plugin-template-admin-api.php';
 require_once 'includes/lib/class-wordpress-plugin-template-post-type.php';
 require_once 'includes/lib/class-wordpress-plugin-template-taxonomy.php';
-require_once 'manage-booking.php';
 require_once 'public-services-booking.php';
 require_once 'landing_page.php';
 require_once 'booking-history.php';
 require_once 'custom-login.php';
 require_once 'plan-page.php';
 require_once 'assigned-bookings.php';
+require_once 'manage-bookings.php';
 
 /*/ Load booking history with error handling
 if (file_exists(__DIR__ . '/booking-history.php')) {
