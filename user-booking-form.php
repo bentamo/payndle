@@ -73,8 +73,24 @@ class UserBookingForm {
         
         $booking_table = $wpdb->prefix . 'service_bookings';
         $services_table = $wpdb->prefix . 'manager_services';
+        $staff_table = $wpdb->prefix . 'staff_members';
         
         $charset_collate = $wpdb->get_charset_collate();
+        
+        // Create staff table first (referenced by bookings)
+        $staff_sql = "CREATE TABLE IF NOT EXISTS $staff_table (
+            id int(11) NOT NULL AUTO_INCREMENT,
+            staff_name varchar(255) NOT NULL,
+            staff_position varchar(100) NOT NULL DEFAULT 'Barber',
+            staff_email varchar(255),
+            staff_phone varchar(50),
+            staff_availability varchar(50) DEFAULT 'Available',
+            staff_status varchar(20) DEFAULT 'active',
+            staff_avatar varchar(500),
+            created_at timestamp DEFAULT CURRENT_TIMESTAMP,
+            updated_at timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id)
+        ) $charset_collate;";
         
         // Create services table if it doesn't exist (use existing manager_services structure)
         $services_sql = "CREATE TABLE IF NOT EXISTS $services_table (
@@ -97,6 +113,7 @@ class UserBookingForm {
         $booking_sql = "CREATE TABLE IF NOT EXISTS $booking_table (
             id int(11) NOT NULL AUTO_INCREMENT,
             service_id int(11),
+            staff_id int(11),
             customer_name varchar(255) NOT NULL,
             customer_email varchar(255) NOT NULL,
             customer_phone varchar(50),
@@ -112,12 +129,17 @@ class UserBookingForm {
             confirmed_date datetime,
             notes text,
             PRIMARY KEY (id),
-            FOREIGN KEY (service_id) REFERENCES $services_table(id) ON DELETE SET NULL
+            FOREIGN KEY (service_id) REFERENCES $services_table(id) ON DELETE SET NULL,
+            FOREIGN KEY (staff_id) REFERENCES $staff_table(id) ON DELETE SET NULL
         ) $charset_collate;";
         
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        dbDelta($staff_sql);
         dbDelta($services_sql);
         dbDelta($booking_sql);
+        
+        // Add default staff members if table is empty
+        $this->add_default_staff();
     }
     
     /**
@@ -135,6 +157,7 @@ class UserBookingForm {
         
         // Check and add missing columns
         $columns_to_add = [
+            'staff_id' => "ALTER TABLE {$booking_table} ADD COLUMN staff_id INT(11)",
             'payment_status' => "ALTER TABLE {$booking_table} ADD COLUMN payment_status VARCHAR(20) DEFAULT 'pending'",
             'booking_status' => "ALTER TABLE {$booking_table} ADD COLUMN booking_status VARCHAR(50) DEFAULT 'pending'",
             'created_at' => "ALTER TABLE {$booking_table} ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
@@ -153,6 +176,120 @@ class UserBookingForm {
                 }
             }
         }
+    }
+    
+    /**
+     * Add default staff members if table is empty
+     */
+    private function add_default_staff() {
+        global $wpdb;
+        
+        $staff_table = $wpdb->prefix . 'staff_members';
+        
+        // Check if staff table has any members
+        $staff_count = $wpdb->get_var("SELECT COUNT(*) FROM $staff_table");
+        
+        if ($staff_count == 0) {
+            $default_staff = [
+                [
+                    'staff_name' => 'Miguel Santos',
+                    'staff_position' => 'Master Barber',
+                    'staff_email' => 'miguel@elitecuts.com',
+                    'staff_phone' => '+63 917 000 1111',
+                    'staff_availability' => 'Available',
+                    'staff_status' => 'active',
+                    'staff_avatar' => 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=200&q=80'
+                ],
+                [
+                    'staff_name' => 'Antonio Cruz',
+                    'staff_position' => 'Barber',
+                    'staff_email' => 'antonio@elitecuts.com',
+                    'staff_phone' => '+63 917 000 2222',
+                    'staff_availability' => 'Available',
+                    'staff_status' => 'active',
+                    'staff_avatar' => 'https://images.unsplash.com/photo-1583864692221-95a2c5ba9d5b?auto=format&fit=crop&w=200&q=80'
+                ],
+                [
+                    'staff_name' => 'Rafael Reyes',
+                    'staff_position' => 'Stylist',
+                    'staff_email' => 'rafael@elitecuts.com',
+                    'staff_phone' => '+63 917 000 3333',
+                    'staff_availability' => 'Available',
+                    'staff_status' => 'active',
+                    'staff_avatar' => 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80'
+                ]
+            ];
+            
+            foreach ($default_staff as $staff) {
+                $wpdb->insert($staff_table, $staff);
+            }
+        }
+    }
+    
+    /**
+     * Get staff options for dropdown
+     */
+    private function get_staff_options() {
+        global $wpdb;
+        
+        $staff_table = $wpdb->prefix . 'staff_members';
+        
+        // First check what columns exist in the table
+        $columns = $wpdb->get_results("SHOW COLUMNS FROM $staff_table");
+        $column_names = array_column($columns, 'Field');
+        
+        // Build query based on available columns
+        $select_fields = ['id', 'staff_name'];
+        
+        if (in_array('staff_position', $column_names)) {
+            $select_fields[] = 'staff_position';
+        }
+        if (in_array('staff_availability', $column_names)) {
+            $select_fields[] = 'staff_availability';
+        }
+        
+        $where_clause = '';
+        if (in_array('staff_status', $column_names)) {
+            $where_clause = "WHERE staff_status = 'active'";
+        } elseif (in_array('is_active', $column_names)) {
+            $where_clause = "WHERE is_active = 1";
+        }
+        
+        $query = "SELECT " . implode(', ', $select_fields) . " 
+                  FROM $staff_table 
+                  $where_clause
+                  ORDER BY staff_name";
+        
+        $staff_members = $wpdb->get_results($query);
+        
+        $options = '<option value="">Any available staff member</option>';
+        
+        if ($staff_members) {
+            foreach ($staff_members as $staff) {
+                $position = isset($staff->staff_position) ? $staff->staff_position : 'Staff';
+                $availability_indicator = '';
+                
+                if (isset($staff->staff_availability)) {
+                    if ($staff->staff_availability === 'Available') {
+                        $availability_indicator = ' ✅';
+                    } elseif ($staff->staff_availability === 'Busy') {
+                        $availability_indicator = ' ⏳';
+                    } else {
+                        $availability_indicator = ' ❌';
+                    }
+                }
+                
+                $options .= sprintf(
+                    '<option value="%d">%s - %s%s</option>',
+                    esc_attr($staff->id),
+                    esc_html($staff->staff_name),
+                    esc_html($position),
+                    $availability_indicator
+                );
+            }
+        }
+        
+        return $options;
     }
     
     /**
@@ -211,6 +348,26 @@ class UserBookingForm {
                     <?php else: ?>
                         <input type="hidden" id="service_id" name="service_id" value="<?php echo esc_attr($atts['service_id']); ?>">
                     <?php endif; ?>
+                    
+                    <!-- Staff Selection -->
+                    <div class="form-section staff-selection">
+                        <h3 class="section-title">
+                            <i class="fas fa-user-tie"></i>
+                            Preferred Staff Member
+                        </h3>
+                        <div class="staff-selector">
+                            <select id="staff_id" name="staff_id">
+                                <?php echo $this->get_staff_options(); ?>
+                            </select>
+                            <div class="select-icon">
+                                <i class="fas fa-chevron-down"></i>
+                            </div>
+                        </div>
+                        <div class="staff-note">
+                            <i class="fas fa-info-circle"></i>
+                            <span>Leave blank to be assigned to any available staff member</span>
+                        </div>
+                    </div>
                     
                     <!-- Personal Information -->
                     <div class="form-section personal-info">
@@ -563,6 +720,7 @@ class UserBookingForm {
         
         // Sanitize and validate input
         $service_id = intval($_POST['service_id']);
+        $staff_id = !empty($_POST['staff_id']) ? intval($_POST['staff_id']) : null;
         $customer_name = sanitize_text_field($_POST['customer_name']);
         $customer_email = sanitize_email($_POST['customer_email']);
         $customer_phone = sanitize_text_field($_POST['customer_phone'] ?? '');
@@ -573,7 +731,7 @@ class UserBookingForm {
         
         file_put_contents(
             plugin_dir_path(__FILE__) . 'booking-debug.log', 
-            date('Y-m-d H:i:s') . " - Sanitized data: service_id=$service_id, customer_name=$customer_name, customer_email=$customer_email\n", 
+            date('Y-m-d H:i:s') . " - Sanitized data: service_id=$service_id, staff_id=$staff_id, customer_name=$customer_name, customer_email=$customer_email\n", 
             FILE_APPEND
         );
         
@@ -672,6 +830,7 @@ class UserBookingForm {
         // Use basic required columns only
         $insert_data = [
             'service_id' => $service_id,
+            'staff_id' => $staff_id,
             'customer_name' => $customer_name,
             'customer_email' => $customer_email,
             'customer_phone' => $customer_phone,

@@ -138,7 +138,16 @@ class Simple_Booking_Log {
                 .log-table {
                     width: 100%;
                     border-collapse: collapse;
+                    table-layout: fixed;
                 }
+                
+                .log-table th:nth-child(1) { width: 8%; }   /* ID */
+                .log-table th:nth-child(2) { width: 15%; }  /* Service */
+                .log-table th:nth-child(3) { width: 15%; }  /* Staff */
+                .log-table th:nth-child(4) { width: 20%; }  /* Customer */
+                .log-table th:nth-child(5) { width: 15%; }  /* Date Created */
+                .log-table th:nth-child(6) { width: 15%; }  /* Appointment Date */
+                .log-table th:nth-child(7) { width: 12%; }  /* Status */
                 
                 .log-table th {
                     background: linear-gradient(135deg, #c9a74d, #d4b866);
@@ -183,6 +192,25 @@ class Simple_Booking_Log {
                     display: flex;
                     align-items: center;
                     gap: 8px;
+                }
+                
+                .staff-name {
+                    font-weight: 600;
+                    color: #2c5aa0;
+                    font-size: 0.95rem;
+                }
+                
+                .staff-position {
+                    font-size: 0.8rem;
+                    color: #6c757d;
+                    font-style: italic;
+                    margin-top: 2px;
+                }
+                
+                .staff-unassigned {
+                    color: #6c757d;
+                    font-style: italic;
+                    font-size: 0.9rem;
                 }
                 
                 .customer-name {
@@ -445,6 +473,7 @@ class Simple_Booking_Log {
                             <tr>
                                 <th>ID</th>
                                 <th>Service</th>
+                                <th>Staff</th>
                                 <th>Customer</th>
                                 <th>Date Created</th>
                                 <th>Appointment Date</th>
@@ -456,6 +485,10 @@ class Simple_Booking_Log {
                 
                 bookings.forEach(function(booking) {
                     const serviceName = booking.service_name || 'No Service';
+                    const staffInfo = booking.staff_name 
+                        ? `<div class="staff-name">${booking.staff_name}</div><div class="staff-position">${booking.staff_position || ''}</div>`
+                        : '<div class="staff-unassigned">Any Staff</div>';
+                    
                     html += `
                         <tr>
                             <td>
@@ -463,6 +496,9 @@ class Simple_Booking_Log {
                             </td>
                             <td>
                                 <div class="service-name">${serviceName}</div>
+                            </td>
+                            <td>
+                                ${staffInfo}
                             </td>
                             <td>
                                 <div class="customer-name">${booking.customer_name}</div>
@@ -494,17 +530,36 @@ class Simple_Booking_Log {
             function formatDateTime(dateTime) {
                 if (!dateTime) return 'N/A';
                 const date = new Date(dateTime);
-                return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                const options = {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true
+                };
+                return date.toLocaleDateString('en-US', options);
             }
             
             function formatDate(date) {
                 if (!date) return 'N/A';
-                return new Date(date).toLocaleDateString();
+                const d = new Date(date);
+                const options = {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit'
+                };
+                return d.toLocaleDateString('en-US', options);
             }
             
             function formatTime(time) {
                 if (!time) return 'N/A';
-                return time;
+                // Convert 24-hour time to 12-hour format
+                const [hours, minutes] = time.split(':');
+                const hour = parseInt(hours);
+                const ampm = hour >= 12 ? 'PM' : 'AM';
+                const hour12 = hour % 12 || 12;
+                return `${hour12}:${minutes} ${ampm}`;
             }
             
             function getStatusText(status) {
@@ -541,6 +596,7 @@ class Simple_Booking_Log {
             SELECT 
                 b.id,
                 b.service_id,
+                b.staff_id,
                 b.customer_name,
                 b.customer_email,
                 b.customer_phone,
@@ -549,9 +605,12 @@ class Simple_Booking_Log {
                 b.booking_status,
                 b.created_at,
                 b.updated_at,
-                s.service_name
+                s.service_name,
+                st.staff_name,
+                st.staff_position
             FROM {$wpdb->prefix}service_bookings b
             LEFT JOIN {$wpdb->prefix}manager_services s ON b.service_id = s.id
+            LEFT JOIN {$wpdb->prefix}staff_members st ON b.staff_id = st.id
             ORDER BY b.created_at DESC 
             LIMIT 100
         ");

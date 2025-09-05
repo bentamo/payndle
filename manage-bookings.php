@@ -20,6 +20,7 @@ function elite_cuts_manage_bookings_page() {
         SELECT 
             b.id,
             b.service_id,
+            b.staff_id,
             b.customer_name,
             b.customer_email,
             b.customer_phone,
@@ -27,9 +28,12 @@ function elite_cuts_manage_bookings_page() {
             b.preferred_time,
             b.booking_status,
             b.created_at,
-            s.service_name
+            s.service_name,
+            st.staff_name,
+            st.staff_position
         FROM {$wpdb->prefix}service_bookings b
         LEFT JOIN {$wpdb->prefix}manager_services s ON b.service_id = s.id
+        LEFT JOIN {$wpdb->prefix}staff_members st ON b.staff_id = st.id
         ORDER BY b.created_at DESC
         LIMIT 50
     ");
@@ -106,6 +110,7 @@ function elite_cuts_manage_bookings_page() {
                         <th>ID</th>
                         <th>Customer</th>
                         <th>Service</th>
+                        <th>Staff</th>
                         <th>Contact</th>
                         <th>Date & Time</th>
                         <th>Status</th>
@@ -123,6 +128,16 @@ function elite_cuts_manage_bookings_page() {
                                 <td>
                                     <span class="service-name">
                                         <?php echo esc_html($booking->service_name ?: 'Service ID: ' . $booking->service_id); ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="staff-info">
+                                        <?php if ($booking->staff_name): ?>
+                                            <strong><?php echo esc_html($booking->staff_name); ?></strong><br>
+                                            <small><?php echo esc_html($booking->staff_position); ?></small>
+                                        <?php else: ?>
+                                            <em>Any available staff</em>
+                                        <?php endif; ?>
                                     </span>
                                 </td>
                                 <td class="contact-info">
@@ -150,7 +165,7 @@ function elite_cuts_manage_bookings_page() {
                         <?php endforeach; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="7" class="no-bookings">
+                            <td colspan="8" class="no-bookings">
                                 <?php if ($wpdb->last_error): ?>
                                     Database Error: <?php echo esc_html($wpdb->last_error); ?>
                                 <?php else: ?>
@@ -520,7 +535,18 @@ function elite_cuts_manage_bookings_page() {
             width: 100%;
             border-collapse: collapse;
             color: var(--text-primary);
+            table-layout: fixed;
         }
+
+        /* Column widths for 8 columns: ID, Customer, Service, Staff, Contact, Date & Time, Status, Actions */
+        .elite-cuts-table th:nth-child(1) { width: 8%; }   /* ID */
+        .elite-cuts-table th:nth-child(2) { width: 15%; }  /* Customer */
+        .elite-cuts-table th:nth-child(3) { width: 15%; }  /* Service */
+        .elite-cuts-table th:nth-child(4) { width: 12%; }  /* Staff */
+        .elite-cuts-table th:nth-child(5) { width: 18%; }  /* Contact */
+        .elite-cuts-table th:nth-child(6) { width: 15%; }  /* Date & Time */
+        .elite-cuts-table th:nth-child(7) { width: 10%; }  /* Status */
+        .elite-cuts-table th:nth-child(8) { width: 7%; }   /* Actions */
 
         .elite-cuts-table th {
             background: var(--bg-tertiary);
