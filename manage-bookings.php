@@ -13,6 +13,27 @@ function elite_cuts_manage_bookings_page() {
     if (!current_user_can('manage_options')) {
         return;
     }
+    
+    // Load bookings directly with PHP
+    global $wpdb;
+    $bookings = $wpdb->get_results("
+        SELECT 
+            b.id,
+            b.service_id,
+            b.customer_name,
+            b.customer_email,
+            b.customer_phone,
+            b.preferred_date,
+            b.preferred_time,
+            b.booking_status,
+            b.created_at,
+            s.service_name
+        FROM {$wpdb->prefix}service_bookings b
+        LEFT JOIN {$wpdb->prefix}manager_services s ON b.service_id = s.id
+        ORDER BY b.created_at DESC
+        LIMIT 50
+    ");
+    
     ?>
     <div class="wrap elite-cuts-admin">
         <div class="elite-cuts-header">
@@ -22,10 +43,10 @@ function elite_cuts_manage_bookings_page() {
             </div>
             <div class="header-actions">
                 <h1 class="elite-cuts-title">
-                    <i class="fas fa-calendar-alt"></i> Manage Bookings
+                    Manage Bookings
                 </h1>
                 <button id="add-booking-btn" class="elite-button primary">
-                    <i class="fas fa-plus"></i> New Booking
+                    New Booking
                 </button>
             </div>
         </div>
@@ -61,7 +82,6 @@ function elite_cuts_manage_bookings_page() {
                     <div class="filter-item search-box">
                         <label for="booking-search">Search</label>
                         <div class="search-container">
-                            <i class="fas fa-search search-icon"></i>
                             <input type="text" id="booking-search" class="elite-input search-input" placeholder="Search bookings...">
                         </div>
                     </div>
@@ -69,10 +89,10 @@ function elite_cuts_manage_bookings_page() {
                 
                 <div class="filter-actions">
                     <button type="button" id="apply-filters" class="elite-button primary">
-                        <i class="fas fa-filter"></i> Apply Filters
+                        Apply Filters
                     </button>
                     <button type="button" id="reset-filters" class="elite-button secondary">
-                        <i class="fas fa-undo"></i> Reset
+                        Reset
                     </button>
                 </div>
             </div>
@@ -83,21 +103,63 @@ function elite_cuts_manage_bookings_page() {
             <table class="elite-cuts-table">
                 <thead>
                     <tr>
-                        <th>ID <i class="fas fa-sort"></i></th>
-                        <th>Customer <i class="fas fa-sort"></i></th>
-                        <th>Service <i class="fas fa-sort"></i></th>
-                        <th>Barber <i class="fas fa-sort"></i></th>
-                        <th>Date & Time <i class="fas fa-sort"></i></th>
+                        <th>ID</th>
+                        <th>Customer</th>
+                        <th>Service</th>
+                        <th>Contact</th>
+                        <th>Date & Time</th>
                         <th>Status</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="bookings-list">
-                    <tr class="loading-row">
-                        <td colspan="7">
-                            <div class="loading-spinner"></div>
-                            <span>Loading bookings...</span>
-                        </td>
+                    <?php if ($bookings && count($bookings) > 0): ?>
+                        <?php foreach ($bookings as $booking): ?>
+                            <tr data-booking-id="<?php echo $booking->id; ?>">
+                                <td>#<?php echo $booking->id; ?></td>
+                                <td>
+                                    <strong><?php echo esc_html($booking->customer_name ?: 'Unknown'); ?></strong>
+                                </td>
+                                <td>
+                                    <span class="service-name">
+                                        <?php echo esc_html($booking->service_name ?: 'Service ID: ' . $booking->service_id); ?>
+                                    </span>
+                                </td>
+                                <td class="contact-info">
+                                    <?php echo esc_html($booking->customer_email ?: 'No email'); ?><br>
+                                    <small><?php echo esc_html($booking->customer_phone ?: 'No phone'); ?></small>
+                                </td>
+                                <td>
+                                    <strong><?php echo esc_html($booking->preferred_date ?: 'No date'); ?></strong><br>
+                                    <small><?php echo esc_html($booking->preferred_time ?: 'No time'); ?></small>
+                                </td>
+                                <td>
+                                    <span class="status-badge status-<?php echo esc_attr($booking->booking_status); ?>">
+                                        <?php echo esc_html(ucfirst($booking->booking_status)); ?>
+                                    </span>
+                                </td>
+                                <td class="actions">
+                                    <button class="elite-button small edit-booking" data-id="<?php echo $booking->id; ?>">
+                                        Edit
+                                    </button>
+                                    <button class="elite-button small delete-booking" data-id="<?php echo $booking->id; ?>">
+                                        Delete
+                                    </button>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <tr>
+                            <td colspan="7" class="no-bookings">
+                                <?php if ($wpdb->last_error): ?>
+                                    Database Error: <?php echo esc_html($wpdb->last_error); ?>
+                                <?php else: ?>
+                                    No bookings found. 
+                                    <br><small>Database tables: <?php echo $wpdb->prefix; ?>service_bookings, <?php echo $wpdb->prefix; ?>manager_services</small>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endif; ?>
                     </tr>
                 </tbody>
             </table>
@@ -170,13 +232,30 @@ function elite_cuts_manage_bookings_page() {
     </div>
 
     <style>
+        /* Force black text color for all elements */
+        .elite-cuts-admin,
+        .elite-cuts-admin *,
+        .elite-cuts-table td,
+        .elite-cuts-table th,
+        .service-name,
+        .contact-info {
+            color: #000000 !important;
+        }
+        
+        /* Specifically ensure service column text is black */
+        .service-name,
+        .service-name * {
+            color: #000000 !important;
+            font-weight: 600;
+        }
+        
         /* Modern Light Gray Theme with Gold Accents */
         :root {
             --bg-primary: #f5f5f5;
             --bg-secondary: #ffffff;
             --bg-tertiary: #f0f0f0;
-            --text-primary: #333333;
-            --text-secondary: #666666;
+            --text-primary: #000000;
+            --text-secondary: #000000;
             --accent: #c9a74d;
             --accent-hover: #b89846;
             --border-color: #e0e0e0;
@@ -655,6 +734,131 @@ function elite_cuts_manage_bookings_page() {
 
     <script>
     jQuery(document).ready(function($) {
+        console.log('Manage Bookings initialized with server-side data');
+        
+        // Store original bookings data for filtering
+        let allBookings = [];
+        $('#bookings-list tr[data-booking-id]').each(function() {
+            const $row = $(this);
+            allBookings.push({
+                element: $row,
+                id: $row.data('booking-id'),
+                customer: $row.find('td:eq(1)').text().trim().toLowerCase(),
+                service: $row.find('td:eq(2)').text().trim().toLowerCase(),
+                contact: $row.find('td:eq(3)').text().trim().toLowerCase(),
+                date: $row.find('td:eq(4)').text().trim(),
+                status: $row.find('.status-badge').attr('class').replace('status-badge status-', ''),
+                originalIndex: $row.index()
+            });
+        });
+        
+        console.log('Loaded ' + allBookings.length + ' bookings for filtering');
+
+        // Filter function
+        function filterBookings() {
+            const dateFrom = $('#filter-from').val();
+            const dateTo = $('#filter-to').val();
+            const status = $('#filter-status').val();
+            const search = $('#booking-search').val().toLowerCase();
+            
+            console.log('Filtering with:', { dateFrom, dateTo, status, search });
+            
+            let visibleCount = 0;
+            
+            allBookings.forEach(function(booking) {
+                let show = true;
+                
+                // Date filtering (simplified - just check if date contains the filter)
+                if (dateFrom && booking.date.indexOf(dateFrom) === -1) {
+                    show = false;
+                }
+                if (dateTo && booking.date.indexOf(dateTo) === -1) {
+                    show = false;
+                }
+                
+                // Status filtering
+                if (status && booking.status !== status) {
+                    show = false;
+                }
+                
+                // Search filtering
+                if (search && 
+                    booking.customer.indexOf(search) === -1 && 
+                    booking.service.indexOf(search) === -1 && 
+                    booking.contact.indexOf(search) === -1) {
+                    show = false;
+                }
+                
+                if (show) {
+                    booking.element.show();
+                    visibleCount++;
+                } else {
+                    booking.element.hide();
+                }
+            });
+            
+            console.log('Showing ' + visibleCount + ' of ' + allBookings.length + ' bookings');
+            
+            // Show "no results" message if nothing visible
+            if (visibleCount === 0 && allBookings.length > 0) {
+                if ($('#no-filter-results').length === 0) {
+                    $('#bookings-list').append('<tr id="no-filter-results"><td colspan="7" class="no-bookings">No bookings match your filters</td></tr>');
+                }
+            } else {
+                $('#no-filter-results').remove();
+            }
+        }
+
+        // Filter event handlers
+        $('#apply-filters').on('click', function() {
+            console.log('Apply filters clicked');
+            filterBookings();
+        });
+        
+        $('#reset-filters').on('click', function() {
+            console.log('Reset filters clicked');
+            $('#filter-from').val('');
+            $('#filter-to').val('');
+            $('#filter-status').val('');
+            $('#booking-search').val('');
+            
+            // Show all bookings
+            allBookings.forEach(function(booking) {
+                booking.element.show();
+            });
+            $('#no-filter-results').remove();
+        });
+        
+        // Search on enter key
+        $('#booking-search').on('keypress', function(e) {
+            if (e.which === 13) {
+                console.log('Search enter pressed');
+                filterBookings();
+            }
+        });
+        
+        // Real-time search
+        $('#booking-search').on('input', function() {
+            filterBookings();
+        });
+
+        // Edit/Delete button handlers
+        $('.edit-booking').on('click', function() {
+            const bookingId = $(this).data('id');
+            console.log('Edit booking:', bookingId);
+            alert('Edit booking #' + bookingId + ' - functionality to be implemented');
+        });
+        
+        $('.delete-booking').on('click', function() {
+            if (confirm('Are you sure you want to delete this booking?')) {
+                const bookingId = $(this).data('id');
+                console.log('Delete booking:', bookingId);
+                alert('Delete booking #' + bookingId + ' - functionality to be implemented');
+            }
+        });
+        
+        console.log('Manage Bookings ready with ' + allBookings.length + ' bookings loaded');
+    });
         // Initialize the date pickers
         const today = new Date();
         $('#date-from').val(today.toISOString().split('T')[0]);
@@ -699,33 +903,86 @@ function elite_cuts_manage_bookings_page() {
             closeModal();
         });
 
-        // Load bookings (this would be an AJAX call in a real implementation)
+        // Load bookings with real database integration
         function loadBookings() {
-            // Simulated data - replace with actual AJAX call
-            const bookings = [
-                { id: 1, customer: 'John Doe', service: 'Haircut', barber: 'Mike Johnson', datetime: '2023-06-15 14:30', status: 'confirmed' },
-                { id: 2, customer: 'Jane Smith', service: 'Beard Trim', barber: 'Sarah Williams', datetime: '2023-06-15 15:00', status: 'pending' },
-                { id: 3, customer: 'Robert Brown', service: 'Haircut & Beard', barber: 'Alex Davis', datetime: '2023-06-16 10:00', status: 'completed' },
-                { id: 4, customer: 'Emily Wilson', service: 'Hair Color', barber: 'Mike Johnson', datetime: '2023-06-16 11:30', status: 'cancelled' },
-            ];
-
+            console.log('Loading real bookings from database...');
+            
+            const tbody = $('#bookings-list');
+            tbody.html('<tr class="loading-row"><td colspan="7"><div class="loading-spinner"></div><span>Loading bookings...</span></td></tr>');
+            
+            // Check if AJAX variables are available
+            if (typeof eliteManageBookings === 'undefined') {
+                console.error('eliteManageBookings is undefined - AJAX variables not loaded');
+                tbody.html('<tr><td colspan="7" class="no-bookings">Error: AJAX configuration missing. Please refresh the page.</td></tr>');
+                return;
+            }
+            
+            console.log('AJAX Config:', eliteManageBookings);
+            
+            // Get filter values
+            const filters = {
+                action: 'get_manage_bookings',
+                date_from: $('#filter-from').val(),
+                date_to: $('#filter-to').val(),
+                status: $('#filter-status').val(),
+                search: $('#booking-search').val(),
+                security: eliteManageBookings.nonce
+            };
+            
+            console.log('AJAX data:', filters);
+            console.log('AJAX URL:', eliteManageBookings.ajaxUrl);
+            
+            $.ajax({
+                url: eliteManageBookings.ajaxUrl,
+                type: 'POST',
+                data: filters,
+                timeout: 30000, // 30 second timeout
+                success: function(response) {
+                    console.log('AJAX Success:', response);
+                    if (response.success) {
+                        displayBookings(response.data);
+                    } else {
+                        console.log('AJAX Error:', response);
+                        tbody.html('<tr><td colspan="7" class="no-bookings">Error: ' + (response.data || 'Unknown error') + '</td></tr>');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.log('AJAX Network Error:', {xhr: xhr, status: status, error: error});
+                    console.log('Response Text:', xhr.responseText);
+                    tbody.html('<tr><td colspan="7" class="no-bookings">Network error: ' + error + ' (Status: ' + status + ')</td></tr>');
+                }
+                }
+            });
+        }
+        
+        function displayBookings(bookings) {
+            console.log('Displaying bookings:', bookings);
+            
             const tbody = $('#bookings-list');
             tbody.empty();
 
-            if (bookings.length === 0) {
+            if (!bookings || bookings.length === 0) {
                 tbody.append('<tr><td colspan="7" class="no-bookings">No bookings found</td></tr>');
                 return;
             }
 
             bookings.forEach(booking => {
+                const serviceName = booking.service_name || 'Service ID: ' + booking.service_id || 'Unknown Service';
+                const barberName = booking.barber_name || 'Not assigned';
+                const customerPhone = booking.customer_phone ? '<br><small>' + booking.customer_phone + '</small>' : '';
+                
                 const row = `
                     <tr>
                         <td>#${booking.id}</td>
-                        <td>${booking.customer}</td>
-                        <td>${booking.service}</td>
-                        <td>${booking.barber}</td>
-                        <td>${formatDateTime(booking.datetime)}</td>
-                        <td><span class="status-badge status-${booking.status}">${booking.status}</span></td>
+                        <td>
+                            ${booking.customer_name || 'Unknown'}
+                            <br><small>${booking.customer_email || 'No email'}</small>
+                            ${customerPhone}
+                        </td>
+                        <td>${serviceName}</td>
+                        <td>${barberName}</td>
+                        <td>${formatDateTime(booking.preferred_date + ' ' + booking.preferred_time)}</td>
+                        <td><span class="status-badge status-${booking.booking_status}">${booking.booking_status}</span></td>
                         <td class="actions">
                             <button class="elite-button small edit-booking" data-id="${booking.id}">
                                 <i class="fas fa-edit"></i> Edit
@@ -775,9 +1032,53 @@ function elite_cuts_manage_bookings_page() {
             return `${hh}:${minutes} ${ampm}`;
         }
 
-        // Initial load
-        loadBookings();
-    });
+        // Filter event handlers
+        $('#apply-filters').on('click', function() {
+            console.log('Apply filters clicked');
+            loadBookings();
+        });
+        
+        $('#reset-filters').on('click', function() {
+            console.log('Reset filters clicked');
+            $('#filter-from').val('');
+            $('#filter-to').val('');
+            $('#filter-status').val('');
+            $('#booking-search').val('');
+            loadBookings();
+        });
+        
+        // Search on enter key
+        $('#booking-search').on('keypress', function(e) {
+            if (e.which === 13) {
+                console.log('Search enter pressed');
+                loadBookings();
+            }
+        });
+        
+        // Test AJAX connection button (for debugging)
+        if (console && console.log) {
+            console.log('Adding test AJAX button for debugging');
+            $('<button>Test AJAX</button>').click(function() {
+                console.log('Testing AJAX connection...');
+                $.ajax({
+                    url: eliteManageBookings.ajaxUrl,
+                    type: 'POST',
+                    data: {
+                        action: 'get_manage_bookings',
+                        security: eliteManageBookings.nonce
+                    },
+                    success: function(response) {
+                        console.log('Test AJAX Success:', response);
+                        alert('AJAX working! Found ' + (response.data ? response.data.length : 0) + ' bookings');
+                    },
+                    error: function(xhr, status, error) {
+                        console.log('Test AJAX Error:', xhr, status, error);
+                        alert('AJAX Error: ' + error);
+                    }
+                });
+            }).appendTo('.elite-cuts-header');
+        }
+
     </script>
     <?php
 }
@@ -811,6 +1112,12 @@ function elite_cuts_admin_enqueue_scripts($hook) {
     
     // Enqueue Google Fonts
     wp_enqueue_style('google-fonts', 'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+    
+    // Localize script for AJAX
+    wp_localize_script('jquery', 'eliteManageBookings', array(
+        'ajaxUrl' => admin_url('admin-ajax.php'),
+        'nonce' => wp_create_nonce('manage_bookings_nonce')
+    ));
 }
 add_action('admin_enqueue_scripts', 'elite_cuts_admin_enqueue_scripts');
 
@@ -820,6 +1127,17 @@ function elite_cuts_manage_bookings_shortcode() {
     if (!is_user_logged_in() || !current_user_can('manage_options')) {
         return '<p>You need to be logged in with the right permissions to view this page.</p>';
     }
+    
+    // Enqueue required scripts and styles for frontend
+    wp_enqueue_script('jquery');
+    wp_enqueue_style('font-awesome', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css');
+    wp_enqueue_style('google-fonts', 'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+    
+    // Localize script for AJAX
+    wp_localize_script('jquery', 'eliteManageBookings', array(
+        'ajaxUrl' => admin_url('admin-ajax.php'),
+        'nonce' => wp_create_nonce('manage_bookings_nonce')
+    ));
     
     // Start output buffering to capture the HTML
     ob_start();

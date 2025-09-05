@@ -178,16 +178,11 @@ class Simple_Booking_Log {
                 
                 .service-name {
                     font-weight: 600;
-                    color: #c9a74d;
+                    color: #000000;
                     font-size: 1rem;
                     display: flex;
                     align-items: center;
                     gap: 8px;
-                }
-                
-                .service-name::before {
-                    content: '🔧';
-                    font-size: 0.9rem;
                 }
                 
                 .customer-name {
