@@ -27,6 +27,7 @@ require_once 'includes/class-wordpress-plugin-template-settings.php';
 require_once 'includes/class-custom-login.php';
 require_once 'includes/class-assigned-bookings.php';
 
+
 // Load plugin libraries.
 require_once 'includes/lib/class-wordpress-plugin-template-admin-api.php';
 require_once 'includes/lib/class-wordpress-plugin-template-post-type.php';
@@ -41,6 +42,12 @@ require_once 'user-booking-form.php';
 require_once 'manage-bookings.php';
 require_once 'manage-staff.php';
 require_once 'business-setup.php';
+require_once 'my-services-plugin.php';
+
+
+
+
+
 
 /* Load booking history with error handling
 if (file_exists(__DIR__ . '/booking-history.php')) {
