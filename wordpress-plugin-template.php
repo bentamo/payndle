@@ -40,7 +40,11 @@ require_once 'assigned-bookings.php';
 require_once 'user-booking-form.php';
 require_once 'manage-bookings.php';
 require_once 'manage-staff.php';
+<<<<<<< HEAD
+require_once 'business-setup.php';
+=======
 require_once 'payndle-landing.php';
+>>>>>>> 381258cf603154a07885f05ed6cb089bf51fb2ad
 
 // Load booking history with error handling
 if (file_exists(__DIR__ . '/booking-history.php')) {
