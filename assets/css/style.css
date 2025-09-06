@@ -1,0 +1,60 @@
+.mvp-manager, .mvp-services {
+    max-width: 600px;
+    margin: 20px auto;
+    font-family: Arial, sans-serif;
+  }
+  
+  #mvp-add-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  
+  #mvp-add-form input,
+  #mvp-add-form textarea {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    width: 100%;
+  }
+  
+  #mvp-add-form button {
+    padding: 10px;
+    background: #0073aa;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  
+  .mvp-card {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 10px;
+    background: #f9f9f9;
+    position: relative;
+    transition: all 0.3s ease;
+  }
+  
+  .mvp-card:hover {
+    background: #f1f1f1;
+  }
+  
+  .mvp-card h4 {
+    margin: 0 0 5px;
+  }
+  
+  .mvp-card button.mvp-delete {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: red;
+    color: #fff;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
