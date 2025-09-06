@@ -41,6 +41,7 @@ require_once 'assigned-bookings.php';
 require_once 'user-booking-form.php';
 require_once 'manage-bookings.php';
 require_once 'manage-staff.php';
+require_once 'business-setup.php';
 require_once 'my-services-plugin.php';
 
 
@@ -48,7 +49,7 @@ require_once 'my-services-plugin.php';
 
 
 
-// Load booking history with error handling
+/* Load booking history with error handling
 if (file_exists(__DIR__ . '/booking-history.php')) {
     try {		
         require_once 'booking-history.php';
@@ -66,6 +67,7 @@ if (file_exists(__DIR__ . '/complete-booking-history.php')) {
     }
 }
 
+*/
 /**
  * Returns the main instance of WordPress_Plugin_Template to prevent the need to use globals.
  *

@@ -1,0 +1,569 @@
+/**
+ * Business Setup Form - Step by Step Design
+ * Following Brand Guide Components
+ */
+
+/* -------------------- */
+/* Typography           */
+/* -------------------- */
+
+.business-setup-container {
+    font-family: 'Inter', sans-serif;
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 2rem;
+    color: #333;
+    line-height: 1.6;
+}
+
+/* Heading 1 - Inter Bold */
+h1.setup-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #0C1930;
+    margin-bottom: 0.5rem;
+    text-align: center;
+}
+
+/* Heading 2 - Inter Semibold */
+h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #0C1930;
+    margin-bottom: 1rem;
+}
+
+/* Heading 3 - Inter Semibold */
+h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #0C1930;
+    margin-bottom: 0.75rem;
+}
+
+/* Body text - Inter Regular */
+p, .setup-subtitle {
+    font-size: 1rem;
+    font-weight: 400;
+    color: #666;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+/* Small text - Inter Regular */
+.form-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #333;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+/* -------------------- */
+/* Progress Indicator   */
+/* -------------------- */
+
+.progress-container {
+    margin-bottom: 3rem;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 6px;
+    background-color: #f0f0f0;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 2rem;
+}
+
+.progress-fill {
+    height: 100%;
+    background-color: #64C493;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+    width: 33.33%; /* Default to step 1 */
+}
+
+.step-indicators {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    flex: 1;
+    position: relative;
+}
+
+.step-number {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: #f0f0f0;
+    color: #999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.step-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #999;
+    transition: color 0.3s ease;
+}
+
+.step.active .step-number {
+    background-color: #64C493;
+    color: white;
+}
+
+.step.active .step-label {
+    color: #64C493;
+}
+
+.step.completed .step-number {
+    background-color: #64C493;
+    color: white;
+}
+
+.step.completed .step-label {
+    color: #333;
+}
+
+/* -------------------- */
+/* Form Container       */
+/* -------------------- */
+
+.business-setup-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.business-setup-form {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
+    padding: 2.5rem;
+    min-height: 500px;
+    position: relative;
+    padding-bottom: 4rem; /* Extra space for buttons */
+}
+
+/* -------------------- */
+/* Form Steps           */
+/* -------------------- */
+
+.form-step {
+    display: none;
+    opacity: 0;
+    transform: translateX(20px);
+    transition: all 0.3s ease-in-out;
+}
+
+.form-step.active {
+    display: block;
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.step-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.step-header h2 {
+    margin-bottom: 0.5rem;
+}
+
+.step-header p {
+    color: #666;
+    margin-bottom: 0;
+}
+
+/* -------------------- */
+/* Form Elements        */
+/* -------------------- */
+
+.form-section {
+    margin-bottom: 2rem;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-input,
+.form-textarea,
+.form-select {
+    width: 100%;
+    padding: 14px 16px;
+    font-size: 1rem;
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+    border: 2px solid #e8e8e8;
+    border-radius: 8px;
+    background-color: white;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+}
+
+.form-input::placeholder,
+.form-textarea::placeholder {
+    color: #999;
+    font-weight: 400;
+}
+
+.form-input:focus,
+.form-textarea:focus,
+.form-select:focus {
+    outline: none;
+    border-color: #64C493;
+    box-shadow: 0 0 0 3px rgba(100, 196, 147, 0.1);
+}
+
+.form-textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.form-select {
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 12px center;
+    background-repeat: no-repeat;
+    background-size: 16px;
+    padding-right: 40px;
+    appearance: none;
+}
+
+/* -------------------- */
+/* Buttons              */
+/* -------------------- */
+
+.btn {
+    display: inline-block;
+    padding: 12px 24px;
+    font-size: 1rem;
+    font-weight: 500;
+    font-family: 'Inter', sans-serif;
+    text-align: center;
+    text-decoration: none;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 120px;
+    box-sizing: border-box;
+    background: none;
+}
+
+/* Primary Button - #64C493 background, white text */
+.btn-primary {
+    background-color: #64C493;
+    color: white;
+    border-color: #64C493;
+}
+
+.btn-primary:hover {
+    background-color: #52A67D; /* Darker green */
+    color: #0C1930; /* Dark blue text */
+    border-color: #52A67D;
+}
+
+/* Secondary Button - #0C1930 background, white text */
+.btn-secondary {
+    background-color: #0C1930;
+    color: white;
+    border-color: #0C1930;
+}
+
+.btn-secondary:hover {
+    background-color: #0C1930; /* Same background */
+    color: #0C1930; /* Text becomes same as background */
+    border-color: #0C1930;
+}
+
+/* Outline Button - transparent background, #64C493 text */
+.btn-outline {
+    background-color: transparent;
+    color: #64C493;
+    border-color: #64C493;
+}
+
+.btn-outline:hover {
+    background-color: #64C493; /* Green background */
+    color: white; /* White text */
+    border-color: #64C493;
+}
+
+/* Ghost Button for disabled/previous buttons */
+.btn-ghost {
+    background-color: transparent;
+    color: #999;
+    border-color: #ddd;
+}
+
+.btn-ghost:hover:not([disabled]) {
+    background-color: #f5f5f5;
+    color: #666;
+    border-color: #ccc;
+}
+
+.btn-ghost[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* -------------------- */
+/* Form Actions         */
+/* -------------------- */
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    margin-top: 2.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #f0f0f0;
+    position: relative;
+    width: 100%;
+}
+
+.form-actions .btn-group {
+    display: flex;
+    gap: 1rem;
+}
+
+/* -------------------- */
+/* Error States         */
+/* -------------------- */
+
+.form-group.error .form-input,
+.form-group.error .form-textarea,
+.form-group.error .form-select {
+    border-color: #e74c3c;
+    box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1);
+}
+
+.error-message {
+    color: #e74c3c;
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* -------------------- */
+/* Loading Overlay      */
+/* -------------------- */
+
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.loading-overlay.active {
+    display: flex;
+}
+
+.loading-spinner {
+    background: white;
+    border-radius: 12px;
+    padding: 2.5rem;
+    text-align: center;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    max-width: 300px;
+    width: 90%;
+}
+
+.loading-spinner i {
+    font-size: 2.5rem;
+    color: #64C493;
+    margin-bottom: 1rem;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-spinner p {
+    font-size: 1rem;
+    color: #333;
+    margin: 0;
+}
+
+/* -------------------- */
+/* Success Message      */
+/* -------------------- */
+
+.success-message {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.success-message.active {
+    display: flex;
+}
+
+.success-content {
+    background: white;
+    border-radius: 12px;
+    padding: 3rem;
+    text-align: center;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    max-width: 450px;
+    width: 90%;
+}
+
+.success-content i {
+    font-size: 4rem;
+    color: #64C493;
+    margin-bottom: 1.5rem;
+}
+
+.success-content h3 {
+    color: #0C1930;
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+}
+
+.success-content p {
+    font-size: 1rem;
+    color: #666;
+    margin-bottom: 2rem;
+}
+
+.success-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+/* -------------------- */
+/* Responsive Design    */
+/* -------------------- */
+
+@media (max-width: 768px) {
+    .business-setup-container {
+        padding: 1rem;
+    }
+    
+    .business-setup-form {
+        padding: 1.5rem;
+        padding-bottom: 6rem; /* Extra space for buttons */
+    }
+    
+    h1.setup-title {
+        font-size: 1.75rem;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+        gap: 0.75rem;
+        position: static;
+        margin-top: 2rem;
+        padding-top: 1rem;
+    }
+    
+    .form-actions .btn-group {
+        justify-content: center;
+    }
+    
+    .success-actions {
+        flex-direction: column;
+    }
+    
+    .step-indicators {
+        gap: 0.5rem;
+    }
+    
+    .step-label {
+        font-size: 0.75rem;
+    }
+}
+
+/* -------------------- */
+/* Notifications        */
+/* -------------------- */
+
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    color: white;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 10000;
+    max-width: 400px;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.notification.notification-success {
+    background-color: #64C493;
+}
+
+.notification.notification-error {
+    background-color: #e74c3c;
+}
+
+.notification.notification-info {
+    background-color: #3498db;
+}
+
+.notification-close {
+    background: none;
+    border: none;
+    color: white;
+    float: right;
+    cursor: pointer;
+    margin-left: 1rem;
+    font-size: 1.1rem;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+}
+
+.notification-close:hover {
+    opacity: 1;
+}
