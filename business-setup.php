@@ -22,6 +22,9 @@ class BusinessSetup {
         add_action('wp_ajax_nopriv_submit_business_setup', [$this, 'submit_business_setup_ajax']);
         add_action('wp_ajax_check_business_exists', [$this, 'check_business_exists_ajax']);
         add_action('wp_ajax_nopriv_check_business_exists', [$this, 'check_business_exists_ajax']);
+        // AJAX validator for individual fields (name/email/phone)
+        add_action('wp_ajax_validate_business_field', [$this, 'validate_business_field_ajax']);
+        add_action('wp_ajax_nopriv_validate_business_field', [$this, 'validate_business_field_ajax']);
     }
     
     public function init() {
@@ -36,7 +39,7 @@ class BusinessSetup {
         if (!post_type_exists('payndle_business')) {
             register_post_type('payndle_business', [
                 'label' => 'Business Profiles',
-                'public' => false,
+                'public' => true,
                 'show_ui' => true,
                 'show_in_menu' => false,
                 'capability_type' => 'post',
@@ -50,8 +53,9 @@ class BusinessSetup {
      * Enqueue frontend assets
      */
     public function enqueue_assets() {
-        global $post;
-        if (is_a($post, 'WP_Post') && has_shortcode($post->post_content, 'business_setup')) {
+        // Always enqueue on admin pages and when shortcode might be used
+        if (is_admin() || is_page() || is_single() || $_GET['page'] ?? false) {
+            
             // Enqueue Google Fonts
             wp_enqueue_style('google-fonts-business', 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap', [], null);
             
@@ -63,15 +67,15 @@ class BusinessSetup {
                 'business-setup-css',
                 plugin_dir_url(__FILE__) . 'assets/css/business-setup.css',
                 [],
-                '2.0.0' // Brand guide implementation
+                '7.0.0' // Progress bar and completion UI
             );
             
             // Enqueue custom JS
             wp_enqueue_script(
                 'business-setup-js',
-                plugin_dir_url(__FILE__) . 'assets/js/business-setup.js',
+                plugin_dir_url(__FILE__) . 'assets/js/business-setup-new.js',
                 ['jquery'],
-                '2.0.0', // Clean modern implementation
+                '11.0.0', // Progress bar and completion UI
                 true
             );
             
@@ -146,15 +150,15 @@ class BusinessSetup {
      */
     public function submit_business_setup_ajax() {
         check_ajax_referer('business_setup_nonce', 'nonce');
-        
+
         if (!is_user_logged_in()) {
             wp_send_json_error(['message' => 'You must be logged in to set up a business.']);
             return;
         }
-        
+
         $user_id = get_current_user_id();
-        
-        // Validate required fields - updated for step-by-step form
+
+        // Validate required fields
         $required_fields = ['business_name', 'business_type', 'business_email', 'business_phone'];
         foreach ($required_fields as $field) {
             if (empty($_POST[$field])) {
@@ -162,47 +166,97 @@ class BusinessSetup {
                 return;
             }
         }
-        
-        // Sanitize input data - updated field names
+
+        // Sanitize input data
         $business_data = [
             'business_name' => sanitize_text_field($_POST['business_name']),
             'business_description' => sanitize_textarea_field($_POST['business_description'] ?? ''),
-            'business_type' => sanitize_text_field($_POST['business_type']), // Changed from business_category
+            'business_type' => sanitize_text_field($_POST['business_type']),
             'business_email' => sanitize_email($_POST['business_email']),
             'business_phone' => sanitize_text_field($_POST['business_phone']),
             'business_website' => esc_url_raw($_POST['business_website'] ?? ''),
             'business_address' => sanitize_textarea_field($_POST['business_address'] ?? ''),
             'business_city' => sanitize_text_field($_POST['business_city'] ?? ''),
             'business_state' => sanitize_text_field($_POST['business_state'] ?? ''),
-            'business_zip' => sanitize_text_field($_POST['business_zip'] ?? ''), // Changed from business_zip_code
+            'business_zip' => sanitize_text_field($_POST['business_zip'] ?? ''),
             'business_hours' => sanitize_textarea_field($_POST['business_hours'] ?? ''),
             'business_services' => sanitize_textarea_field($_POST['business_services'] ?? '')
         ];
-        
+
         // Validate email
         if (!is_email($business_data['business_email'])) {
             wp_send_json_error(['message' => 'Please enter a valid email address.']);
             return;
         }
-        
+
         try {
-            // Check if user already has a business
-            $existing_business = get_posts([
+            // Determine if this is an edit (business_id provided and owned by current user)
+            $business_id = null;
+            $editing = false;
+            if (!empty($_POST['business_id'])) {
+                $possible_id = intval($_POST['business_id']);
+                if ($possible_id > 0 && get_post_type($possible_id) === 'payndle_business') {
+                    $owner_of_post = intval(get_post_meta($possible_id, '_business_owner_id', true));
+                    if ($owner_of_post === $user_id) {
+                        $business_id = $possible_id;
+                        $editing = true;
+                    }
+                }
+            }
+
+            // Uniqueness checks: name, email, phone
+            global $wpdb;
+            $exclude_id = $business_id ? intval($business_id) : 0;
+
+            // Business name (post_title) - direct DB lookup for exact match
+            $name_exists_id = $wpdb->get_var($wpdb->prepare(
+                "SELECT ID FROM {$wpdb->posts} WHERE post_type = %s AND post_title = %s AND ID != %d LIMIT 1",
+                'payndle_business', $business_data['business_name'], $exclude_id
+            ));
+            if ($name_exists_id) {
+                wp_send_json_error(['message' => 'A business with this name already exists.']);
+                return;
+            }
+
+            // Email check (post meta)
+            $email_query = [
                 'post_type' => 'payndle_business',
-                'post_status' => 'publish',
-                'meta_query' => [
-                    [
-                        'key' => '_business_owner_id',
-                        'value' => $user_id,
-                        'compare' => '='
-                    ]
-                ],
-                'posts_per_page' => 1
-            ]);
-            
-            if (!empty($existing_business)) {
+                'post_status' => ['publish','private','draft','pending'],
+                'meta_query' => [[
+                    'key' => '_business_email',
+                    'value' => $business_data['business_email'],
+                    'compare' => '='
+                ]],
+                'posts_per_page' => 1,
+                'post__not_in' => $exclude_id ? [$exclude_id] : []
+            ];
+            $email_exists = get_posts($email_query);
+            if (!empty($email_exists)) {
+                wp_send_json_error(['message' => 'A business with this email already exists.']);
+                return;
+            }
+
+            // Phone check (post meta)
+            $phone_query = [
+                'post_type' => 'payndle_business',
+                'post_status' => ['publish','private','draft','pending'],
+                'meta_query' => [[
+                    'key' => '_business_phone',
+                    'value' => $business_data['business_phone'],
+                    'compare' => '='
+                ]],
+                'posts_per_page' => 1,
+                'post__not_in' => $exclude_id ? [$exclude_id] : []
+            ];
+            $phone_exists = get_posts($phone_query);
+            if (!empty($phone_exists)) {
+                wp_send_json_error(['message' => 'A business with this phone number already exists.']);
+                return;
+            }
+
+            // If editing, update the provided business; otherwise create a new business
+            if ($editing && $business_id) {
                 // Update existing business
-                $business_id = $existing_business[0]->ID;
                 wp_update_post([
                     'ID' => $business_id,
                     'post_title' => $business_data['business_name'],
@@ -216,34 +270,99 @@ class BusinessSetup {
                     'post_status' => 'publish',
                     'post_author' => $user_id
                 ]);
-                
+
                 if (is_wp_error($business_id)) {
                     wp_send_json_error(['message' => 'Failed to create business profile.']);
                     return;
                 }
-                
+
                 // Set business owner
                 update_post_meta($business_id, '_business_owner_id', $user_id);
             }
-            
+
             // Save all business meta data
             foreach ($business_data as $key => $value) {
                 update_post_meta($business_id, '_' . $key, $value);
             }
-            
+
+            // Ensure each business has a unique business code for easy tracking
+            $business_code = get_post_meta($business_id, '_business_code', true);
+            if (empty($business_code)) {
+                global $wpdb;
+                if (function_exists('wp_generate_uuid4')) {
+                    $candidate = wp_generate_uuid4();
+                } else {
+                    $candidate = uniqid('bd_');
+                }
+
+                // Ensure uniqueness across postmeta
+                $exists = $wpdb->get_var($wpdb->prepare("SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value = %s LIMIT 1", '_business_code', $candidate));
+                $attempts = 0;
+                while ($exists && $attempts < 5) {
+                    $candidate = uniqid('bd_');
+                    $exists = $wpdb->get_var($wpdb->prepare("SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value = %s LIMIT 1", '_business_code', $candidate));
+                    $attempts++;
+                }
+
+                if (!$exists) {
+                    update_post_meta($business_id, '_business_code', $candidate);
+                    $business_code = $candidate;
+                } else {
+                    // fallback to post ID prefixed
+                    $business_code = 'bd-' . $business_id;
+                    update_post_meta($business_id, '_business_code', $business_code);
+                }
+            }
+
             // Set setup completion status
             update_post_meta($business_id, '_business_setup_completed', current_time('mysql'));
             update_post_meta($business_id, '_business_status', 'active');
-            
-            wp_send_json_success([
-                'message' => 'Your business has been set up successfully!',
-                'business_id' => $business_id,
-                'redirect_url' => home_url('/services-setup/') // Can be customized
-            ]);
-            
+
+            wp_send_json_success(['message' => 'Business saved', 'business_id' => $business_id, 'business_code' => $business_code]);
         } catch (Exception $e) {
-            wp_send_json_error(['message' => 'An error occurred while setting up your business.']);
+            wp_send_json_error(['message' => 'An unexpected error occurred.']);
         }
+    }
+    
+    /**
+     * Validate individual business fields (AJAX) to check uniqueness.
+     */
+    public function validate_business_field_ajax() {
+        check_ajax_referer('business_setup_nonce', 'nonce');
+
+        $field = isset($_POST['field']) ? sanitize_text_field($_POST['field']) : '';
+        $value = isset($_POST['value']) ? sanitize_text_field($_POST['value']) : '';
+        $exclude_id = isset($_POST['exclude_id']) ? intval($_POST['exclude_id']) : 0;
+
+        if (empty($field) || $value === '') {
+            wp_send_json_error(['message' => 'Invalid request']);
+            return;
+        }
+
+        global $wpdb;
+        $exists = false;
+
+        if ($field === 'business_name') {
+            $row = $wpdb->get_var($wpdb->prepare("SELECT ID FROM {$wpdb->posts} WHERE post_type = %s AND post_title = %s AND ID != %d LIMIT 1", 'payndle_business', $value, $exclude_id));
+            if ($row) {
+                $exists = true;
+            }
+        } elseif ($field === 'business_email') {
+            $row = $wpdb->get_var($wpdb->prepare("SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value = %s AND post_id != %d LIMIT 1", '_business_email', $value, $exclude_id));
+            if ($row) {
+                $exists = true;
+            }
+        } elseif ($field === 'business_phone') {
+            $row = $wpdb->get_var($wpdb->prepare("SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value = %s AND post_id != %d LIMIT 1", '_business_phone', $value, $exclude_id));
+            if ($row) {
+                $exists = true;
+            }
+        } else {
+            wp_send_json_error(['message' => 'Unknown field']);
+            return;
+        }
+
+        wp_send_json_success(['exists' => $exists]);
     }
     
     /**

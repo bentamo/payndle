@@ -138,6 +138,8 @@ class WordPress_Plugin_Template {
 		// Handle localisation.
 		$this->load_plugin_textdomain();
 		add_action( 'init', array( $this, 'load_localisation' ), 0 );
+		// Note: admin menu for managing businesses is provided by a dedicated plugin file.
+		// Removed duplicate admin menu registration to avoid duplicate UI.
 	} // End __construct ()
 
 	/**
@@ -261,6 +263,37 @@ class WordPress_Plugin_Template {
 		load_textdomain( $domain, WP_LANG_DIR . '/' . $domain . '/' . $domain . '-' . $locale . '.mo' );
 		load_plugin_textdomain( $domain, false, dirname( plugin_basename( $this->file ) ) . '/lang/' );
 	} // End load_plugin_textdomain ()
+
+	/**
+	 * Add admin menu for managing businesses.
+	 */
+	public function add_admin_menu() {
+		add_menu_page(
+			__( 'Manage Businesses', 'wordpress-plugin-template' ), // Page title
+			__( 'Businesses', 'wordpress-plugin-template' ),       // Menu title
+			'manage_options',                                     // Capability
+			'manage-businesses',                                  // Menu slug
+			array( $this, 'render_admin_page' ),                  // Callback function
+			'dashicons-admin-site',                              // Icon
+			25                                                   // Position
+		);
+	}
+
+	/**
+	 * Render the admin page content.
+	 */
+	public function render_admin_page() {
+		echo '<div class="wrap">';
+		echo '<h1>' . esc_html__( 'Manage Businesses', 'wordpress-plugin-template' ) . '</h1>';
+		echo '<p>' . esc_html__( 'Here you can view and manage all created businesses.', 'wordpress-plugin-template' ) . '</p>';
+		echo '<table class="wp-list-table widefat fixed striped">';
+		echo '<thead><tr><th>' . esc_html__( 'Business Name', 'wordpress-plugin-template' ) . '</th><th>' . esc_html__( 'Owner', 'wordpress-plugin-template' ) . '</th><th>' . esc_html__( 'Created At', 'wordpress-plugin-template' ) . '</th></tr></thead>';
+		echo '<tbody>'; // Placeholder for business data.
+		echo '<tr><td>Sample Business</td><td>John Doe</td><td>2025-09-06</td></tr>'; // Example row.
+		echo '</tbody>';
+		echo '</table>';
+		echo '</div>';
+	}
 
 	/**
 	 * Main WordPress_Plugin_Template Instance
