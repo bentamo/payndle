@@ -278,6 +278,8 @@ add_action('wp_enqueue_scripts', 'mvp_enqueue_scripts');
    AJAX: ADD/UPDATE SERVICE
    ====================== */
 function mvp_add_service() {
+    // Debug: log entry and incoming POST for failures
+    file_put_contents(plugin_dir_path(__FILE__) . 'service-debug.log', date('Y-m-d H:i:s') . " - mvp_add_service called\nPOST: " . print_r($_POST, true) . "\n\n", FILE_APPEND);
     check_ajax_referer('mvp_nonce', 'nonce');
 
     $title = sanitize_text_field($_POST['title']);
@@ -305,8 +307,20 @@ function mvp_add_service() {
     }
 
     if (is_wp_error($post_id)) {
-        wp_send_json_error(array('message' => $post_id->get_error_message()));
+    file_put_contents(plugin_dir_path(__FILE__) . 'service-debug.log', date('Y-m-d H:i:s') . " - wp_error when creating service: " . $post_id->get_error_message() . "\n", FILE_APPEND);
+    wp_send_json_error(array('message' => $post_id->get_error_message()));
     }
+
+    // Persist additional meta fields if provided
+    if (isset($_POST['price'])) {
+        update_post_meta($post_id, '_service_price', sanitize_text_field($_POST['price']));
+    }
+    if (isset($_POST['duration'])) {
+        update_post_meta($post_id, '_service_duration', sanitize_text_field($_POST['duration']));
+    }
+    // Featured flag: make sure it's saved as 1 or 0
+    $is_featured = isset($_POST['is_featured']) && intval($_POST['is_featured']) === 1 ? 1 : 0;
+    update_post_meta($post_id, '_is_featured', $is_featured);
 
     // Set categories if any
     if (!empty($categories)) {
@@ -586,6 +600,22 @@ function mvp_manager_shortcode() {
                 </div>
                 
                 <div class="mvp-form-group">
+                    <label for="mvp-service-price"><?php _e('Price', 'service-manager'); ?></label>
+                    <input type="text" id="mvp-service-price" name="price" class="mvp-form-control" placeholder="e.g. 1200.00">
+                </div>
+
+                <div class="mvp-form-group">
+                    <label for="mvp-service-duration"><?php _e('Duration', 'service-manager'); ?></label>
+                    <input type="text" id="mvp-service-duration" name="duration" class="mvp-form-control" placeholder="e.g. 30 mins">
+                </div>
+
+                <div class="mvp-form-group">
+                    <label for="mvp-service-featured">
+                        <input type="checkbox" id="mvp-service-featured" name="is_featured" value="1"> <?php _e('Mark as featured', 'service-manager'); ?>
+                    </label>
+                </div>
+                
+                <div class="mvp-form-group">
                     <label for="mvp-service-categories"><?php _e('Categories', 'service-manager'); ?></label>
                     <select id="mvp-service-categories" name="categories[]" class="mvp-form-control" multiple="multiple">
                         <?php if (!empty($categories) && !is_wp_error($categories)): ?>
@@ -755,6 +785,9 @@ function mvp_manager_shortcode() {
                     nonce: mvp_ajax.nonce,
                     title: $('#mvp-service-title').val(),
                     description: $('#mvp-service-description').val(),
+                        price: $('#mvp-service-price').val(),
+                        duration: $('#mvp-service-duration').val(),
+                        is_featured: $('#mvp-service-featured').is(':checked') ? 1 : 0,
                     categories: $('#mvp-service-categories').val() || [],
                     service_id: $('#mvp-service-id').val()
                 },

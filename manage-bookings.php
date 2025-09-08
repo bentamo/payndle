@@ -37,6 +37,71 @@ function elite_cuts_manage_bookings_page() {
         ORDER BY b.created_at DESC
         LIMIT 50
     ");
+        // Load bookings from the 'service_booking' custom post type and map post meta
+        $bookings = [];
+
+        $args = [
+            'post_type' => 'service_booking',
+            'posts_per_page' => 50,
+            'post_status' => 'any',
+            'orderby' => 'date',
+            'order' => 'DESC'
+        ];
+
+        $query = new WP_Query($args);
+
+        if ($query->have_posts()) {
+            foreach ($query->posts as $post) {
+                $id = $post->ID;
+                $service_id = get_post_meta($id, '_service_id', true);
+                $staff_id = get_post_meta($id, '_staff_id', true);
+                $customer_name = get_post_meta($id, '_customer_name', true);
+                $customer_email = get_post_meta($id, '_customer_email', true);
+                $customer_phone = get_post_meta($id, '_customer_phone', true);
+                $preferred_date = get_post_meta($id, '_preferred_date', true);
+                $preferred_time = get_post_meta($id, '_preferred_time', true);
+                $booking_status = get_post_meta($id, '_booking_status', true) ?: 'pending';
+                $created_at = get_post_meta($id, '_created_at', true) ?: get_the_date('Y-m-d H:i:s', $post);
+
+                // Resolve service and staff names from legacy tables if available
+                $service_name = null;
+                if (!empty($service_id)) {
+                    $services_table = $wpdb->prefix . 'manager_services';
+                    $svc = $wpdb->get_row($wpdb->prepare("SELECT service_name FROM $services_table WHERE id = %d", intval($service_id)));
+                    if ($svc) {
+                        $service_name = $svc->service_name;
+                    }
+                }
+
+                $staff_name = null;
+                $staff_position = null;
+                if (!empty($staff_id)) {
+                    $staff_table = $wpdb->prefix . 'staff_members';
+                    $st = $wpdb->get_row($wpdb->prepare("SELECT staff_name, staff_position FROM $staff_table WHERE id = %d", intval($staff_id)));
+                    if ($st) {
+                        $staff_name = $st->staff_name;
+                        $staff_position = $st->staff_position;
+                    }
+                }
+
+                $bookings[] = (object) [
+                    'id' => $id,
+                    'service_id' => $service_id,
+                    'staff_id' => $staff_id,
+                    'customer_name' => $customer_name,
+                    'customer_email' => $customer_email,
+                    'customer_phone' => $customer_phone,
+                    'preferred_date' => $preferred_date,
+                    'preferred_time' => $preferred_time,
+                    'booking_status' => $booking_status,
+                    'created_at' => $created_at,
+                    'service_name' => $service_name,
+                    'staff_name' => $staff_name,
+                    'staff_position' => $staff_position
+                ];
+            }
+            wp_reset_postdata();
+        }
     
     ?>
     <div class="wrap elite-cuts-admin">
@@ -169,8 +234,8 @@ function elite_cuts_manage_bookings_page() {
                                 <?php if ($wpdb->last_error): ?>
                                     Database Error: <?php echo esc_html($wpdb->last_error); ?>
                                 <?php else: ?>
-                                    No bookings found. 
-                                    <br><small>Database tables: <?php echo $wpdb->prefix; ?>service_bookings, <?php echo $wpdb->prefix; ?>manager_services</small>
+                                    No bookings found. <br>
+                                    <small>Bookings are stored as the `service_booking` custom post type. Legacy table: <?php echo $wpdb->prefix; ?>service_bookings</small>
                                 <?php endif; ?>
                             </td>
                         </tr>
@@ -976,7 +1041,6 @@ function elite_cuts_manage_bookings_page() {
                     console.log('AJAX Network Error:', {xhr: xhr, status: status, error: error});
                     console.log('Response Text:', xhr.responseText);
                     tbody.html('<tr><td colspan="7" class="no-bookings">Network error: ' + error + ' (Status: ' + status + ')</td></tr>');
-                }
                 }
             });
         }

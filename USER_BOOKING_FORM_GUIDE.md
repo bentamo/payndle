@@ -82,6 +82,7 @@ To redirect users after successful booking:
 The form automatically creates and uses these tables:
 - `wp_services` - Service information
 - `wp_service_bookings` - Booking requests
+   (Note: new bookings are now saved as `service_booking` posts and their fields are stored as post meta. Legacy table `wp_service_bookings` may still be present for old entries.)
 
 ### Email Notifications
 Automatically sends:

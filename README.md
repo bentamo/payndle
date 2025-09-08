@@ -64,6 +64,7 @@ A comprehensive WordPress plugin for barbershop management with booking system, 
 
 The plugin creates and manages several database tables:
 - `wp_service_bookings` - Customer booking requests with payment info
+	(Note: recent versions store new bookings as a custom post type `service_booking` with booking details in post meta. The legacy `wp_service_bookings` table may still exist for migrated data or backwards compatibility.)
 - `wp_manager_services` - Available services
 - `wp_manager_business` - Business information and settings
 
