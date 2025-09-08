@@ -31,10 +31,38 @@ class UserBookingForm {
     }
     
     public function init() {
-        // Ensure required tables exist
+        // Register a booking custom post type to store bookings as posts with meta
+        $this->register_booking_post_type();
+
+        // Ensure required tables exist (kept for backward compatibility/migration)
         $this->ensure_booking_tables_exist();
         // Update existing booking table structure
         $this->update_booking_table_structure();
+    }
+
+    /**
+     * Register custom post type for bookings
+     */
+    private function register_booking_post_type() {
+        $labels = [
+            'name' => __('Service Bookings', 'payndle'),
+            'singular_name' => __('Service Booking', 'payndle'),
+            'menu_name' => __('Bookings', 'payndle'),
+            'name_admin_bar' => __('Booking', 'payndle')
+        ];
+
+        $args = [
+            'labels' => $labels,
+            'public' => false,
+            'show_ui' => true,
+            'show_in_menu' => true,
+            'capability_type' => 'post',
+            'supports' => ['title', 'editor', 'author'],
+            'has_archive' => false,
+            'rewrite' => false,
+        ];
+
+        register_post_type('service_booking', $args);
     }
     
     /**
@@ -617,27 +645,46 @@ class UserBookingForm {
      * Get services options for dropdown
      */
     private function get_services_options($selected_id = '') {
-        global $wpdb;
-        
-        $services_table = $wpdb->prefix . 'manager_services';
-        $services = $wpdb->get_results("SELECT * FROM $services_table WHERE is_active = 1 ORDER BY service_name ASC");
-        
+        // Prefer the 'service' custom post type if available
+        $args = [
+            'post_type' => 'service',
+            'posts_per_page' => -1,
+            'post_status' => 'publish',
+            'orderby' => 'title',
+            'order' => 'ASC'
+        ];
+
+        $services = get_posts($args);
         $options = '';
+
         foreach ($services as $service) {
-            $selected = ($selected_id == $service->id) ? 'selected' : '';
-            $price = $service->service_price ? '₱' . number_format($service->service_price, 2) : 'Price varies';
+            $sid = $service->ID;
+            $selected = ($selected_id == $sid) ? 'selected' : '';
+
+            // Try to read meta fields if present (compat with older structure)
+            $price = get_post_meta($sid, '_service_price', true);
+            $duration = get_post_meta($sid, '_service_duration', true);
+            $description = get_post_meta($sid, '_service_description', true);
+
+            // Fall back to content/title if no meta present
+            if ($price === '') $price = get_post_meta($sid, 'service_price', true);
+            if ($duration === '') $duration = get_post_meta($sid, 'service_duration', true);
+            if ($description === '') $description = $service->post_content;
+
+            $price_label = $price ? '₱' . number_format(floatval($price), 2) : 'Price varies';
+
             $options .= sprintf(
                 '<option value="%d" data-price="%s" data-duration="%s" data-description="%s" %s>%s - %s</option>',
-                $service->id,
-                $service->service_price,
-                $service->service_duration,
-                esc_attr($service->service_description),
+                $sid,
+                esc_attr($price),
+                esc_attr($duration),
+                esc_attr($description),
                 $selected,
-                esc_html($service->service_name),
-                $price
+                esc_html($service->post_title),
+                esc_html($price_label)
             );
         }
-        
+
         return $options;
     }
     
@@ -648,23 +695,20 @@ class UserBookingForm {
         check_ajax_referer('user_booking_nonce', 'nonce');
         
         $service_id = intval($_POST['service_id']);
-        
-        global $wpdb;
-        $services_table = $wpdb->prefix . 'manager_services';
-        $service = $wpdb->get_row($wpdb->prepare(
-            "SELECT * FROM $services_table WHERE id = %d AND is_active = 1",
-            $service_id
-        ));
-        
-        if ($service) {
+        $service = get_post($service_id);
+
+        if ($service && $service->post_type === 'service' && $service->post_status === 'publish') {
+            $price = get_post_meta($service_id, '_service_price', true);
+            if ($price === '') $price = get_post_meta($service_id, 'service_price', true);
+
             $response = [
                 'success' => true,
                 'data' => [
-                    'name' => $service->service_name,
-                    'description' => $service->service_description,
-                    'price' => $service->service_price ? '₱' . number_format($service->service_price, 2) : 'Price varies',
-                    'duration' => $service->service_duration,
-                    'category' => $service->service_category
+                    'name' => $service->post_title,
+                    'description' => get_post_meta($service_id, '_service_description', true) ?: $service->post_content,
+                    'price' => $price ? '₱' . number_format(floatval($price), 2) : 'Price varies',
+                    'duration' => get_post_meta($service_id, '_service_duration', true),
+                    'category' => wp_get_post_terms($service_id, 'service_category', array('fields' => 'names'))
                 ]
             ];
         } else {
@@ -813,41 +857,60 @@ class UserBookingForm {
             ]);
         }
         
-        // Get service details
-        $service = $wpdb->get_row($wpdb->prepare(
-            "SELECT * FROM $services_table WHERE id = %d AND is_active = 1",
-            $service_id
-        ));
-        
-        if ($wpdb->last_error) {
+        // Get service details - prefer 'service' CPT, fallback to legacy manager_services table
+        $service_post = get_post($service_id);
+        if ($service_post && $service_post->post_type === 'service' && $service_post->post_status === 'publish') {
+            // Build a service-like object from post + meta
+            $service = (object) [
+                'id' => $service_post->ID,
+                'service_name' => $service_post->post_title,
+                'service_description' => $service_post->post_content,
+                'service_price' => get_post_meta($service_post->ID, '_service_price', true),
+                'service_duration' => get_post_meta($service_post->ID, '_service_duration', true),
+                'is_active' => 1
+            ];
             file_put_contents(
                 plugin_dir_path(__FILE__) . 'booking-debug.log', 
-                date('Y-m-d H:i:s') . " - Database error when fetching service: " . $wpdb->last_error . "\n", 
+                date('Y-m-d H:i:s') . " - Found CPT service: " . $service->service_name . "\n", 
                 FILE_APPEND
             );
-            wp_send_json([
-                'success' => false,
-                'message' => 'Database error occurred. Please try again later.'
-            ]);
-        }
-        
-        if (!$service) {
+        } else {
+            // Fallback to legacy table
+            $service = $wpdb->get_row($wpdb->prepare(
+                "SELECT * FROM $services_table WHERE id = %d AND is_active = 1",
+                $service_id
+            ));
+
+            if ($wpdb->last_error) {
+                file_put_contents(
+                    plugin_dir_path(__FILE__) . 'booking-debug.log', 
+                    date('Y-m-d H:i:s') . " - Database error when fetching legacy service: " . $wpdb->last_error . "\n", 
+                    FILE_APPEND
+                );
+                wp_send_json([
+                    'success' => false,
+                    'message' => 'Database error occurred. Please try again later.'
+                ]);
+            }
+
+            if (!$service) {
+                file_put_contents(
+                    plugin_dir_path(__FILE__) . 'booking-debug.log', 
+                    date('Y-m-d H:i:s') . " - Service not found or inactive. Service ID: $service_id\n", 
+                    FILE_APPEND
+                );
+                wp_send_json([
+                    'success' => false,
+                    'message' => 'Selected service is not available. Please choose another service.'
+                ]);
+            }
+
             file_put_contents(
                 plugin_dir_path(__FILE__) . 'booking-debug.log', 
-                date('Y-m-d H:i:s') . " - Service not found or inactive. Service ID: $service_id\n", 
+                date('Y-m-d H:i:s') . " - Found legacy service: " . $service->service_name . "\n", 
                 FILE_APPEND
             );
-            wp_send_json([
-                'success' => false,
-                'message' => 'Selected service is not available. Please choose another service.'
-            ]);
         }
-        
-        file_put_contents(
-            plugin_dir_path(__FILE__) . 'booking-debug.log', 
-            date('Y-m-d H:i:s') . " - Found service: " . $service->service_name . "\n", 
-            FILE_APPEND
-        );
         
         // Use basic required columns only
         $insert_data = [
@@ -885,65 +948,97 @@ class UserBookingForm {
             FILE_APPEND
         );
         
-        // Insert the booking (let WordPress handle the format automatically)
-        $result = $wpdb->insert($booking_table, $insert_data);
-        
-        if ($wpdb->last_error) {
+        // Instead of inserting into a custom table, store booking as a custom post with meta
+        $post_title = sprintf('Booking: %s - %s', $customer_name, $service->service_name);
+        $post_content = $message ?: '';
+
+        $post_data = [
+            'post_type' => 'service_booking',
+            'post_title' => wp_trim_words($post_title, 10, ''),
+            'post_content' => $post_content,
+            'post_status' => 'pending',
+            'post_author' => 0
+        ];
+
+        $post_id = wp_insert_post($post_data, true);
+
+        if (is_wp_error($post_id)) {
             file_put_contents(
                 plugin_dir_path(__FILE__) . 'booking-debug.log', 
-                date('Y-m-d H:i:s') . " - Database insert error: " . $wpdb->last_error . "\n", 
+                date('Y-m-d H:i:s') . " - wp_insert_post error: " . $post_id->get_error_message() . "\n", 
                 FILE_APPEND
             );
+
             wp_send_json([
                 'success' => false,
-                'message' => 'Database error occurred while saving booking. Error: ' . $wpdb->last_error
+                'message' => 'Failed to save booking. Error: ' . $post_id->get_error_message()
             ]);
         }
-        
-        if ($result !== false) {
-            $booking_id = $wpdb->insert_id;
-            file_put_contents(
-                plugin_dir_path(__FILE__) . 'booking-debug.log', 
-                date('Y-m-d H:i:s') . " - Successfully inserted booking with ID: $booking_id\n", 
-                FILE_APPEND
-            );
-            
-            // Send notification email (optional)
-            try {
-                $this->send_booking_notification($booking_id, $service, [
-                    'customer_name' => $customer_name,
-                    'customer_email' => $customer_email,
-                    'customer_phone' => $customer_phone,
-                    'preferred_date' => $preferred_date,
-                    'preferred_time' => $preferred_time,
-                    'message' => $message,
-                    'payment_method' => $payment_method
-                ]);
-            } catch (Exception $e) {
-                file_put_contents(
-                    plugin_dir_path(__FILE__) . 'booking-debug.log', 
-                    date('Y-m-d H:i:s') . " - Email notification failed: " . $e->getMessage() . "\n", 
-                    FILE_APPEND
-                );
-                // Don't fail the booking if email fails
-            }
-            
-            wp_send_json([
-                'success' => true,
-                'message' => 'Booking request submitted successfully!',
-                'booking_id' => $booking_id
-            ]);
-        } else {
-            file_put_contents(
-                plugin_dir_path(__FILE__) . 'booking-debug.log', 
-                date('Y-m-d H:i:s') . " - Insert failed but no database error reported\n", 
-                FILE_APPEND
-            );
-            wp_send_json([
-                'success' => false,
-                'message' => 'Failed to submit booking request. Please check all required fields and try again.'
-            ]);
+
+        // Save meta fields
+        $meta_map = [
+            'service_id' => $service_id,
+            'staff_id' => $staff_id,
+            'customer_name' => $customer_name,
+            'customer_email' => $customer_email,
+            'customer_phone' => $customer_phone,
+            'preferred_date' => $preferred_date ?: null,
+            'preferred_time' => $preferred_time ?: null,
+            'message' => $message,
+            'payment_method' => $payment_method,
+        ];
+
+        // Optional fields if they exist in the old table - keep consistent meta keys
+        if (in_array('payment_status', $existing_columns)) {
+            $meta_map['payment_status'] = 'pending';
         }
+        if (in_array('booking_status', $existing_columns)) {
+            $meta_map['booking_status'] = 'pending';
+        }
+        if (in_array('total_amount', $existing_columns)) {
+            $meta_map['total_amount'] = $service->service_price ?: 0;
+        }
+        if (in_array('created_at', $existing_columns)) {
+            $meta_map['created_at'] = current_time('mysql');
+        }
+
+        foreach ($meta_map as $key => $value) {
+            update_post_meta($post_id, '_' . $key, $value);
+        }
+
+        file_put_contents(
+            plugin_dir_path(__FILE__) . 'booking-debug.log', 
+            date('Y-m-d H:i:s') . " - Successfully created booking post with ID: $post_id\n" .
+            "Meta saved: " . print_r($meta_map, true) . "\n",
+            FILE_APPEND
+        );
+
+        // Send notification email (optional)
+        try {
+            $this->send_booking_notification($post_id, $service, [
+                'customer_name' => $customer_name,
+                'customer_email' => $customer_email,
+                'customer_phone' => $customer_phone,
+                'preferred_date' => $preferred_date,
+                'preferred_time' => $preferred_time,
+                'message' => $message,
+                'payment_method' => $payment_method
+            ]);
+        } catch (Exception $e) {
+            file_put_contents(
+                plugin_dir_path(__FILE__) . 'booking-debug.log', 
+                date('Y-m-d H:i:s') . " - Email notification failed: " . $e->getMessage() . "\n", 
+                FILE_APPEND
+            );
+            // Don't fail the booking if email fails
+        }
+
+        wp_send_json([
+            'success' => true,
+            'message' => 'Booking request submitted successfully!',
+            'booking_id' => $post_id,
+            'booking_post_type' => 'service_booking'
+        ]);
     }
     
     /**
