@@ -247,41 +247,41 @@ function elite_cuts_manage_bookings_page() {
     </div>
 
     <style>
-        /* Force black text color for all elements */
+        /* Force primary text color for all elements (overrides) */
         .elite-cuts-admin,
         .elite-cuts-admin *,
         .elite-cuts-table td,
         .elite-cuts-table th,
         .service-name,
         .contact-info {
-            color: #000000 !important;
+            color: var(--text-primary) !important;
         }
         
-        /* Specifically ensure service column text is black */
+        /* Specifically ensure service column text uses primary with stronger weight */
         .service-name,
         .service-name * {
-            color: #000000 !important;
-            font-weight: 600;
+            color: var(--text-primary) !important;
+            font-weight: 700;
         }
         
-        /* Modern Light Gray Theme with Gold Accents */
+        /* Theme variables updated to the requested palette (green/navy/white/gray) */
         :root {
-            --bg-primary: #f5f5f5;
-            --bg-secondary: #ffffff;
-            --bg-tertiary: #f0f0f0;
-            --text-primary: #000000;
-            --text-secondary: #000000;
-            --accent: #c9a74d;
-            --accent-hover: #b89846;
-            --border-color: #e0e0e0;
+            --bg-primary: #FFFFFF; /* Secondary White as the page background */
+            --bg-secondary: #FFFFFF;
+            --bg-tertiary: #f7fbf7; /* very light tint for subtle separation */
+            --text-primary: #0C1930; /* Primary Navy for main text */
+            --text-secondary: rgba(12, 25, 48, 0.85);
+            --accent: #64C493; /* Primary Green accent */
+            --accent-hover: #54b07a;
+            --border-color: #BCC3C8; /* Accent Gray for borders */
             --success: #4caf50;
             --warning: #ff9800;
             --danger: #f44336;
             --info: #2196f3;
-            --radius: 6px;
-            --shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            --card-bg: #ffffff;
-            --input-bg: #ffffff;
+            --radius: 8px; /* Button / card radius */
+            --shadow: 0 2px 10px rgba(12, 25, 48, 0.06);
+            --card-bg: #FFFFFF;
+            --input-bg: #FFFFFF;
         }
 
         /* Base Styles */
@@ -311,9 +311,9 @@ function elite_cuts_manage_bookings_page() {
             color: var(--accent);
             margin: 0 0 0.25rem 0;
             font-size: 1.5rem;
-            font-weight: 600;
-            font-family: 'Playfair Display', serif;
-            letter-spacing: 0.5px;
+            font-weight: 700;
+            font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            letter-spacing: 0.3px;
         }
 
         .shop-slogan {
@@ -352,7 +352,7 @@ function elite_cuts_manage_bookings_page() {
             width: 48px;
             height: 48px;
             border-radius: 50%;
-            background: rgba(201, 167, 77, 0.1);
+            background: rgba(100, 196, 147, 0.08);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -464,7 +464,7 @@ function elite_cuts_manage_bookings_page() {
         .search-input:focus {
             outline: none;
             border-color: var(--accent);
-            box-shadow: 0 0 0 2px rgba(201, 167, 77, 0.2);
+            box-shadow: 0 0 0 2px rgba(100, 196, 147, 0.18);
         }
 
         .filter-actions {
@@ -571,7 +571,7 @@ function elite_cuts_manage_bookings_page() {
         }
 
         .elite-cuts-table tbody tr:hover {
-            background: rgba(201, 167, 77, 0.05);
+            background: rgba(100, 196, 147, 0.04);
         }
 
         /* Status Badges */
@@ -579,22 +579,22 @@ function elite_cuts_manage_bookings_page() {
             display: inline-flex;
             align-items: center;
             padding: 0.35rem 0.85rem;
-            border-radius: 4px;
+            border-radius: var(--radius);
             font-size: 0.8rem;
             font-weight: 500;
             letter-spacing: 0.3px;
         }
 
         .status-pending {
-            background: rgba(255, 193, 7, 0.1);
-            color: #ffc107;
-            border: 1px solid rgba(255, 193, 7, 0.2);
+            background: rgba(0, 0, 0, 0.03);
+            color: var(--warning);
+            border: 1px solid rgba(255, 193, 7, 0.12);
         }
 
         .status-confirmed {
-            background: rgba(201, 167, 77, 0.1);
+            background: rgba(100, 196, 147, 0.08);
             color: var(--accent);
-            border: 1px solid rgba(201, 167, 77, 0.3);
+            border: 1px solid rgba(100, 196, 147, 0.16);
         }
 
         .status-completed {
@@ -621,7 +621,7 @@ function elite_cuts_manage_bookings_page() {
             justify-content: center;
             width: 32px;
             height: 32px;
-            border-radius: 4px;
+            border-radius: var(--radius);
             border: 1px solid var(--border-color);
             background: var(--input-bg);
             color: var(--text-secondary);
@@ -631,7 +631,7 @@ function elite_cuts_manage_bookings_page() {
 
         .btn:hover {
             background: var(--accent);
-            color: #1e1e1e;
+            color: var(--text-primary);
             border-color: var(--accent);
             transform: translateY(-1px);
         }
@@ -654,10 +654,10 @@ function elite_cuts_manage_bookings_page() {
             align-items: center;
             gap: 0.5rem;
             background: var(--accent);
-            color: #1e1e1e;
+            color: var(--text-primary);
             border: none;
             padding: 0.6rem 1.25rem;
-            border-radius: 4px;
+            border-radius: var(--radius);
             font-weight: 500;
             font-size: 0.9rem;
             cursor: pointer;
@@ -670,7 +670,7 @@ function elite_cuts_manage_bookings_page() {
         .elite-button:hover {
             background: var(--accent-hover);
             transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(201, 167, 77, 0.3);
+            box-shadow: 0 2px 8px rgba(100, 196, 147, 0.18);
         }
 
         .elite-button.secondary {
@@ -696,7 +696,7 @@ function elite_cuts_manage_bookings_page() {
             display: inline-block;
             width: 1.5rem;
             height: 1.5rem;
-            border: 2px solid rgba(201, 167, 77, 0.1);
+            border: 2px solid rgba(100, 196, 147, 0.08);
             border-radius: 50%;
             border-top-color: var(--accent);
             animation: spin 0.8s linear infinite;
