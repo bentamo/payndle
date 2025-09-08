@@ -554,12 +554,12 @@
         
         .payment-option.selected .payment-label {
             transform: translateY(-1px);
-            box-shadow: 0 5px 15px rgba(201, 167, 77, 0.2);
+            box-shadow: 0 6px 18px rgba(100,196,147,0.08);
         }
         
         .form-group input:focus + .input-icon,
         .form-group textarea:focus + .input-icon {
-            color: #c9a74d;
+            color: var(--accent);
         }
         
         @keyframes shake {
