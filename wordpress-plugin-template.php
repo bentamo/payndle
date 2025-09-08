@@ -43,10 +43,7 @@ require_once 'manage-bookings.php';
 require_once 'manage-staff.php';
 require_once 'business-setup.php';
 require_once 'my-services-plugin.php';
-
-
-
-
+require_once 'business-landing-shortcode.php';
 
 
 /* Load booking history with error handling
