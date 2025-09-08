@@ -15,6 +15,10 @@ class UserBookingForm {
     public function __construct() {
         add_action('init', [$this, 'init']);
         add_shortcode('user_booking_form', [$this, 'render_booking_form']);
+    // Alias shortcode with hyphen to be user-friendly: [user-booking-form]
+    add_shortcode('user-booking-form', [$this, 'render_booking_form']);
+    // New v2 shortcode (color/typography variant) - enqueues a separate stylesheet
+    add_shortcode('user-booking-form-v2', [$this, 'render_booking_form_v2']);
         add_action('wp_enqueue_scripts', [$this, 'enqueue_assets']);
         
         // Register AJAX actions
@@ -39,10 +43,13 @@ class UserBookingForm {
     public function enqueue_assets() {
         wp_enqueue_style(
             'user-booking-form-css',
-            plugin_dir_url(__FILE__) . 'assets/css/user-booking-form.css',
+            plugin_dir_url(__FILE__) . 'assets/css/user_booking_form.css',
             [],
             '1.0.0'
         );
+
+    // Ensure Inter font is available for the booking form
+    wp_enqueue_style('payndle-google-inter', 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap', [], null);
         
         wp_enqueue_script(
             'user-booking-form-js',
@@ -63,6 +70,22 @@ class UserBookingForm {
                 'email_error' => 'Please enter a valid email address.'
             ]
         ]);
+    }
+
+    /**
+     * Render booking form variant v2 - enqueues variant stylesheet then calls existing renderer
+     */
+    public function render_booking_form_v2($atts) {
+        // Enqueue the v2 stylesheet only when this shortcode is used
+        wp_enqueue_style(
+            'user-booking-form-css',
+            plugin_dir_url(__FILE__) . 'assets/css/user_booking_form.css',
+            [],
+            '1.0.0'
+        );
+
+        // Reuse the main renderer for layout; renderer outputs the HTML via output buffering
+        return $this->render_booking_form($atts);
     }
     
     /**
@@ -305,8 +328,7 @@ class UserBookingForm {
         ob_start();
         ?>
         
-        <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
         
         <div class="user-booking-container">
             <!-- Header Section -->
