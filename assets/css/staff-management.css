@@ -1,0 +1,627 @@
+/**
+ * Staff Management Styles - Modern Minimalist Black & White
+ */
+
+ .staff-management-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+    font-family: "Inter", "Segoe UI", sans-serif;
+    color: #111;
+}
+
+/* Header */
+.staff-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 12px;
+}
+.staff-header h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+/* Filters */
+.staff-filters {
+    margin-bottom: 20px;
+    padding: 16px;
+    border: 1px solid #eee;
+    border-radius: 10px;
+    background: #fafafa;
+}
+.filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+.filter-group input,
+.filter-group select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background: #fff;
+    transition: border 0.2s ease;
+}
+.filter-group input:focus,
+.filter-group select:focus {
+    border-color: #000;
+    outline: none;
+}
+
+/* Table */
+.staff-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 15px 0;
+    font-size: 14px;
+    border-radius: 10px;
+    overflow: hidden;
+}
+.staff-table th,
+.staff-table td {
+    padding: 12px 8px;
+    text-align: left;
+    border-bottom: 1px solid #e2e4e7;
+}
+.staff-table th {
+    font-weight: 500;
+    color: #23282d;
+    background-color: #f8f9fa;
+}
+.staff-table td.staff-name,
+.staff-table th:first-child {
+    width: 30%;
+    min-width: 150px;
+}
+.staff-table td.staff-role,
+.staff-table th:nth-child(2) {
+    width: 15%;
+    min-width: 100px;
+}
+.staff-table td.staff-email,
+.staff-table th:nth-child(3) {
+    width: 25%;
+    min-width: 150px;
+}
+.staff-table td.staff-phone,
+.staff-table th:nth-child(4) {
+    width: 15%;
+    min-width: 100px;
+}
+.staff-table td.staff-status,
+.staff-table th:nth-child(5) {
+    width: 10%;
+    min-width: 80px;
+}
+.staff-table td.staff-actions,
+.staff-table th:last-child {
+    width: 5%;
+    min-width: 80px;
+    text-align: right;
+}
+.staff-table tbody tr {
+    border-bottom: 1px solid #eee;
+    transition: background 0.2s ease;
+}
+.staff-table tbody tr:hover {
+    background: #f9f9f9;
+}
+
+/* Status badges */
+.status-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+.status-active {
+    background: #000;
+    color: #fff;
+}
+.status-inactive {
+    background: #eee;
+    color: #000;
+}
+
+/* Buttons */
+.button {
+    border-radius: 8px !important;
+    padding: 6px 14px !important;
+    font-size: 14px;
+    border: 1px solid #000;
+    background: #fff;
+    color: #000;
+    transition: all 0.25s ease;
+    cursor: pointer;
+}
+.button:hover {
+    background: #000;
+    color: #fff;
+}
+.button-primary {
+    background: #000 !important;
+    color: #fff !important;
+}
+.button-primary:hover {
+    background: #333 !important;
+}
+
+/* Actions */
+.staff-actions .button {
+    margin: 0 2px;
+    padding: 4px 8px;
+}
+.staff-actions .dashicons {
+    font-size: 16px;
+}
+
+/* Modal */
+.staff-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.staff-modal-content {
+    background: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    width: 100%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    position: relative;
+}
+
+.staff-modal-header {
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.staff-modal-header h3 {
+    margin: 0;
+    font-size: 1.2em;
+    color: #23282d;
+}
+
+.close-modal {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    font-size: 20px;
+    cursor: pointer;
+    color: #a0a5aa;
+    background: none;
+    border: none;
+    padding: 0;
+    line-height: 1;
+}
+
+.close-modal:hover {
+    color: #0073aa;
+}
+
+/* Form Elements */
+.form-row {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 -8px 12px;
+}
+
+.form-group {
+    flex: 1 0 100%;
+    padding: 0 8px;
+    margin-bottom: 12px;
+}
+
+@media (min-width: 480px) {
+    .form-group {
+        flex: 1 0 calc(50% - 16px);
+    }
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: 500;
+    font-size: 13px;
+    color: #23282d;
+}
+
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="tel"],
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 0 0 transparent;
+    font-size: 14px;
+    line-height: 1.4;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.form-group input[type="text"]:focus,
+.form-group input[type="email"]:focus,
+.form-group input[type="tel"]:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    border-color: #007cba;
+    box-shadow: 0 0 0 1px #007cba;
+    outline: 2px solid transparent;
+}
+
+.form-group textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+
+/* Form Actions */
+.form-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+}
+
+.form-actions .button {
+    margin: 0;
+}
+
+.form-actions .button-primary {
+    order: 1; /* Add Staff button on the left */
+}
+
+.form-actions .button-secondary {
+    order: 2; /* Cancel button on the right */
+}
+
+/* Pagination */
+.staff-pagination {
+    text-align: right;
+    margin-top: 20px;
+}
+.tablenav-pages .button {
+    min-width: 34px;
+    height: 34px;
+    line-height: 32px;
+    padding: 0;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+@keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    overflow-y: auto;
+}
+
+.modal-content {
+    background-color: #fff;
+    margin: 5% auto;
+    padding: 0;
+    max-width: 600px;
+    width: 90%;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    position: relative;
+    animation: modalFadeIn 0.3s;
+}
+
+@keyframes modalFadeIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.modal-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.3em;
+    color: #23282d;
+}
+
+.close {
+    color: #72777c;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.close:hover,
+.close:focus {
+    color: #23282d;
+    text-decoration: none;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+/* Form Styles */
+.staff-form {
+    padding: 20px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #23282d;
+}
+
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="tel"],
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 0 0 transparent;
+    font-size: 14px;
+    line-height: 1.4;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.form-group input[type="text"]:focus,
+.form-group input[type="email"]:focus,
+.form-group input[type="tel"]:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    border-color: #007cba;
+    box-shadow: 0 0 0 1px #007cba;
+    outline: 2px solid transparent;
+}
+
+.form-group textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+/* Status Badges */
+.status-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: capitalize;
+}
+
+.status-active {
+    background-color: #e6f4ea;
+    color: #0a6e3f;
+}
+
+.status-inactive {
+    background-color: #f8e8e8;
+    color: #c93535;
+}
+
+/* Buttons */
+.button {
+    display: inline-block;
+    text-decoration: none;
+    font-size: 13px;
+    line-height: 2.15384615;
+    min-height: 30px;
+    margin: 0;
+    padding: 0 10px;
+    cursor: pointer;
+    border-width: 1px;
+    border-style: solid;
+    -webkit-appearance: none;
+    border-radius: 3px;
+    white-space: nowrap;
+    box-sizing: border-box;
+    background: #f6f7f7;
+    border-color: #ccd0d4;
+    color: #2271b1;
+    vertical-align: top;
+}
+
+.button-primary {
+    background: #2271b1;
+    border-color: #2271b1;
+    color: #fff;
+    text-decoration: none;
+    text-shadow: none;
+}
+
+.button-danger {
+    background: #d63638;
+    border-color: #d63638;
+    color: #fff;
+}
+
+.button-small {
+    line-height: 1.8;
+    min-height: 24px;
+    padding: 0 8px;
+}
+
+.button + .button {
+    margin-left: 8px;
+}
+
+/* Form Actions */
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #ddd;
+}
+
+/* Message Notices */
+#message-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    max-width: 400px;
+    width: 100%;
+    pointer-events: none;
+}
+
+.notice {
+    position: relative;
+    margin-bottom: 10px;
+    padding: 12px 15px;
+    background: #fff;
+    border-left: 4px solid #2271b1;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+    animation: slideIn 0.3s ease-out;
+    pointer-events: auto;
+    transition: all 0.3s ease;
+    opacity: 0.95;
+}
+
+.notice:hover {
+    opacity: 1;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+}
+
+.notice p {
+    margin: 0;
+    padding-right: 24px;
+    line-height: 1.5;
+    color: #23282d;
+    font-size: 13px;
+}
+
+.notice.notice-success {
+    border-left-color: #00a32a;
+    background-color: #f0f8f0;
+}
+
+.notice.notice-error {
+    border-left-color: #d63638;
+    background-color: #fcf0f1;
+}
+
+.notice-dismiss {
+    position: absolute;
+    top: 0;
+    right: 0;
+    padding: 8px;
+    margin: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: #787c82;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+}
+
+.notice-dismiss:hover,
+.notice-dismiss:focus {
+    color: #d63638;
+    opacity: 1;
+}
+
+.notice-dismiss:before {
+    content: '\f335';
+    display: inline-block;
+    font: normal 16px/1 dashicons;
+    vertical-align: middle;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 0.95;
+    }
+}
+
+.notice.notice-leave {
+    animation: slideOut 0.3s ease-out forwards;
+}
+
+@keyframes slideOut {
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+        margin: 0;
+        padding: 0;
+        height: 0;
+        overflow: hidden;
+    }
+}
+
+/* Responsive Adjustments */
+@media screen and (max-width: 782px) {
+    .modal-content {
+        width: 95%;
+        margin: 20px auto;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .form-actions .button {
+        width: 100%;
+        margin: 5px 0;
+    }
+    
+    .form-actions .button + .button {
+        margin-left: 0;
+    }
+}
