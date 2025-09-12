@@ -240,29 +240,29 @@ function elite_cuts_manage_staff_page() {
     </div>
 
     <style>
-        /* Theme variables consistent with manage-bookings.php */
+        /* Theme variables - updated to Payndle palette */
         :root {
-            --bg-primary: #f5f5f5;
-            --bg-secondary: #ffffff;
-            --bg-tertiary: #f0f0f0;
-            --text-primary: #333333;
-            --text-secondary: #666666;
-            --accent: #c9a74d; /* Gold accent consistent with landing_page.php */
-            --accent-hover: #b89846;
-            --border-color: #e0e0e0;
-            --success: #4caf50;
-            --warning: #ff9800;
-            --danger: #f44336;
+            --bg-primary: #FFFFFF; /* Secondary White as page base */
+            --bg-secondary: #FFFFFF;
+            --bg-tertiary: #F7F9FB; /* subtle off-white */
+            --text-primary: #0C1930; /* Primary Navy */
+            --text-secondary: #62708a; /* muted navy gray */
+            --accent: #64C493; /* Primary Green */
+            --accent-hover: #4FB07A; /* darker green */
+            --border-color: #E6E9EE; /* Accent Gray */
+            --success: #64C493;
+            --warning: #FFB020;
+            --danger: #F44336;
             --info: #2196f3;
-            --radius: 6px;
-            --shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            --card-bg: #ffffff;
-            --input-bg: #ffffff;
+            --radius: 8px; /* Button Radius requested */
+            --shadow: 0 2px 10px rgba(12,25,48,0.06);
+            --card-bg: #FFFFFF;
+            --input-bg: #FFFFFF;
         }
 
-        .elite-cuts-admin { background: var(--bg-primary); color: var(--text-primary); padding: 1.5rem; font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-height: 100vh; line-height: 1.6; }
-        .elite-cuts-header { background: var(--bg-secondary); padding: 1.25rem 1.5rem; border-radius: var(--radius); margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow); border-left: 4px solid var(--accent); }
-        .shop-name { color: var(--accent); margin: 0 0 0.25rem 0; font-size: 1.5rem; font-weight: 600; font-family: 'Playfair Display', serif; letter-spacing: 0.5px; }
+        .elite-cuts-admin { background: var(--bg-secondary); color: var(--text-primary); padding: 1.5rem; font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; min-height: 100vh; line-height: 1.6; }
+        .elite-cuts-header { background: var(--card-bg); padding: 1.25rem 1.5rem; border-radius: var(--radius); margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow); border-left: 4px solid var(--accent); }
+        .shop-name { color: var(--accent); margin: 0 0 0.25rem 0; font-size: 1.5rem; font-weight: 700; font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; letter-spacing: 0.2px; }
         .shop-slogan { color: var(--text-secondary); margin: 0; font-size: 0.875rem; font-weight: 400; }
 
         /* Table and cells */
@@ -276,14 +276,14 @@ function elite_cuts_manage_staff_page() {
         .staff-cell { display: flex; align-items: center; gap: 0.9rem; }
         .avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(201, 167, 77, 0.35); }
         /* Fallback initial-based avatar */
-        .avatar-initial { width: 42px; height: 42px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.95rem; color: #ffffff; border: 2px solid rgba(201, 167, 77, 0.35); background: linear-gradient(135deg, #13bfa7, #0ea5a6); box-shadow: inset 0 1px 0 rgba(255,255,255,0.15); }
+    .avatar-initial { width: 42px; height: 42px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.95rem; color: var(--color-white, #ffffff); border: 2px solid rgba(100,196,147,0.25); background: linear-gradient(135deg, var(--accent), var(--accent-hover)); box-shadow: inset 0 1px 0 rgba(255,255,255,0.12); }
         .staff-meta { display: flex; flex-direction: column; }
         .staff-name { font-weight: 600; color: var(--text-primary); }
         .staff-sub { color: var(--text-secondary); font-size: 0.85rem; }
 
-        .status-badge { display: inline-flex; align-items: center; padding: 0.35rem 0.85rem; border-radius: 4px; font-size: 0.8rem; font-weight: 500; letter-spacing: 0.3px; }
-        .status-active { background: rgba(201, 167, 77, 0.1); color: var(--accent); border: 1px solid rgba(201, 167, 77, 0.3); }
-        .status-inactive { background: rgba(244, 67, 54, 0.1); color: var(--danger); border: 1px solid rgba(244, 67, 54, 0.2); }
+    .status-badge { display: inline-flex; align-items: center; padding: 0.35rem 0.85rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.3px; }
+    .status-active { background: rgba(100,196,147,0.12); color: var(--accent); border: 1px solid rgba(100,196,147,0.2); }
+    .status-inactive { background: rgba(12,25,48,0.04); color: var(--text-secondary); border: 1px solid rgba(12,25,48,0.06); }
 
         .availability-badge { display: inline-flex; align-items: center; padding: 0.25rem 0.6rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.2px; gap: 0.4rem; }
         .avail-Available { background: rgba(76, 175, 80, 0.1); color: var(--success); border: 1px solid rgba(76, 175, 80, 0.2); }
@@ -300,22 +300,22 @@ function elite_cuts_manage_staff_page() {
 
         /* Modern action buttons */
         .action-buttons { display: inline-flex; gap: 0.4rem; align-items: center; justify-content: flex-end; }
-        .icon-btn { --btn-bg: #fafafa; --btn-color: var(--text-secondary); --btn-border: rgba(0,0,0,0.06); display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--btn-border); background: var(--btn-bg); color: var(--btn-color); cursor: pointer; transition: transform 0.12s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease; position: relative; }
+    .icon-btn { --btn-bg: #fafafa; --btn-color: var(--text-secondary); --btn-border: rgba(12,25,48,0.06); display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: var(--radius); border: 1px solid var(--btn-border); background: var(--btn-bg); color: var(--btn-color); cursor: pointer; transition: transform 0.12s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease; position: relative; }
         .icon-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-        .icon-btn:focus { outline: none; box-shadow: 0 0 0 3px rgba(201, 167, 77, 0.35); }
-        .icon-btn.edit { --btn-bg: #fff7e6; --btn-color: #9c7a2e; border-color: rgba(201,167,77,0.35); }
-        .icon-btn.activate { --btn-bg: #eaf8ee; --btn-color: var(--success); border-color: rgba(76,175,80,0.25); }
-        .icon-btn.deactivate { --btn-bg: #fdeaea; --btn-color: var(--danger); border-color: rgba(244,67,54,0.25); }
-        .icon-btn.schedule { --btn-bg: #eaf3fd; --btn-color: var(--info); border-color: rgba(33,150,243,0.25); }
+    .icon-btn:focus { outline: none; box-shadow: 0 0 0 3px rgba(100,196,147,0.18); }
+    .icon-btn.edit { --btn-bg: #f6fff9; --btn-color: var(--accent); border-color: rgba(100,196,147,0.25); }
+    .icon-btn.activate { --btn-bg: rgba(100,196,147,0.08); --btn-color: var(--accent); border-color: rgba(100,196,147,0.18); }
+    .icon-btn.deactivate { --btn-bg: rgba(244,67,54,0.06); --btn-color: var(--danger); border-color: rgba(244,67,54,0.12); }
+    .icon-btn.schedule { --btn-bg: rgba(12,25,48,0.04); --btn-color: var(--text-secondary); border-color: rgba(12,25,48,0.06); }
         /* Tooltips */
         .icon-btn[data-tooltip]::after { content: attr(data-tooltip); position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: #111; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.15s ease, transform 0.15s ease; transform-origin: bottom center; }
         .icon-btn[data-tooltip]:hover::after { opacity: 1; transform: translateX(-50%) translateY(-2px); }
 
         /* Buttons, inputs, forms (consistent with manage-bookings) */
-        .elite-button { display: inline-flex; align-items: center; gap: 0.5rem; background: var(--accent); color: #1e1e1e; border: none; padding: 0.6rem 1.25rem; border-radius: 4px; font-weight: 500; cursor: pointer; transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.8rem; }
-        .elite-button:hover { background: var(--accent-hover); transform: translateY(-1px); box-shadow: 0 2px 8px rgba(201, 167, 77, 0.3); }
-        .elite-button.secondary { background: transparent; color: var(--text-secondary); border: 1px solid var(--border-color); }
-        .elite-button.secondary:hover { background: var(--bg-tertiary); color: var(--text-primary); border-color: var(--text-secondary); }
+    .elite-button { display: inline-flex; align-items: center; gap: 0.5rem; background: var(--accent); color: var(--color-navy, #1e1e1e); border: none; padding: 0.6rem 1.25rem; border-radius: var(--radius); font-weight: 600; cursor: pointer; transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.8rem; }
+    .elite-button:hover { background: var(--accent-hover); transform: translateY(-1px); box-shadow: 0 2px 8px rgba(100,196,147,0.18); color: var(--bg-secondary); }
+    .elite-button.secondary { background: transparent; color: var(--text-secondary); border: 1px solid var(--border-color); }
+    .elite-button.secondary:hover { background: var(--bg-tertiary); color: var(--text-primary); border-color: var(--text-secondary); }
 
         .filter-row { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
         .filter-group { display: flex; flex-direction: column; flex: 1; min-width: 200px; }
@@ -328,21 +328,21 @@ function elite_cuts_manage_staff_page() {
         .filter-actions { display: flex; gap: 0.75rem; margin-left: auto; align-self: flex-end; }
 
         /* Modal */
-        .elite-modal { position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; display: none; background: rgba(0, 0, 0, 0.35); align-items: center; justify-content: center; padding: 1rem; }
-        .elite-modal-content { background: var(--bg-secondary); border-radius: var(--radius); box-shadow: var(--shadow); max-width: 720px; width: 100%; overflow: hidden; }
+    .elite-modal { position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; display: none; background: rgba(0, 0, 0, 0.35); align-items: center; justify-content: center; padding: 1rem; }
+    .elite-modal-content { background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow); max-width: 720px; width: 100%; overflow: hidden; }
         .elite-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border-color); }
         .elite-modal-header h3 { margin: 0; font-size: 1.1rem; }
         .elite-close { cursor: pointer; font-size: 1.2rem; color: var(--text-secondary); }
         .elite-modal-body { padding: 1rem 1.25rem; }
         .form-row { display: flex; gap: 1rem; }
         .form-group { display: flex; flex-direction: column; gap: 0.35rem; flex: 1; }
-        .elite-input, .elite-select { padding: 0.55rem 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius); background: var(--input-bg); }
-        .elite-input:focus, .elite-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(201, 167, 77, 0.2); }
+    .elite-input, .elite-select { padding: 0.55rem 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius); background: var(--input-bg); }
+    .elite-input:focus, .elite-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(100,196,147,0.14); }
         .form-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 0.75rem; }
 
         /* Loading State */
-        .loading-row td { text-align: center; padding: 2rem; color: var(--text-secondary); }
-        .loading-spinner { display: inline-block; width: 1.5rem; height: 1.5rem; border: 2px solid rgba(201, 167, 77, 0.1); border-radius: 50%; border-top-color: var(--accent); animation: spin 0.8s linear infinite; margin-right: 0.5rem; vertical-align: middle; }
+    .loading-row td { text-align: center; padding: 2rem; color: var(--text-secondary); }
+    .loading-spinner { display: inline-block; width: 1.5rem; height: 1.5rem; border: 2px solid rgba(12,25,48,0.06); border-radius: 50%; border-top-color: var(--accent); animation: spin 0.8s linear infinite; margin-right: 0.5rem; vertical-align: middle; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
         /* Responsive */
@@ -613,7 +613,8 @@ function elite_cuts_staff_admin_assets($hook) {
     }
     wp_enqueue_script('jquery');
     wp_enqueue_style('font-awesome', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css');
-    wp_enqueue_style('google-fonts', 'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Playfair+Display:wght@400;700&display=swap');
+    // Use Inter for primary UI typography (weights: 400,500,600,700) and keep Playfair only if needed for legacy headings
+    wp_enqueue_style('google-fonts', 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@400;700&display=swap');
     // Media Library for avatar upload (only if the user can upload files)
     if (function_exists('wp_enqueue_media') && current_user_can('upload_files')) { wp_enqueue_media(); }
 }

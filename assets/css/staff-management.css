@@ -1,16 +1,35 @@
 /**
  * Staff Management Styles - Modern Minimalist Black & White
  */
+:root {
+    /* Palette */
+    --color-green: #64C493; /* Primary Green */
+    --color-green-dark: #4FB07A; /* Slightly darker green for hover */
+    --color-navy: #0C1930; /* Primary Navy */
+    --color-white: #FFFFFF; /* Secondary White */
+    --color-accent-gray: #E6E9EE; /* Accent Gray - subtle dividers/backgrounds */
 
- .staff-management-container {
+    /* Typography */
+    --font-family-base: "Inter", "Segoe UI", system-ui, -apple-system, "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+    --h1-weight: 700; /* Inter Bold */
+    --h2-weight: 600; /* Inter Semibold */
+    --h3-weight: 600; /* Inter Semibold */
+    --h4-weight: 500; /* Inter Medium */
+    --body-weight: 400; /* Inter Regular */
+
+    /* Other */
+    --radius-button: 8px;
+}
+
+.staff-management-container {
     max-width: 1200px;
     margin: 0 auto;
     padding: 24px;
-    background: #fff;
+    background: var(--color-white);
     border-radius: 12px;
     box-shadow: 0 2px 12px rgba(0,0,0,0.05);
-    font-family: "Inter", "Segoe UI", sans-serif;
-    color: #111;
+    font-family: var(--font-family-base);
+    color: var(--color-navy);
 }
 
 /* Header */
@@ -24,17 +43,24 @@
 }
 .staff-header h2 {
     font-size: 1.5rem;
-    font-weight: 600;
+    font-weight: var(--h2-weight);
     margin: 0;
 }
+
+/* Typography specifics */
+.staff-management-container h1 { font-weight: var(--h1-weight); }
+.staff-management-container h2 { font-weight: var(--h2-weight); }
+.staff-management-container h3 { font-weight: var(--h3-weight); }
+.staff-management-container h4 { font-weight: var(--h4-weight); }
+.staff-management-container, .staff-management-container p, .staff-management-container label { font-weight: var(--body-weight); }
 
 /* Filters */
 .staff-filters {
     margin-bottom: 20px;
     padding: 16px;
-    border: 1px solid #eee;
+    border: 1px solid var(--color-accent-gray);
     border-radius: 10px;
-    background: #fafafa;
+    background: var(--color-white);
 }
 .filter-row {
     display: flex;
@@ -45,14 +71,14 @@
 .filter-group select {
     width: 100%;
     padding: 8px 10px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
+    border: 1px solid var(--color-accent-gray);
+    border-radius: var(--radius-button);
     background: #fff;
     transition: border 0.2s ease;
 }
 .filter-group input:focus,
 .filter-group select:focus {
-    border-color: #000;
+    border-color: var(--color-green);
     outline: none;
 }
 
@@ -69,12 +95,12 @@
 .staff-table td {
     padding: 12px 8px;
     text-align: left;
-    border-bottom: 1px solid #e2e4e7;
+    border-bottom: 1px solid var(--color-accent-gray);
 }
 .staff-table th {
     font-weight: 500;
-    color: #23282d;
-    background-color: #f8f9fa;
+    color: var(--color-navy);
+    background-color: var(--color-accent-gray);
 }
 .staff-table td.staff-name,
 .staff-table th:first-child {
@@ -112,7 +138,7 @@
     transition: background 0.2s ease;
 }
 .staff-table tbody tr:hover {
-    background: #f9f9f9;
+    background: #fbfbfc;
 }
 
 /* Status badges */
@@ -124,35 +150,36 @@
     font-weight: 500;
 }
 .status-active {
-    background: #000;
-    color: #fff;
+    background: var(--color-green);
+    color: var(--color-white);
 }
 .status-inactive {
-    background: #eee;
-    color: #000;
+    background: var(--color-accent-gray);
+    color: var(--color-navy);
 }
 
 /* Buttons */
 .button {
-    border-radius: 8px !important;
+    border-radius: var(--radius-button) !important;
     padding: 6px 14px !important;
     font-size: 14px;
-    border: 1px solid #000;
-    background: #fff;
-    color: #000;
+    border: 1px solid var(--color-navy);
+    background: var(--color-white);
+    color: var(--color-navy);
     transition: all 0.25s ease;
     cursor: pointer;
 }
 .button:hover {
-    background: #000;
-    color: #fff;
+    background: var(--color-navy);
+    color: var(--color-white);
 }
 .button-primary {
-    background: #000 !important;
-    color: #fff !important;
+    background: var(--color-green) !important;
+    color: var(--color-white) !important;
+    border-color: var(--color-green) !important;
 }
 .button-primary:hover {
-    background: #333 !important;
+    background: var(--color-green-dark) !important;
 }
 
 /* Actions */
@@ -181,7 +208,7 @@
 }
 
 .staff-modal-content {
-    background: #fff;
+    background: var(--color-white);
     border-radius: 8px;
     padding: 20px;
     width: 100%;
@@ -201,7 +228,7 @@
 .staff-modal-header h3 {
     margin: 0;
     font-size: 1.2em;
-    color: #23282d;
+    color: var(--color-navy);
 }
 
 .close-modal {
@@ -218,7 +245,7 @@
 }
 
 .close-modal:hover {
-    color: #0073aa;
+    color: var(--color-navy);
 }
 
 /* Form Elements */
@@ -245,7 +272,7 @@
     margin-bottom: 4px;
     font-weight: 500;
     font-size: 13px;
-    color: #23282d;
+    color: var(--color-navy);
 }
 
 .form-group input[type="text"],
@@ -255,8 +282,8 @@
 .form-group textarea {
     width: 100%;
     padding: 6px 8px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+    border: 1px solid var(--color-accent-gray);
+    border-radius: 6px;
     box-shadow: 0 0 0 transparent;
     font-size: 14px;
     line-height: 1.4;
@@ -268,8 +295,8 @@
 .form-group input[type="tel"]:focus,
 .form-group select:focus,
 .form-group textarea:focus {
-    border-color: #007cba;
-    box-shadow: 0 0 0 1px #007cba;
+    border-color: var(--color-green);
+    box-shadow: 0 0 0 1px var(--color-green);
     outline: 2px solid transparent;
 }
 
@@ -284,7 +311,7 @@
     justify-content: space-between;
     margin-top: 15px;
     padding-top: 15px;
-    border-top: 1px solid #eee;
+    border-top: 1px solid var(--color-accent-gray);
 }
 
 .form-actions .button {
