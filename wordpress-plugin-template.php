@@ -45,6 +45,7 @@ require_once 'business-setup.php';
 require_once 'my-services-plugin.php';
 require_once 'manager-dashboard.php';
 require_once 'business-landing-shortcode.php';
+require_once 'user-booking-form-v3.php';
 require_once 'manage-staff-shortcode.php';
 
 

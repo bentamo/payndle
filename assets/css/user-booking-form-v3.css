@@ -1,0 +1,95 @@
+/* User Booking Form v3 - theme variables and layout */
+:root{
+    --ubf-primary-green:#64C493;
+    --ubf-primary-navy:#0C1930;
+    --ubf-white:#FFFFFF;
+    --ubf-accent-gray:#F1F3F5;
+    --ubf-radius:8px;
+    --ubf-font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+}
+
+.ubf-v3-container{font-family:var(--ubf-font-family);color:var(--ubf-primary-navy);background:var(--ubf-white);padding:24px;border-radius:12px;max-width:820px;margin:0 auto}
+.ubf-v3-header{margin-bottom:16px}
+.ubf-v3-title{font-weight:700;font-size:1.6rem;margin:0;color:var(--ubf-primary-navy)}
+.ubf-v3-sub{color:#51647a;margin-top:6px}
+
+.ubf-v3-form-wrapper{background:var(--ubf-white);padding:20px;border-radius:12px;box-shadow:0 8px 24px rgba(12,25,48,0.06)}
+.ubf-v3-stepper{margin-bottom:18px}
+.ubf-steps{display:flex;gap:12px;align-items:center}
+.ubf-step{display:flex;flex-direction:column;align-items:center;width:calc(25% - 9px)}
+.ubf-step .num{background:var(--ubf-accent-gray);color:var(--ubf-primary-navy);width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600}
+.ubf-step.active .num{background:var(--ubf-primary-green);color:var(--ubf-white)}
+.ubf-step .label{font-size:0.85rem;margin-top:6px;text-align:center;color:#445566}
+
+.ubf-progress{height:6px;background:var(--ubf-accent-gray);border-radius:6px;margin-top:12px;overflow:hidden}
+.ubf-progress-fill{height:100%;background:linear-gradient(90deg,var(--ubf-primary-green),#4fb88a);width:0%;transition:width 300ms ease}
+
+.ubf-v3-form input[type="text"],.ubf-v3-form input[type="email"],.ubf-v3-form input[type="tel"],.ubf-v3-form input[type="date"],.ubf-v3-form input[type="time"],.ubf-v3-form select,.ubf-v3-form textarea{width:100%;padding:12px;border:1px solid #e6eaef;border-radius:var(--ubf-radius);margin-bottom:12px;font-size:0.95rem}
+.ubf-v3-form textarea{min-height:100px}
+
+.ubf-field-error{font-size:0.95rem}
+
+.ubf-step-nav{display:flex;justify-content:flex-end;gap:12px;margin-top:8px}
+.ubf-prev{
+    background:var(--ubf-primary-navy);
+    border:1px solid rgba(255,255,255,0.06);
+    color:var(--ubf-white);
+    padding:9px 14px;
+    border-radius:var(--ubf-radius);
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    box-shadow: 0 2px 6px rgba(12,25,48,0.12);
+    transition:all 160ms ease;
+}
+.ubf-prev:hover{background:#0a1726;transform:translateY(-1px);box-shadow:0 8px 22px rgba(12,25,48,0.14)}
+.ubf-prev i{font-size:0.95rem;color:var(--ubf-white)}
+.ubf-next,.ubf-submit{background:var(--ubf-primary-green);color:var(--ubf-white);border:none;padding:10px 18px;border-radius:var(--ubf-radius);cursor:pointer;font-weight:600;transition:all 160ms ease}
+
+.ubf-next:hover,.ubf-submit:hover{background:var(--ubf-primary-green);color:var(--ubf-primary-navy);box-shadow:inset 0 -2px 0 rgba(12,25,48,0.04),0 8px 20px rgba(100,196,147,0.08);transform:translateY(-1px)}
+
+.ubf-payment{display:block;padding:10px;border:1px solid #eef3f6;border-radius:8px;margin-bottom:8px}
+
+@media (max-width:600px){
+    .ubf-steps{flex-wrap:wrap}
+    .ubf-step{width:50%}
+}
+
+/* Success panel */
+.ubf-v3-success{padding:20px;border-radius:12px;max-width:820px;margin:18px auto;background:linear-gradient(180deg, rgba(100,196,147,0.06), rgba(12,25,48,0.02));}
+.ubf-success-box{display:flex;flex-direction:column;align-items:center;padding:22px;background:var(--ubf-white);border-radius:12px;box-shadow:0 10px 30px rgba(12,25,48,0.06)}
+.ubf-success-icon{background:var(--ubf-primary-green);color:var(--ubf-white);width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;margin-bottom:12px}
+.ubf-success-title{color:var(--ubf-primary-navy);margin:0 0 8px 0}
+.ubf-success-message{color:#445566;text-align:center;margin:0 0 16px 0}
+.ubf-success-actions{display:flex;gap:10px}
+.ubf-btn-primary{background:var(--ubf-primary-green);color:var(--ubf-white);padding:10px 14px;border-radius:8px;border:none}
+.ubf-btn-secondary{background:var(--ubf-primary-navy);color:var(--ubf-white);padding:10px 14px;border-radius:8px;border:none}
+
+/* Prevent blue hover fallout from global styles: enforce brand hover colors for v3 buttons */
+.ubf-v3-container .ubf-btn-primary:hover,
+.ubf-v3-container .ubf-btn-secondary:hover,
+.ubf-v3-container .ubf-prev:hover,
+.ubf-v3-container .ubf-next:hover,
+.ubf-v3-container .ubf-submit:hover,
+.ubf-v3-container .ubf-btn-primary:focus,
+.ubf-v3-container .ubf-btn-secondary:focus{outline:none}
+
+.ubf-v3-container .ubf-btn-primary:hover{background:var(--ubf-primary-green);color:var(--ubf-white)}
+.ubf-v3-container .ubf-btn-secondary:hover{background:var(--ubf-primary-navy);color:var(--ubf-white)}
+.ubf-v3-container .ubf-prev:hover{background:#0a1726;color:var(--ubf-white)}
+.ubf-v3-container .ubf-next:hover,.ubf-v3-container .ubf-submit:hover{background:var(--ubf-primary-green);color:var(--ubf-primary-navy)}
+
+/* Payment methods styling (copied and adapted from original form) */
+.payment-methods{display:grid;grid-template-columns:1fr;gap:12px}
+@media(min-width:768px){.payment-methods{grid-template-columns:repeat(2,1fr)}}
+.payment-option{position:relative}
+.payment-option input[type="radio"]{position:absolute;opacity:0;width:0;height:0}
+.payment-label{display:flex;align-items:center;padding:14px;border:2px solid rgba(0,0,0,0.04);border-radius:12px;cursor:pointer;transition:all 0.25s ease;background:var(--ubf-white)}
+.payment-option input[type="radio"]:checked + .payment-label{border-color:var(--ubf-primary-green);background:linear-gradient(90deg, rgba(100,196,147,0.06), rgba(100,196,147,0.03))}
+.payment-icon{width:48px;height:48px;background:rgba(100,196,147,0.06);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-right:12px}
+.payment-icon i{font-size:18px;color:var(--ubf-primary-green)}
+.payment-option input[type="radio"]:checked + .payment-label .payment-icon{background:var(--ubf-primary-green)}
+.payment-option input[type="radio"]:checked + .payment-label .payment-icon i{color:#fff}
+.payment-details h4{margin:0 0 4px 0;font-size:1rem;color:var(--ubf-primary-navy)}
+.payment-details p{margin:0;color:#667585;font-size:0.9rem}
