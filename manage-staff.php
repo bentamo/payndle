@@ -254,8 +254,31 @@ function elite_cuts_manage_staff_page() {
         .filter-actions { display: flex; gap: 0.75rem; margin-left: auto; align-self: flex-end; }
 
         /* Modal */
-    .elite-modal { position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; display: none; background: rgba(0, 0, 0, 0.35); align-items: center; justify-content: center; padding: 1rem; }
-    .elite-modal-content { background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow); max-width: 720px; width: 100%; overflow: hidden; }
+    .elite-modal { 
+        position: fixed !important; 
+        z-index: 100000 !important; 
+        left: 0 !important; 
+        top: 0 !important; 
+        width: 100% !important; 
+        height: 100% !important; 
+        display: none; 
+        background: transparent !important; 
+        align-items: center; 
+        justify-content: center; 
+        padding: 1rem;
+        box-sizing: border-box;
+    }
+    .elite-modal-content { 
+        background: var(--card-bg) !important; 
+        border-radius: var(--radius); 
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3) !important; 
+        max-width: 720px; 
+        width: 90%; 
+        max-height: 90vh;
+        overflow-y: auto;
+        position: relative;
+        margin: auto;
+    }
         .elite-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border-color); }
         .elite-modal-header h3 { margin: 0; font-size: 1.1rem; }
         .elite-close { cursor: pointer; font-size: 1.2rem; color: var(--text-secondary); }
@@ -265,6 +288,17 @@ function elite_cuts_manage_staff_page() {
     .elite-input, .elite-select { padding: 0.55rem 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius); background: var(--input-bg); }
     .elite-input:focus, .elite-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(100,196,147,0.14); }
         .form-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 0.75rem; }
+
+        }
+
+        /* Ensure WordPress Media Library overlays our modal */
+        .media-modal {
+            z-index: 200000 !important;
+        }
+        .media-modal-backdrop {
+            z-index: 199999 !important;
+            background: transparent !important;
+        }
 
         /* Loading State */
     .loading-row td { text-align: center; padding: 2rem; color: var(--text-secondary); }

@@ -36,15 +36,16 @@ jQuery(document).ready(function($) {
                 action: 'manage_staff',
                 nonce: staffManager.nonce,
                 action_type: 'get_staff',
-                data: {
+                data: JSON.stringify({
                     paged: currentPage,
                     per_page: perPage,
                     search: search,
                     role: role,
                     status: status
-                }
+                })
             },
             success: function(response) {
+                console.log('AJAX Response:', response);
                 if (response.success) {
                     renderStaffList(response.data.staff);
                     updatePagination(response.data.pagination);
@@ -54,6 +55,7 @@ jQuery(document).ready(function($) {
                 }
             },
             error: function(xhr, status, error) {
+                console.log('AJAX Error:', xhr, status, error);
                 renderEmptyTable();
                 showPopup('error', 'Error: ' + error);
             },
@@ -65,10 +67,12 @@ jQuery(document).ready(function($) {
 
     // Render staff table
     function renderStaffList(staff) {
+        console.log('Rendering staff list:', staff);
         const $staffList = $('#staff-list');
         $staffList.empty();
 
         if (!staff || staff.length === 0) {
+            console.log('No staff found, rendering empty table');
             renderEmptyTable();
             return;
         }
@@ -160,7 +164,7 @@ jQuery(document).ready(function($) {
                     action: 'manage_staff',
                     nonce: staffManager.nonce,
                     action_type: 'get_staff',
-                    data: { id: staffId }
+                    data: JSON.stringify({ id: staffId })
                 },
                 success: function(response) {
                     if (response.success && response.data && response.data.staff && response.data.staff.length) {
@@ -207,11 +211,13 @@ jQuery(document).ready(function($) {
             $('#staff-id').val('');
         }
 
-        $modal.show();
+        $modal.css('display', 'flex');
+        $('body').css('overflow', 'hidden'); // Prevent background scrolling
     }
 
     function closeStaffModal() {
-        $('#staff-modal').hide();
+        $('#staff-modal').css('display', 'none');
+        $('body').css('overflow', ''); // Restore scrolling
     }
 
     // Save (Add/Update)
@@ -468,11 +474,18 @@ jQuery(document).ready(function($) {
         $('#add-staff-btn').on('click', function() { openStaffModal(); });
         $(document).on('click', '.edit-staff', function() { openStaffModal($(this).data('id')); });
         $(document).on('click', '.delete-staff', function() { deleteStaff($(this).data('id')); });
-        $('.close-modal, .staff-modal .button-secondary').on('click', closeStaffModal);
+        $('.elite-close, .staff-close, .staff-cancel').on('click', closeStaffModal);
         $('#staff-form').on('submit', handleStaffFormSubmit);
 
-        $('#apply-filters').on('click', function() { currentPage = 1; loadStaffList(); });
-        $('#reset-filters').on('click', function() {
+        // Close modal when clicking on backdrop
+        $(document).on('click', '.elite-modal', function(e) {
+            if (e.target === this) {
+                closeStaffModal();
+            }
+        });
+
+        $('#apply-staff-filters').on('click', function() { currentPage = 1; loadStaffList(); });
+        $('#reset-staff-filters').on('click', function() {
             $('#staff-search, #filter-role, #filter-status').val('');
             currentPage = 1; loadStaffList();
         });
