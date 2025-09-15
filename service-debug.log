@@ -1,0 +1,160 @@
+2025-09-10 03:27:37 - mvp_add_service called
+POST: Array
+(
+    [action] => mvp_add_service
+    [nonce] => 3e579fd53c
+    [title] => Foot Massage
+    [description] => holistic Foot Massage
+    [price] => 120
+    [duration] => 30
+    [is_featured] => 0
+    [service_id] => 
+)
+
+
+2025-09-10 03:28:13 - mvp_add_service called
+POST: Array
+(
+    [action] => mvp_add_service
+    [nonce] => 3e579fd53c
+    [title] => Foot Massage
+    [description] => holistic Foot Massage
+    [price] => 
+    [duration] => 
+    [is_featured] => 0
+    [categories] => Array
+        (
+            [0] => 7
+        )
+
+    [service_id] => 74
+)
+
+
+2025-09-11 03:12:59 - mvp_add_service called
+POST: Array
+(
+    [action] => mvp_add_service
+    [nonce] => 1dd6233719
+    [title] => Foot Massage
+    [description] => Hollistic Foot Massage
+    [price] => 500
+    [duration] => 45 min
+    [is_featured] => 1
+    [service_id] => 
+)
+
+
+2025-09-11 03:13:23 - mvp_add_service called
+POST: Array
+(
+    [action] => mvp_add_service
+    [nonce] => 1dd6233719
+    [title] => Foot Massage
+    [description] => Hollistic Foot Massage
+    [price] => 
+    [duration] => 
+    [is_featured] => 0
+    [categories] => Array
+        (
+            [0] => 7
+        )
+
+    [service_id] => 85
+)
+
+
+2025-09-11 03:36:46 - mvp_add_service called
+POST: Array
+(
+    [action] => mvp_add_service
+    [nonce] => 1dd6233719
+    [title] => haircut
+    [description] => Buzz cut
+    [price] => 300
+    [duration] => 60
+    [is_featured] => 0
+    [service_id] => 
+)
+
+
+2025-09-11 03:54:01 - mvp_add_service called
+POST: Array
+(
+    [action] => mvp_add_service
+    [nonce] => 1dd6233719
+    [title] => Trim haircut
+    [description] => dsaaeqw
+    [price] => 300
+    [duration] => 60
+    [is_featured] => 0
+    [categories] => Array
+        (
+            [0] => 8
+        )
+
+    [service_id] => 
+)
+
+
+2025-09-11 03:54:11 - mvp_add_service called
+POST: Array
+(
+    [action] => mvp_add_service
+    [nonce] => 1dd6233719
+    [title] => haircut
+    [description] => Buzz cut
+    [price] => 
+    [duration] => 
+    [is_featured] => 0
+    [categories] => Array
+        (
+            [0] => 7
+        )
+
+    [service_id] => 87
+)
+
+
+2025-09-13 03:36:25 - mvp_add_service called
+POST: Array
+(
+    [action] => mvp_add_service
+    [nonce] => 5c2f30c12a
+    [title] => HairCut
+    [description] => Trim
+    [price] => 300
+    [duration] => 60 
+    [is_featured] => 0
+    [service_id] => 
+)
+
+
+2025-09-13 09:26:33 - mvp_add_service called
+POST: Array
+(
+    [action] => mvp_add_service
+    [nonce] => 530630ecbf
+    [title] => massage
+    [description] => massage
+    [price] => 300
+    [duration] => 30
+    [is_featured] => 0
+    [service_id] => 
+)
+
+
+2025-09-13 09:26:58 - mvp_add_service called
+POST: Array
+(
+    [action] => mvp_add_service
+    [nonce] => 530630ecbf
+    [title] => massage
+    [description] => sdajdakjs
+    [price] => 
+    [duration] => 
+    [is_featured] => 0
+    [service_id] => 190
+)
+
+
