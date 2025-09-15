@@ -668,6 +668,7 @@ function handle_staff_ajax() {
                 $search = isset($data['search']) ? sanitize_text_field($data['search']) : '';
                 $status = isset($data['status']) ? sanitize_text_field($data['status']) : '';
                 $service_id = isset($data['service_id']) ? absint($data['service_id']) : 0;
+                $id = isset($data['id']) ? absint($data['id']) : 0;
 
                 $args = array(
                     'post_type' => 'staff',
@@ -675,6 +676,12 @@ function handle_staff_ajax() {
                     'paged' => $paged,
                     'post_status' => 'publish'
                 );
+
+                // If specific ID is requested, override other parameters
+                if (!empty($id)) {
+                    $args['p'] = $id;
+                    $args['posts_per_page'] = 1;
+                }
 
                 $meta_query = array();
                 if (!empty($status)) {
@@ -1032,6 +1039,36 @@ function payndle_register_staff_cpt() {
     ));
 }
 add_action('init', 'payndle_register_staff_cpt');
+
+/**
+ * Create sample staff for testing (only if none exist)
+ */
+function payndle_create_sample_staff() {
+    // Only create sample data if no staff exists
+    $existing_staff = get_posts(array(
+        'post_type' => 'staff',
+        'posts_per_page' => 1,
+        'post_status' => 'publish'
+    ));
+    
+    if (empty($existing_staff)) {
+        // Create a sample staff member
+        $staff_id = wp_insert_post(array(
+            'post_title' => 'John Doe',
+            'post_type' => 'staff',
+            'post_status' => 'publish'
+        ));
+        
+        if ($staff_id && !is_wp_error($staff_id)) {
+            update_post_meta($staff_id, 'email', 'john.doe@example.com');
+            update_post_meta($staff_id, 'phone', '(555) 123-4567');
+            update_post_meta($staff_id, 'staff_status', 'active');
+            update_post_meta($staff_id, 'staff_services', array());
+        }
+    }
+}
+// Hook this to admin_init to create sample data when visiting admin
+add_action('admin_init', 'payndle_create_sample_staff');
 
 /**
  * Enqueue admin styles and scripts
