@@ -290,234 +290,200 @@ function elite_cuts_manage_staff_page() {
         .elite-button.small { padding: 0.4rem 0.7rem; font-size: 0.75rem; }
         .help-text { color: var(--text-secondary); font-size: 0.8rem; margin-top: 0.35rem; }
     </style>
-
-    <?php if ( is_admin() ) : ?>
-    <script>
-    jQuery(document).ready(function($) {
-        const staffTbody = $('#staff-list');
-
-        function renderStaff(list) {
-            staffTbody.empty();
-            if (!list || list.length === 0) {
-                staffTbody.append('<tr><td colspan="6" class="no-staff">No staff found</td></tr>');
-                return;
-            }
-            list.forEach(member => {
-                const statusLabel = member.status === 'active' ? 'Active' : 'Inactive';
-                const initial = (member.name || '').trim().charAt(0).toUpperCase() || '?';
-                const avatarHtml = `<div class="avatar-initial" aria-hidden="true">${initial}</div>`;
-                const servicesHtml = (member.services || []).map(s => `<span class="mvp-category-badge">${s.title}</span>`).join(' ');
-                const row = `
-                    <tr>
-                        <td>
-                            <div class="staff-cell">
-                                ${avatarHtml}
-                                <div class="staff-meta">
-                                    <span class="staff-name">${member.name}</span>
-                                    <span class="staff-sub">${servicesHtml}</span>
-                                </div>
-                            </div>
-                        </td>
-                        <td></td>
-                        <td>${member.email}<br><span class="staff-sub">${member.phone}</span></td>
-                        <td></td>
-                        <td><span class="status-badge status-${member.status}">${statusLabel}</span></td>
-                        <td>
-                            <div class="action-buttons">
-                                <button class="icon-btn edit" aria-label="Edit staff" data-tooltip="Edit" data-id="${member.id}"><i class="fa-solid fa-pen-to-square"></i></button>
-                                ${member.status === 'active'
-                                    ? `<button class=\"icon-btn deactivate toggle-status\" aria-label=\"Deactivate\" data-tooltip=\"Deactivate\" data-id=\"${member.id}\" data-status=\"inactive\"><i class=\"fa-solid fa-user-slash\"></i></button>`
-                                    : `<button class=\"icon-btn activate toggle-status\" aria-label=\"Activate\" data-tooltip=\"Activate\" data-id=\"${member.id}\" data-status=\"active\"><i class=\"fa-solid fa-user-check\"></i></button>`}
-                                <button class="icon-btn schedule assign-schedule" aria-label="Assign schedule" data-tooltip="Assign schedule" data-id="${member.id}"><i class="fa-solid fa-calendar-plus"></i></button>
-                            </div>
-                        </td>
-                    </tr>`;
-                staffTbody.append(row);
-            });
-        }
-
-        function loadStaff(filters = {}) {
-            const payload = { action_type: 'get_staff', data: filters };
-            $.post(ajaxurl, { action: 'manage_staff', nonce: '<?php echo wp_create_nonce('staff_management_nonce'); ?>', action_type: 'get_staff', data: JSON.stringify(filters) }, function(resp) {
-                if (!resp || !resp.success) {
-                    staffTbody.html('<tr><td colspan="6">Could not load staff</td></tr>');
-                    return;
-                }
-                renderStaff(resp.data.staff || []);
-            }).fail(function(){ staffTbody.html('<tr><td colspan="6">Could not load staff (server error)</td></tr>'); });
-        }
-
-        // Initial load
-        loadStaff();
-
-        // Apply filters button
-        $('#apply-staff-filters').on('click', function(){
-            const serviceId = $('#filter-service').length ? parseInt($('#filter-service').val() || '0') : 0;
-            const status = $('#filter-status').val() || '';
-            const q = $('#staff-search').val() || '';
-            loadStaff({ service_id: serviceId, status: status, search: q });
-        });
-
-        $('#reset-staff-filters').on('click', function(){
-            $('#filter-service').val('');
-            $('#filter-status').val('');
-            $('#staff-search').val('');
-            loadStaff();
-        });
-
-        // Filter actions
-        $('#apply-staff-filters').on('click', applyFilters);
-        $('#reset-staff-filters').on('click', resetFilters);
-        $('#staff-search').on('keyup', function(e){ if (e.key === 'Enter') applyFilters(); });
-
-        // Modal elements
-        const staffModal = document.getElementById('staff-modal');
-        const scheduleModal = document.getElementById('schedule-modal');
-
-        function openModal(modalEl) { modalEl.style.display = 'flex'; }
-        function closeModal(modalEl) { modalEl.style.display = 'none'; }
-
-        // Add new staff
-        $('#add-staff-btn').on('click', function() {
-            document.querySelector('#staff-modal h3').textContent = 'Add New Staff';
-            document.getElementById('staff-form').reset();
-            $('#staff-id').val('');
-            openModal(staffModal);
-        });
-
-        // Close handlers
-        $('.staff-close, .staff-cancel').on('click', function(){ closeModal(staffModal); });
-        $('.schedule-close, .schedule-cancel').on('click', function(){ closeModal(scheduleModal); });
-        window.onclick = function(event) {
-            if (event.target === staffModal) closeModal(staffModal);
-            if (event.target === scheduleModal) closeModal(scheduleModal);
-        };
-
-        // Save staff (simulate create/update)
-        $('#staff-form').on('submit', function(e) {
-            e.preventDefault();
-            const id = parseInt($('#staff-id').val());
-            const member = {
-                id: id || (Math.max(0, ...staffData.map(s => s.id)) + 1),
-                name: $('#staff-name').val(),
-                role: $('#staff-role').val(),
-                email: $('#staff-email').val(),
-                phone: $('#staff-phone').val(),
-                availability: $('#staff-availability').val(),
-                status: $('#staff-status').val(),
-                avatar: ($('#staff-avatar').val() || '').trim()
-            };
-            if (id) {
-                const idx = staffData.findIndex(s => s.id === id);
-                if (idx > -1) staffData[idx] = member;
-            } else {
-                staffData.push(member);
-            }
-            showToast(id ? 'Staff updated successfully' : 'New staff created', 'success');
-            closeModal(staffModal);
-            applyFilters();
-        });
-
-        // Edit staff handler
-        $(document).on('click', '.edit-staff, .icon-btn.edit', function(e) {
-            e.preventDefault();
-            const id = parseInt($(this).data('id'));
-            const m = staffData.find(x => x.id === id);
-            if (!m) return;
-            document.querySelector('#staff-modal h3').textContent = 'Edit Staff';
-            $('#staff-id').val(m.id);
-            $('#staff-name').val(m.name);
-            $('#staff-role').val(m.role);
-            $('#staff-email').val(m.email);
-            $('#staff-phone').val(m.phone);
-            $('#staff-availability').val(m.availability);
-            $('#staff-status').val(m.status);
-            $('#staff-avatar').val(m.avatar);
-            openModal(staffModal);
-        });
-
-        // Toggle status (activate/deactivate)
-        $(document).on('click', '.toggle-status', function(e) {
-            e.preventDefault();
-            const id = parseInt($(this).data('id'));
-            const newStatus = $(this).data('status');
-            const idx = staffData.findIndex(s => s.id === id);
-            if (idx > -1) {
-                staffData[idx].status = newStatus;
-                const msg = newStatus === 'active' ? 'Staff activated' : 'Staff deactivated';
-                showToast(`ID #${id}: ${msg}`, newStatus === 'active' ? 'success' : 'warning');
-                applyFilters();
-            }
-        });
-
-        // Assign schedule
-        $(document).on('click', '.assign-schedule', function(e) {
-            e.preventDefault();
-            const id = parseInt($(this).data('id'));
-            $('#schedule-staff-id').val(id);
-            document.querySelector('#schedule-modal h3').textContent = `Assign Schedule (ID #${id})`;
-            openModal(scheduleModal);
-        });
-
-        $('#schedule-form').on('submit', function(e) {
-            e.preventDefault();
-            const id = parseInt($('#schedule-staff-id').val());
-            const date = $('#schedule-date').val();
-            const start = $('#schedule-start').val();
-            const end = $('#schedule-end').val();
-            // Simulate schedule save
-            showToast(`Schedule assigned to #${id} on ${date} (${start}–${end})`, 'success');
-            closeModal(scheduleModal);
-        });
-
-        $(document).on('click', '#staff-avatar-upload', function(e){
-            e.preventDefault();
-            const canUpload = $(this).data('can-upload') === 1 || $(this).data('can-upload') === '1';
-            if (!canUpload || typeof wp === 'undefined' || !wp.media) {
-                alert('You do not have permission to upload files or the Media Library is unavailable.');
-                return;
-            }
-            // Admin media frame
-            if (typeof wp !== 'undefined' && wp.media) {
-                const frame = wp.media({ title: 'Select Profile Photo', multiple: false });
-                frame.on('select', function(){
-                    const attachment = frame.state().get('selection').first().toJSON();
-                    if (!attachment) return;
-                    const url = attachment.sizes && attachment.sizes.thumbnail ? attachment.sizes.thumbnail.url : attachment.url;
-                    $('#staff-avatar').val(attachment.url);
-                    $('#staff-avatar-id').val(attachment.id);
-                    $('#staff-avatar-preview').attr('src', url).show();
-                    $('#staff-avatar-placeholder').hide();
-                    $('#staff-avatar-clear').show();
-                });
-                frame.open();
-            }
-        });
-
-        // Toast helper
-        function showToast(message, type = 'success') {
-            const $container = $('#elite-toast-container');
-            const $el = $(`<div class="elite-toast ${type}"></div>`).text(message);
-            $container.append($el);
-            // animate in
-            requestAnimationFrame(() => $el.addClass('show'));
-            // auto dismiss
-            setTimeout(() => {
-                $el.removeClass('show');
-                setTimeout(() => $el.remove(), 200);
-            }, 2600);
-        }
-
-        // Helper: get first letter initial from full name
-        function getInitial(name) {
-            if (!name || typeof name !== 'string') return '?';
-            const first = name.trim().charAt(0).toUpperCase();
-            return first || '?';
-        }
-    });
-    </script>
-    <?php endif; ?>
     <?php
+}
+
+// Enqueue admin styles and scripts - now using same enhanced JS as shortcode
+function elite_cuts_admin_scripts($hook) {
+    if ('elite-cuts_page_elite-cuts-staff' !== $hook) {
+        return;
+    }
+    
+    // Use the same enhanced JavaScript and CSS as the shortcode for consistency
+    wp_enqueue_media(); // Required for wp.media in admin
+    wp_enqueue_script('staff-management-js', plugin_dir_url(__FILE__) . 'assets/js/staff-management.js', array('jquery'), '1.0', true);
+    wp_enqueue_style('staff-management-css', plugin_dir_url(__FILE__) . 'assets/css/staff-management.css', array(), '1.0');
+    
+    // Localize script with admin context variables (same as shortcode but fixed variable name)
+    wp_localize_script('staff-management-js', 'staffManager', array(
+        'ajax_url' => admin_url('admin-ajax.php'),
+        'rest_url' => rest_url('wp/v2/'),
+        'nonce' => wp_create_nonce('staff_management_nonce'),
+        'rest_nonce' => wp_create_nonce('wp_rest'),
+        'context' => 'admin',
+        'has_media' => 'true',
+        'confirm_delete' => 'Are you sure you want to delete this staff member?',
+    ));
+}
+add_action('admin_enqueue_scripts', 'elite_cuts_admin_scripts');
+
+// AJAX handler for staff management 
+function handle_manage_staff_ajax() {
+    // Verify nonce
+    if (!wp_verify_nonce($_POST['nonce'], 'staff_management_nonce')) {
+        wp_die('Security check failed');
+    }
+
+    // Check user capabilities
+    if (!current_user_can('manage_options')) {
+        wp_die('Insufficient permissions');
+    }
+
+    $action_type = sanitize_text_field($_POST['action_type']);
+    $data = json_decode(stripslashes($_POST['data']), true);
+
+    switch ($action_type) {
+        case 'get_staff':
+            elite_cuts_get_staff($data);
+            break;
+        case 'add_staff':
+            elite_cuts_add_staff($data);
+            break;
+        case 'update_staff':
+            elite_cuts_update_staff($data);
+            break;
+        case 'delete_staff':
+            elite_cuts_delete_staff($data);
+            break;
+        default:
+            wp_send_json_error('Invalid action');
+    }
+}
+add_action('wp_ajax_manage_staff', 'handle_manage_staff_ajax');
+
+// Get staff function
+function elite_cuts_get_staff($filters = array()) {
+    $args = array(
+        'post_type' => 'staff',
+        'post_status' => 'publish',
+        'posts_per_page' => isset($filters['per_page']) ? intval($filters['per_page']) : 10,
+        'paged' => isset($filters['paged']) ? intval($filters['paged']) : 1,
+    );
+
+    if (isset($filters['search']) && !empty($filters['search'])) {
+        $args['s'] = sanitize_text_field($filters['search']);
+    }
+
+    if (isset($filters['status']) && !empty($filters['status'])) {
+        $args['meta_query'][] = array(
+            'key' => 'staff_status',
+            'value' => sanitize_text_field($filters['status']),
+            'compare' => '='
+        );
+    }
+
+    if (isset($filters['id']) && !empty($filters['id'])) {
+        $args['p'] = intval($filters['id']);
+    }
+
+    $query = new WP_Query($args);
+    $staff = array();
+
+    if ($query->have_posts()) {
+        while ($query->have_posts()) {
+            $query->the_post();
+            $post_id = get_the_ID();
+            
+            $avatar = get_post_meta($post_id, 'staff_avatar', true);
+            $avatar_id = get_post_meta($post_id, 'staff_avatar_id', true);
+            
+            $staff[] = array(
+                'id' => $post_id,
+                'name' => get_the_title(),
+                'email' => get_post_meta($post_id, 'staff_email', true),
+                'phone' => get_post_meta($post_id, 'staff_phone', true),
+                'status' => get_post_meta($post_id, 'staff_status', true),
+                'role' => get_post_meta($post_id, 'staff_role', true),
+                'avatar' => $avatar,
+                'avatar_id' => $avatar_id,
+                'services' => array(), // TODO: implement services relationship
+            );
+        }
+        wp_reset_postdata();
+    }
+
+    $pagination = array(
+        'total' => $query->found_posts,
+        'current_page' => $args['paged'],
+        'total_pages' => $query->max_num_pages,
+    );
+
+    wp_send_json_success(array(
+        'staff' => $staff,
+        'pagination' => $pagination
+    ));
+}
+
+// Add staff function
+function elite_cuts_add_staff($data) {
+    $post_data = array(
+        'post_title' => sanitize_text_field($data['name']),
+        'post_type' => 'staff',
+        'post_status' => 'publish',
+    );
+
+    $post_id = wp_insert_post($post_data);
+
+    if ($post_id) {
+        update_post_meta($post_id, 'staff_email', sanitize_email($data['email']));
+        update_post_meta($post_id, 'staff_phone', sanitize_text_field($data['phone']));
+        update_post_meta($post_id, 'staff_status', sanitize_text_field($data['status']));
+        update_post_meta($post_id, 'staff_role', sanitize_text_field($data['role']));
+        
+        if (isset($data['avatar']) && !empty($data['avatar'])) {
+            update_post_meta($post_id, 'staff_avatar', esc_url_raw($data['avatar']));
+        }
+        if (isset($data['avatar_id']) && !empty($data['avatar_id'])) {
+            update_post_meta($post_id, 'staff_avatar_id', intval($data['avatar_id']));
+            set_post_thumbnail($post_id, intval($data['avatar_id']));
+        }
+
+        wp_send_json_success(array('message' => 'Staff member added successfully', 'id' => $post_id));
+    } else {
+        wp_send_json_error('Failed to add staff member');
+    }
+}
+
+// Update staff function
+function elite_cuts_update_staff($data) {
+    $post_id = intval($data['id']);
+    
+    $post_data = array(
+        'ID' => $post_id,
+        'post_title' => sanitize_text_field($data['name']),
+    );
+
+    $result = wp_update_post($post_data);
+
+    if ($result) {
+        update_post_meta($post_id, 'staff_email', sanitize_email($data['email']));
+        update_post_meta($post_id, 'staff_phone', sanitize_text_field($data['phone']));
+        update_post_meta($post_id, 'staff_status', sanitize_text_field($data['status']));
+        update_post_meta($post_id, 'staff_role', sanitize_text_field($data['role']));
+        
+        if (isset($data['avatar']) && !empty($data['avatar'])) {
+            update_post_meta($post_id, 'staff_avatar', esc_url_raw($data['avatar']));
+        }
+        if (isset($data['avatar_id']) && !empty($data['avatar_id'])) {
+            update_post_meta($post_id, 'staff_avatar_id', intval($data['avatar_id']));
+            set_post_thumbnail($post_id, intval($data['avatar_id']));
+        }
+
+        wp_send_json_success(array('message' => 'Staff member updated successfully'));
+    } else {
+        wp_send_json_error('Failed to update staff member');
+    }
+}
+
+// Delete staff function
+function elite_cuts_delete_staff($data) {
+    $post_id = intval($data['id']);
+    
+    if (wp_delete_post($post_id, true)) {
+        wp_send_json_success(array('message' => 'Staff member deleted successfully'));
+    } else {
+        wp_send_json_error('Failed to delete staff member');
+    }
 }
 
 // Register submenu under existing Elite Cuts menu (created in manage-bookings.php)
@@ -534,28 +500,15 @@ function elite_cuts_add_staff_submenu() {
 }
 add_action('admin_menu', 'elite_cuts_add_staff_submenu');
 
-// Enqueue admin assets for staff page
-function elite_cuts_staff_admin_assets($hook) {
-    // Target submenu page hook suffix
-    if ('elite-cuts-bookings_page_elite-cuts-staff' !== $hook) {
-        return;
-    }
-    wp_enqueue_script('jquery');
-    wp_enqueue_style('font-awesome', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css');
-    // Use Inter for primary UI typography (weights: 400,500,600,700) and keep Playfair only if needed for legacy headings
-    wp_enqueue_style('google-fonts', 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@400;700&display=swap');
-    // Media Library for avatar upload (only if the user can upload files)
-    if (function_exists('wp_enqueue_media') && current_user_can('upload_files')) { wp_enqueue_media(); }
-}
-add_action('admin_enqueue_scripts', 'elite_cuts_staff_admin_assets');
-
 // Optional: Front-end shortcode gated by permissions
 function elite_cuts_manage_staff_shortcode() {
     if (!is_user_logged_in() || !current_user_can('manage_options')) {
-        return '<p>You need to be logged in with the right permissions to view this page.</p>';
+        return '<p>Access denied.</p>';
     }
+    
     ob_start();
     elite_cuts_manage_staff_page();
     return ob_get_clean();
 }
-add_shortcode('elite_cuts_manage_staff', 'elite_cuts_manage_staff_shortcode');
+add_shortcode('manage_staff', 'elite_cuts_manage_staff_shortcode');
+?>

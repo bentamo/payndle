@@ -48,6 +48,116 @@
 }
 
 /* Typography specifics */
+
+/* Upload Button & Avatar Styles */
+.avatar-preview {
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--color-accent-gray);
+    transition: border-color 0.2s ease;
+}
+
+.avatar-initial {
+    width: 54px;
+    height: 54px;
+    background: var(--color-accent-gray);
+    color: var(--color-navy);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: var(--h4-weight);
+    font-size: 18px;
+}
+
+#staff-avatar-upload {
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+#staff-avatar-upload:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+#staff-avatar-upload .spinner {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 2px solid transparent;
+    border-top: 2px solid currentColor;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 6px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+#staff-avatar-clear {
+    font-size: 12px;
+    padding: 4px 8px;
+    margin-top: 4px;
+    background: #f8f8f8;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+#staff-avatar-clear:hover {
+    background: #f0f0f0;
+    border-color: #ccc;
+}
+
+.help-text {
+    font-size: 11px;
+    color: #666;
+    line-height: 1.3;
+    margin-top: 2px;
+}
+
+/* Improved Popup Styles */
+.staff-popup {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    padding: 12px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    animation: slideInRight 0.3s ease;
+    max-width: 300px;
+}
+
+.popup-success {
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+}
+
+.popup-error {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
 .staff-management-container h1 { font-weight: var(--h1-weight); }
 .staff-management-container h2 { font-weight: var(--h2-weight); }
 .staff-management-container h3 { font-weight: var(--h3-weight); }

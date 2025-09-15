@@ -18,6 +18,7 @@ jQuery(document).ready(function($) {
     function initStaffManagement() {
         loadStaffList();
         bindEventListeners();
+        initializeAvatarUpload();
     }
 
     // Load staff list
@@ -238,6 +239,28 @@ jQuery(document).ready(function($) {
         const statusVal = $('#staff-status').length ? $('#staff-status').val() : 'active';
         const serviceVal = $('#staff-service').length ? $('#staff-service').val() : '';
 
+        // Form validation
+        const errors = [];
+        
+        if (!nameVal) {
+            errors.push('Staff name is required.');
+        }
+        
+        if (emailVal && !isValidEmail(emailVal)) {
+            errors.push('Please enter a valid email address.');
+        }
+        
+        if (phoneVal && !isValidPhone(phoneVal)) {
+            errors.push('Please enter a valid phone number.');
+        }
+        
+        if (errors.length > 0) {
+            showPopup('error', errors.join(' '));
+            $form.data('submitting', false);
+            $submitBtn.prop('disabled', false);
+            return;
+        }
+
         const formData = {
             name: nameVal,
             email: emailVal,
@@ -246,17 +269,9 @@ jQuery(document).ready(function($) {
             services: serviceVal ? [serviceVal] : []
         };
 
-            // include avatar fields from the shared template
-            if ($('#staff-avatar').length) formData.avatar = $('#staff-avatar').val();
-            if ($('#staff-avatar-id').length) formData.avatar_id = $('#staff-avatar-id').val();
-
-        if (!formData.name || !formData.email) {
-            showPopup('error', 'Please fill in all required fields');
-            // re-enable submit on validation failure
-            $form.data('submitting', false);
-            $submitBtn.prop('disabled', false);
-            return;
-        }
+        // Include avatar fields from the shared template
+        if ($('#staff-avatar').length) formData.avatar = $('#staff-avatar').val();
+        if ($('#staff-avatar-id').length) formData.avatar_id = $('#staff-avatar-id').val();
 
         const actionType = isEdit ? 'update_staff' : 'add_staff';
 
@@ -324,6 +339,130 @@ jQuery(document).ready(function($) {
         });
     }
 
+    // Avatar Upload System
+    function initializeAvatarUpload() {
+        // Check if we're in admin context with wp.media available
+        const hasWpMedia = typeof wp !== 'undefined' && wp.media;
+        
+        // Upload button click handler
+        $(document).on('click', '#staff-avatar-upload', function(e) {
+            e.preventDefault();
+            
+            if (hasWpMedia) {
+                // Use WordPress media library
+                const frame = wp.media({
+                    title: 'Select Profile Photo',
+                    multiple: false,
+                    library: { type: 'image' }
+                });
+                
+                frame.on('select', function() {
+                    const attachment = frame.state().get('selection').first().toJSON();
+                    if (attachment) {
+                        updateAvatarPreview(attachment.url, attachment.id);
+                        showPopup('success', 'Image selected successfully!');
+                    }
+                });
+                
+                frame.open();
+            } else {
+                // Fallback to file input for frontend
+                $('#staff-avatar-file').trigger('click');
+            }
+        });
+        
+        // File input change handler for frontend uploads
+        $(document).on('change', '#staff-avatar-file', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                showPopup('error', 'Please select a valid image file.');
+                return;
+            }
+            
+            // Validate file size (5MB limit)
+            if (file.size > 5 * 1024 * 1024) {
+                showPopup('error', 'File size must be less than 5MB.');
+                return;
+            }
+            
+            uploadAvatarFile(file);
+        });
+        
+        // Clear avatar button
+        $(document).on('click', '#staff-avatar-clear', function(e) {
+            e.preventDefault();
+            updateAvatarPreview('', '');
+            showPopup('success', 'Avatar cleared successfully!');
+        });
+    }
+    
+    // Upload file via REST API
+    function uploadAvatarFile(file) {
+        const $uploadBtn = $('#staff-avatar-upload');
+        const originalText = $uploadBtn.text();
+        
+        // Show loading state
+        $uploadBtn.html('<span class="spinner"></span> Uploading...').prop('disabled', true);
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        $.ajax({
+            url: staffManager.rest_url + 'payndle/v1/upload-avatar',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            headers: {
+                'X-WP-Nonce': staffManager.rest_nonce
+            },
+            success: function(response) {
+                updateAvatarPreview(response.url, response.id);
+                showPopup('success', 'Image uploaded successfully!');
+            },
+            error: function(xhr, status, error) {
+                let errorMessage = 'Upload failed. Please try again.';
+                
+                // Try to get more specific error message
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMessage = xhr.responseJSON.message;
+                } else if (xhr.status === 413) {
+                    errorMessage = 'File too large. Please choose a smaller image.';
+                } else if (xhr.status === 403) {
+                    errorMessage = 'Permission denied. Please check your login status.';
+                } else if (xhr.status === 0) {
+                    errorMessage = 'Network error. Please check your connection.';
+                }
+                
+                showPopup('error', errorMessage);
+            },
+            complete: function() {
+                // Restore button state
+                $uploadBtn.text(originalText).prop('disabled', false);
+                $('#staff-avatar-file').val(''); // Clear file input
+            }
+        });
+    }
+    
+    // Update avatar preview
+    function updateAvatarPreview(url, id) {
+        $('#staff-avatar').val(url);
+        $('#staff-avatar-id').val(id);
+        
+        if (url) {
+            $('#staff-avatar-preview').attr('src', url).show();
+            $('#staff-avatar-placeholder').hide();
+            $('#staff-avatar-clear').show();
+        } else {
+            $('#staff-avatar-preview').hide();
+            $('#staff-avatar-placeholder').show();
+            $('#staff-avatar-clear').hide();
+        }
+    }
+
     // Events
     function bindEventListeners() {
         $('#add-staff-btn').on('click', function() { openStaffModal(); });
@@ -343,5 +482,17 @@ jQuery(document).ready(function($) {
         $('.prev-page').on('click', function(e) { e.preventDefault(); if (currentPage > 1) { currentPage--; loadStaffList(); } });
         $('.next-page').on('click', function(e) { e.preventDefault(); if (currentPage < totalPages) { currentPage++; loadStaffList(); } });
         $('.last-page').on('click', function(e) { e.preventDefault(); if (currentPage < totalPages) { currentPage = totalPages; loadStaffList(); } });
+    }
+
+    // Validation helper functions
+    function isValidEmail(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    }
+
+    function isValidPhone(phone) {
+        // Allow various phone formats: (123) 456-7890, 123-456-7890, 123.456.7890, 123 456 7890, +1234567890
+        const phoneRegex = /^[\+]?[1-9][\d]{0,15}$|^[\(]?[\d]{3}[\)]?[-.\s]?[\d]{3}[-.\s]?[\d]{4}$/;
+        return phoneRegex.test(phone.replace(/[\s\-\.\(\)]/g, ''));
     }
 });
