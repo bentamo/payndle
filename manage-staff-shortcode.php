@@ -77,12 +77,8 @@ if (!function_exists('payndle_render_staff_form')) {
                                     <input type="hidden" id="staff-avatar" value="">
                                     <input type="file" id="staff-avatar-file" accept="image/*" style="display:none;" />
                                     <div style="display:flex; flex-direction:column; gap:0.4rem;">
-                                        <button type="button" id="staff-avatar-upload" class="elite-button secondary" data-can-upload="<?php echo current_user_can('upload_files') ? '1' : '0'; ?>"><?php _e('Upload / Select', 'payndle'); ?></button>
-                                        <button type="button" id="staff-avatar-clear" class="elite-button secondary" style="display:none;"><?php _e('Remove', 'payndle'); ?></button>
-                                        <?php if (current_user_can('manage_options')): ?>
-                                            <button type="button" id="staff-avatar-test" class="elite-button tertiary" style="background:#f3f4f6; color:#111;"><?php _e('Test Upload', 'payndle'); ?></button>
-                                        <?php endif; ?>
-                                        <div class="help-text"><?php _e('Upload a profile photo or choose from the Media Library.', 'payndle'); ?></div>
+                                        <button type="button" id="staff-avatar-upload" class="button button-secondary"><?php _e('Upload / Select', 'payndle'); ?></button>
+                                        <div class="help-text"><?php _e('Choose an image file to upload as profile photo.', 'payndle'); ?></div>
                                     </div>
                                 </div>
                             </div>
@@ -109,17 +105,21 @@ function manage_staff_shortcode($atts) {
     wp_enqueue_style('manage-staff-style', plugin_dir_url(__FILE__) . 'assets/css/manage-staff.css');
     // Enqueue the front-end staff management script (existing file) and ensure underscore is available
     wp_enqueue_script('staff-management-script', plugin_dir_url(__FILE__) . 'assets/js/staff-management.js', array('jquery', 'underscore'), '1.0.0', true);
-    // Ensure WP media scripts are available if current user can upload
-    if (function_exists('wp_enqueue_media') && current_user_can('upload_files')) {
+    // Ensure WP media scripts are available for upload functionality
+    if (function_exists('wp_enqueue_media')) {
         wp_enqueue_media();
     }
     
-    // Localize script with AJAX URL and nonce
+    // Localize script with AJAX URL and nonce - MOVED TO ENQUEUE FUNCTION
+    /*
     wp_localize_script('staff-management-script', 'staffManager', array(
         'ajax_url' => admin_url('admin-ajax.php'),
         'nonce' => wp_create_nonce('staff_management_nonce'),
+        'rest_url' => rest_url(),
+        'rest_nonce' => wp_create_nonce('wp_rest'),
         'confirm_delete' => __('Are you sure you want to delete this staff member?', 'payndle'),
     ));
+    */
 
     // Check user capabilities - allow any logged-in user to match the AJAX handler
     if (!is_user_logged_in()) {
@@ -231,6 +231,30 @@ function manage_staff_shortcode($atts) {
     
     <!-- Message Container -->
     <div id="message-container"></div>
+
+    <!-- Avatar Upload Modal (present in DOM for JS to control) -->
+    <div id="avatar-upload-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><?php _e('Upload Profile Photo', 'payndle'); ?></h3>
+                <span class="close avatar-upload-close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="avatar-dropzone" class="avatar-dropzone">
+                    <div class="dz-instructions"><?php _e('Drag & drop an image here, or click to select a file', 'payndle'); ?></div>
+                    <input type="file" id="avatar-drop-input" accept="image/*" style="display:none;" />
+                    <div id="avatar-dz-preview" class="avatar-dz-preview" style="display:none;"></div>
+                </div>
+                <div class="dz-progress" style="display:none;">
+                    <div class="dz-progress-bar" style="width:0%"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="avatar-upload-cancel" class="button"><?php _e('Cancel', 'payndle'); ?></button>
+                <button type="button" id="avatar-upload-confirm" class="button button-primary" style="display:none;"><?php _e('Upload', 'payndle'); ?></button>
+            </div>
+        </div>
+    </div>
     
     <script type="text/template" id="staff-row-template">
         <tr data-id="<%= id %>">
@@ -257,6 +281,180 @@ function manage_staff_shortcode($atts) {
     <script>
     (function(){
         function init() {
+        console.log('=== STAFF MANAGEMENT INIT START ===');
+        console.log('DOM ready state:', document.readyState);
+        console.log('Underscore available:', typeof _);
+
+        // Initialize unified upload system
+        function initializeUploadSystem() {
+            console.log('Initializing unified upload system...');
+            
+            const uploadBtn = document.getElementById('staff-avatar-upload');
+            const fileInput = document.getElementById('staff-avatar-file');
+            
+            if (!uploadBtn) {
+                console.warn('Upload button not found');
+                return;
+            }
+            
+            console.log('Upload button found, setting up handlers...');
+            
+            // Check if wp.media is available (admin context)
+            const hasWpMedia = typeof wp !== 'undefined' && wp.media;
+            console.log('WordPress media available:', hasWpMedia);
+            
+            if (hasWpMedia) {
+                // Use WordPress media library
+                uploadBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    console.log('Opening WordPress media library...');
+                    
+                    const frame = wp.media({
+                        title: 'Select Profile Photo',
+                        multiple: false
+                    });
+                    
+                    frame.on('select', function() {
+                        const attachment = frame.state().get('selection').first().toJSON();
+                        console.log('Media selected:', attachment);
+                        
+                        if (attachment) {
+                            updateAvatarPreview(attachment.url, attachment.id);
+                        }
+                    });
+                    
+                    frame.open();
+                });
+            } else {
+                // Use file input + REST API
+                uploadBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    console.log('Triggering file input...');
+                    
+                    if (fileInput) {
+                        fileInput.click();
+                    } else {
+                        console.error('File input not found');
+                    }
+                });
+                
+                if (fileInput) {
+                    fileInput.addEventListener('change', handleFileUpload);
+                }
+            }
+        }
+        
+        function updateAvatarPreview(url, id) {
+            console.log('Updating avatar preview:', { url, id });
+            
+            // Update hidden fields
+            const avatarInput = document.getElementById('staff-avatar');
+            const avatarIdInput = document.getElementById('staff-avatar-id');
+            
+            if (avatarInput) avatarInput.value = url;
+            if (avatarIdInput) avatarIdInput.value = id;
+            
+            // Update preview
+            const preview = document.getElementById('staff-avatar-preview');
+            const placeholder = document.getElementById('staff-avatar-placeholder');
+            
+            if (preview && url) {
+                preview.src = url;
+                preview.style.display = 'block';
+                if (placeholder) placeholder.style.display = 'none';
+            }
+        }
+        
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            console.log('Uploading file:', file.name);
+            
+            const uploadBtn = document.getElementById('staff-avatar-upload');
+            if (uploadBtn) {
+                uploadBtn.textContent = 'Uploading...';
+                uploadBtn.disabled = true;
+            }
+            
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const response = await fetch('<?php echo rest_url('payndle/v1/upload-avatar'); ?>', {
+                    method: 'POST',
+                    headers: {
+                        'X-WP-Nonce': '<?php echo wp_create_nonce('wp_rest'); ?>'
+                    },
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Upload failed: ' + response.status);
+                }
+                
+                const result = await response.json();
+                console.log('Upload successful:', result);
+                
+                updateAvatarPreview(result.url, result.id);
+                showMessage('Upload successful');
+                
+            } catch (error) {
+                console.error('Upload error:', error);
+                showMessage('Upload failed: ' + error.message, 'error');
+            } finally {
+                if (uploadBtn) {
+                    uploadBtn.textContent = '<?php _e('Upload / Select', 'payndle'); ?>';
+                    uploadBtn.disabled = false;
+                }
+                event.target.value = '';
+            }
+        }
+
+        // Initialize upload system
+        initializeUploadSystem();
+        
+        // SIMPLE DEBUG TEST - Add direct button click handler
+        setTimeout(function() {
+            const uploadBtn = document.getElementById('staff-avatar-upload');
+            console.log('DEBUG: Upload button found after timeout:', !!uploadBtn);
+            if (uploadBtn) {
+                // Remove any existing handlers and add a simple test
+                uploadBtn.onclick = function(e) {
+                    e.preventDefault();
+                    console.log('DEBUG: Upload button clicked!');
+                    alert('Upload button works! Checking wp.media availability...');
+                    
+                    if (typeof wp !== 'undefined' && wp.media) {
+                        console.log('DEBUG: wp.media available, opening media library');
+                        const frame = wp.media({
+                            title: 'Select Profile Photo',
+                            multiple: false,
+                            library: { type: 'image' }
+                        });
+                        
+                        frame.on('select', function() {
+                            const attachment = frame.state().get('selection').first().toJSON();
+                            console.log('DEBUG: Media selected:', attachment);
+                            alert('Image selected: ' + attachment.filename);
+                            updateAvatarPreview(attachment.url, attachment.id);
+                        });
+                        
+                        frame.open();
+                    } else {
+                        console.log('DEBUG: wp.media not available, triggering file input');
+                        const fileInput = document.getElementById('staff-avatar-file');
+                        if (fileInput) {
+                            fileInput.click();
+                        } else {
+                            alert('File input not found');
+                        }
+                    }
+                };
+                console.log('DEBUG: Simple click handler attached');
+            }
+        }, 1000);
+        
         const staffForm = document.getElementById('staff-form');
         const staffList = document.getElementById('staff-list');
         const addStaffBtn = document.getElementById('add-staff-btn');
@@ -264,7 +462,49 @@ function manage_staff_shortcode($atts) {
         const confirmModal = document.getElementById('confirm-modal');
         const closeBtns = document.querySelectorAll('.elite-close, .staff-cancel, #confirm-cancel');
         const messageContainer = document.getElementById('message-container');
-        const staffRowTemplate = _.template(document.getElementById('staff-row-template').innerHTML);
+        
+        console.log('Elements found:');
+        console.log('- staffForm:', !!staffForm);
+        console.log('- staffList:', !!staffList);
+        console.log('- addStaffBtn:', !!addStaffBtn);
+        console.log('- modal:', !!modal);
+        
+        const templateEl = document.getElementById('staff-row-template');
+        console.log('- template element:', !!templateEl);
+        
+        let staffRowTemplate;
+        if (templateEl && typeof _ !== 'undefined') {
+            try {
+                staffRowTemplate = _.template(templateEl.innerHTML);
+                console.log('Using underscore template');
+            } catch (e) {
+                console.error('Error creating underscore template:', e);
+                staffRowTemplate = null;
+            }
+        } else {
+            console.log('Underscore not available or template element missing, using fallback');
+            staffRowTemplate = function(data) {
+                return `<tr data-id="${data.id}">
+                    <td class="staff-name">${data.name || ''}</td>
+                    <td class="staff-role">${data.role || ''}</td>
+                    <td class="staff-email">${data.email || ''}</td>
+                    <td class="staff-phone">${data.phone || ''}</td>
+                    <td class="staff-status">
+                        <span class="status-badge status-${data.status || 'active'}">
+                            ${(data.status || 'active').charAt(0).toUpperCase() + (data.status || 'active').slice(1)}
+                        </span>
+                    </td>
+                    <td class="staff-actions">
+                        <button class="button button-small edit-staff" title="Edit">
+                            <span class="dashicons dashicons-edit"></span>
+                        </button>
+                        <button class="button button-small delete-staff" title="Delete">
+                            <span class="dashicons dashicons-trash"></span>
+                        </button>
+                    </td>
+                </tr>`;
+            };
+        }
 
         function showMessage(message, type = 'success') {
             const messageEl = document.createElement('div');
@@ -358,191 +598,38 @@ function manage_staff_shortcode($atts) {
         // close handlers
         closeBtns.forEach(b => b.addEventListener('click', closeModal));
 
-        // initial load
-        loadStaff();
+        // loadStaff();
         
-        // Media frame for avatar upload
-        let avatarFrame = null;
-        function openAvatarFrame() {
-            console.log('openAvatarFrame invoked', typeof wp, !!(typeof wp !== 'undefined' && wp.media));
-            if (typeof wp !== 'undefined' && wp.media) {
-                if (avatarFrame) avatarFrame.open();
-                else {
-                    avatarFrame = wp.media({ title: '<?php _e('Select Profile Photo', 'payndle'); ?>', multiple: false });
-                    avatarFrame.on('select', function() {
-                        const attachment = avatarFrame.state().get('selection').first().toJSON();
-                        if (!attachment) return;
-                        const url = attachment.sizes && attachment.sizes.thumbnail ? attachment.sizes.thumbnail.url : attachment.url;
-                        document.getElementById('staff-avatar').value = attachment.url;
-                        document.getElementById('staff-avatar-id').value = attachment.id;
-                        const img = document.getElementById('staff-avatar-preview');
-                        const placeholder = document.getElementById('staff-avatar-placeholder');
-                        if (img) { img.src = url; img.style.display = 'block'; }
-                        if (placeholder) placeholder.style.display = 'none';
-                        document.getElementById('staff-avatar-clear').style.display = 'inline-block';
-                    });
-                    avatarFrame.open();
-                }
+        } // End of init function
+        
+        // Debug: Check what's available
+        console.log('=== SCRIPT LOADING DEBUG ===');
+        console.log('Document ready state:', document.readyState);
+        console.log('Underscore available:', typeof _);
+        console.log('jQuery available:', typeof jQuery);
+        console.log('WordPress available:', typeof wp);
+        
+        // Ensure DOM ready before init (don't block on underscore; init will gracefully handle its absence)
+        (function whenDOMReady(fn){
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', fn);
             } else {
-                // Fallback: prompt for URL
-                console.log('wp.media not available, falling back to prompt');
-                const url = prompt('<?php _e('Enter image URL', 'payndle'); ?>');
-                if (url) {
-                    document.getElementById('staff-avatar').value = url;
-                    document.getElementById('staff-avatar-id').value = '';
-                    const img = document.getElementById('staff-avatar-preview');
-                    const placeholder = document.getElementById('staff-avatar-placeholder');
-                    if (img) { img.src = url; img.style.display = 'block'; }
-                    if (placeholder) placeholder.style.display = 'none';
-                    document.getElementById('staff-avatar-clear').style.display = 'inline-block';
-                }
+                // call on next tick to let other scripts finish hooking if needed
+                setTimeout(fn, 0);
             }
-        }
-
-        // wire upload / clear buttons (direct bindings)
-        const uploadBtn = document.getElementById('staff-avatar-upload');
-        const clearBtn = document.getElementById('staff-avatar-clear');
-        if (uploadBtn) uploadBtn.addEventListener('click', function(e){ e.preventDefault(); openAvatarFrame(); });
-        if (clearBtn) clearBtn.addEventListener('click', function(e){ e.preventDefault(); document.getElementById('staff-avatar').value=''; document.getElementById('staff-avatar-id').value=''; const img=document.getElementById('staff-avatar-preview'); const placeholder=document.getElementById('staff-avatar-placeholder'); if (img) { img.src=''; img.style.display='none'; } if (placeholder) placeholder.style.display='flex'; this.style.display='none'; });
-
-        // Delegated handlers as a fallback in case direct bindings missed due to timing or dynamic DOM changes
-        document.addEventListener('click', function(e){
-            try {
-                // Add New Staff button (may be inside admin or shortcode header)
-                const addBtn = e.target.closest && e.target.closest('#add-staff-btn');
-                if (addBtn) {
-                    console.log('delegated: add-staff-btn clicked');
-                    e.preventDefault();
-                    const sf = document.getElementById('staff-form'); if (sf) sf.reset();
-                    const sid = document.getElementById('staff-id'); if (sid) sid.value = '';
-                    const titleEl = document.getElementById('staff-modal-title'); if (titleEl) titleEl.textContent = '<?php _e('Add New Staff', 'payndle'); ?>';
-                    openModal();
-                    return;
-                }
-
-                // Cancel / Close
-                if (e.target.closest && e.target.closest('.staff-cancel, .elite-close, #confirm-cancel')) {
-                    e.preventDefault();
-                    closeModal();
-                    return;
-                }
-
-                // Upload / Select
-                if (e.target.closest && e.target.closest('#staff-avatar-upload')) {
-                    console.log('delegated: staff-avatar-upload clicked');
-                    e.preventDefault();
-                    // try media frame first; if not available, trigger file input fallback
-                    if (typeof wp !== 'undefined' && wp.media) {
-                        openAvatarFrame();
-                    } else {
-                        const fileInput = document.getElementById('staff-avatar-file');
-                        if (fileInput) fileInput.click();
-                    }
-                    return;
-                }
-
-                // Clear avatar
-                if (e.target.closest && e.target.closest('#staff-avatar-clear')) {
-                    e.preventDefault();
-                    const av = document.getElementById('staff-avatar'); if (av) av.value = '';
-                    const avid = document.getElementById('staff-avatar-id'); if (avid) avid.value = '';
-                    const img = document.getElementById('staff-avatar-preview'); if (img) { img.src = ''; img.style.display = 'none'; }
-                    const placeholder = document.getElementById('staff-avatar-placeholder'); if (placeholder) placeholder.style.display = 'flex';
-                    e.target.style.display = 'none';
-                    return;
-                }
-            } catch (err) {
-                // swallow errors from delegation so UI doesn't break
-                // console.error(err);
-            }
-        });
-
-        // handle file input fallback upload
-        const fileInput = document.getElementById('staff-avatar-file');
-        if (fileInput) {
-            fileInput.addEventListener('change', function(ev){
-                const f = ev.target.files && ev.target.files[0];
-                if (!f) return;
-                const form = new FormData();
-                form.append('action', 'upload_avatar');
-                form.append('nonce', '<?php echo wp_create_nonce('staff_management_nonce'); ?>');
-                form.append('file', f);
-                fetch('<?php echo admin_url('admin-ajax.php'); ?>', { method: 'POST', body: form })
-                .then(r => r.json()).then(resp => {
-                    if (!resp || !resp.success) { alert(resp && resp.message ? resp.message : 'Upload failed'); return; }
-                    const url = resp.data.url;
-                    const id = resp.data.id;
-                    const img = document.getElementById('staff-avatar-preview');
-                    const placeholder = document.getElementById('staff-avatar-placeholder');
-                    if (img) { img.src = url; img.style.display = 'block'; }
-                    if (placeholder) placeholder.style.display = 'none';
-                    document.getElementById('staff-avatar').value = url;
-                    document.getElementById('staff-avatar-id').value = id;
-                    const clearBtn = document.getElementById('staff-avatar-clear'); if (clearBtn) clearBtn.style.display = 'inline-block';
-                }).catch(() => alert('Upload failed'));
-            });
-        }
-
-        // Ensure Upload button always has a fallback: if media frame isn't available, trigger file input
-        try {
-            const directUploadBtn = document.getElementById('staff-avatar-upload');
-            if (directUploadBtn) {
-                directUploadBtn.addEventListener('click', function(e){
-                    console.log('directUploadBtn clicked');
-                    // If wp.media exists, prefer it; otherwise open file input
-                    if (typeof wp !== 'undefined' && wp.media) {
-                        openAvatarFrame();
-                    } else {
-                        const fi = document.getElementById('staff-avatar-file');
-                        if (fi) fi.click();
-                    }
-                    e.preventDefault();
-                });
-            }
-        } catch (err) {
-            console.log('Error attaching direct upload handler', err);
-        }
-
-        // Test Upload button (admin only): trigger file input for debugging
-        try {
-            const testBtn = document.getElementById('staff-avatar-test');
-            if (testBtn) {
-                testBtn.addEventListener('click', function(e){
-                    e.preventDefault();
-                    console.log('Test Upload clicked');
-                    const fi = document.getElementById('staff-avatar-file');
-                    if (fi) fi.click();
-                });
-            }
-        } catch (err) { console.log('Error attaching test upload', err); }
-        }
-        // Ensure underscore (_) is available and DOM is ready before initializing.
-        function whenReadyAndUnderscore(fn) {
-            function callIfReady() {
-                if (typeof _ === 'undefined') return false;
-                if (document.readyState === 'loading') {
-                    document.addEventListener('DOMContentLoaded', fn);
-                } else {
-                    fn();
-                }
-                return true;
-            }
-            if (!callIfReady()) {
-                var _wait = setInterval(function(){
-                    if (typeof _ !== 'undefined') {
-                        clearInterval(_wait);
-                        callIfReady();
-                    }
-                }, 50);
-            }
-        }
-        whenReadyAndUnderscore(init);
+        })(init);
     })();
     </script>
     <?php
     return ob_get_clean();
 }
 add_shortcode('manage_staff', 'manage_staff_shortcode');
+
+// Simple test shortcode to verify shortcodes are working
+function payndle_test_shortcode() {
+    return '<div style="background: red; color: white; padding: 10px;">TEST SHORTCODE IS WORKING! Use [payndle_test] to see this.</div>';
+}
+add_shortcode('payndle_test', 'payndle_test_shortcode');
 
 /**
  * AJAX handler for staff management
@@ -818,24 +905,37 @@ function handle_staff_ajax() {
 
 // Handle simple avatar uploads via admin-ajax (fallback when wp.media is unavailable)
 add_action('wp_ajax_upload_avatar', 'handle_avatar_upload');
+add_action('wp_ajax_nopriv_upload_avatar', 'handle_avatar_upload');
 function handle_avatar_upload() {
+    error_log('=== AVATAR UPLOAD SERVER DEBUG START ===');
+    error_log('POST data: ' . print_r($_POST, true));
+    error_log('FILES data: ' . print_r($_FILES, true));
+    
     if (!function_exists('wp_handle_upload')) require_once(ABSPATH . 'wp-admin/includes/file.php');
     if (!function_exists('wp_generate_attachment_metadata')) require_once(ABSPATH . 'wp-admin/includes/image.php');
 
     // Verify nonce
     $nonce = isset($_POST['nonce']) ? sanitize_text_field($_POST['nonce']) : '';
+    error_log('Nonce received: ' . $nonce);
     if (!wp_verify_nonce($nonce, 'staff_management_nonce')) {
+        error_log('Nonce verification failed');
         wp_send_json_error(__('Invalid nonce', 'payndle'));
     }
+    error_log('Nonce verified successfully');
 
     if (empty($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
+        error_log('File upload error. FILES: ' . print_r($_FILES, true));
         wp_send_json_error(__('No file uploaded or upload error', 'payndle'));
     }
-
+    
     $file = $_FILES['file'];
+    error_log('Processing file: ' . $file['name']);
     $overrides = array('test_form' => false);
     $movefile = wp_handle_upload($file, $overrides);
+    error_log('wp_handle_upload result: ' . print_r($movefile, true));
+    
     if (!$movefile || isset($movefile['error'])) {
+        error_log('wp_handle_upload failed: ' . ($movefile['error'] ?? 'Unknown error'));
         wp_send_json_error($movefile['error'] ?? __('Upload failed', 'payndle'));
     }
 
@@ -847,14 +947,66 @@ function handle_avatar_upload() {
         'post_content' => '',
         'post_status' => 'inherit'
     );
+    error_log('Creating attachment with data: ' . print_r($attachment, true));
     $attach_id = wp_insert_attachment($attachment, $movefile['file']);
+    error_log('wp_insert_attachment result: ' . $attach_id);
+    
     if (is_wp_error($attach_id)) {
+        error_log('wp_insert_attachment failed: ' . $attach_id->get_error_message());
         wp_send_json_error($attach_id->get_error_message());
     }
     $attach_data = wp_generate_attachment_metadata($attach_id, $movefile['file']);
     wp_update_attachment_metadata($attach_id, $attach_data);
+    
+    $response_data = array('id' => $attach_id, 'url' => $movefile['url']);
+    error_log('Success response: ' . print_r($response_data, true));
+    error_log('=== AVATAR UPLOAD SERVER DEBUG END ===');
+    wp_send_json_success($response_data);
+}
 
-    wp_send_json_success(array('id' => $attach_id, 'url' => $movefile['url']));
+// REST API endpoint for avatar upload: /wp-json/payndle/v1/upload-avatar
+add_action('rest_api_init', function() {
+    register_rest_route('payndle/v1', '/upload-avatar', array(
+        'methods' => 'POST',
+        'callback' => 'payndle_rest_upload_avatar',
+        'permission_callback' => function() {
+            return is_user_logged_in();
+        }
+    ));
+});
+
+function payndle_rest_upload_avatar(WP_REST_Request $request) {
+    // Accept file from request - support both 'file' field and raw body
+    if (!function_exists('wp_handle_upload')) require_once(ABSPATH . 'wp-admin/includes/file.php');
+    if (!function_exists('wp_generate_attachment_metadata')) require_once(ABSPATH . 'wp-admin/includes/image.php');
+
+    $files = $request->get_file_params();
+    if (empty($files['file'])) {
+        return new WP_REST_Response(array('code' => 'no_file', 'message' => __('No file uploaded', 'payndle')), 400);
+    }
+
+    $file = $files['file'];
+    $overrides = array('test_form' => false);
+    $movefile = wp_handle_upload($file, $overrides);
+    if (!$movefile || isset($movefile['error'])) {
+        return new WP_REST_Response(array('code' => 'upload_error', 'message' => ($movefile['error'] ?? __('Upload failed', 'payndle'))), 500);
+    }
+
+    $wp_filetype = wp_check_filetype($movefile['file'], null );
+    $attachment = array(
+        'post_mime_type' => $wp_filetype['type'],
+        'post_title' => sanitize_file_name(basename($movefile['file'])),
+        'post_content' => '',
+        'post_status' => 'inherit'
+    );
+    $attach_id = wp_insert_attachment($attachment, $movefile['file']);
+    if (is_wp_error($attach_id)) {
+        return new WP_REST_Response(array('code' => 'attach_error', 'message' => $attach_id->get_error_message()), 500);
+    }
+    $attach_data = wp_generate_attachment_metadata($attach_id, $movefile['file']);
+    wp_update_attachment_metadata($attach_id, $attach_data);
+
+    return new WP_REST_Response(array('id' => $attach_id, 'url' => $movefile['url']), 200);
 }
 
 
@@ -885,11 +1037,23 @@ add_action('init', 'payndle_register_staff_cpt');
  * Enqueue admin styles and scripts
  */
 function enqueue_staff_management_assets($hook) {
-    // Only load on pages that use the shortcode
+    // Only load on pages that use the shortcode OR on admin pages
     global $post;
-    if (!is_admin() && (has_shortcode($post->post_content, 'manage_staff'))) {
+    
+    $should_load = false;
+    
+    // Load on admin pages that might use staff management
+    if (is_admin() && (strpos($hook, 'staff') !== false || strpos($hook, 'manage') !== false)) {
+        $should_load = true;
+    }
+    
+    // Load on frontend pages with the shortcode
+    if (!is_admin() && $post && has_shortcode($post->post_content, 'manage_staff')) {
+        $should_load = true;
+    }
+    
+    if ($should_load) {
         // Enqueue WordPress media uploader only if user can upload files
-        // (media frame requires upload capability; avoid calling for guests)
         if (function_exists('wp_enqueue_media') && current_user_can('upload_files')) {
             wp_enqueue_media();
         }
@@ -898,16 +1062,25 @@ function enqueue_staff_management_assets($hook) {
         wp_enqueue_style('staff-management-style', 
             plugin_dir_url(__FILE__) . 'assets/css/staff-management.css',
             array(),
-            '1.0.0'
+            '1.0.2'
         );
 
-        // Enqueue custom script (underscore dependency for templating)
+        // Enqueue custom script
         wp_enqueue_script('staff-management-script',
             plugin_dir_url(__FILE__) . 'assets/js/staff-management.js',
             array('jquery', 'underscore'),
-            '1.0.0',
+            '1.0.2',
             true
         );
+        
+        // Localize script with AJAX URL and nonce
+        wp_localize_script('staff-management-script', 'staffManager', array(
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('staff_management_nonce'),
+            'rest_url' => rest_url(),
+            'rest_nonce' => wp_create_nonce('wp_rest'),
+            'confirm_delete' => __('Are you sure you want to delete this staff member?', 'payndle'),
+        ));
     }
 }
 add_action('wp_enqueue_scripts', 'enqueue_staff_management_assets');

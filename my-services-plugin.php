@@ -1209,3 +1209,8 @@ function mvp_manager_shortcode() {
     return ob_get_clean();
 }
 add_shortcode('manager_add_service', 'mvp_manager_shortcode');
+
+// Include upload debug functionality for testing
+if (defined('WP_DEBUG') && WP_DEBUG) {
+    include_once plugin_dir_path(__FILE__) . 'test-upload-debug.php';
+}
