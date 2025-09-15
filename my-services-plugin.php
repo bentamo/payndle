@@ -72,7 +72,18 @@ function mvp_enqueue_scripts() {
             --primary-green: #64C493;   /* Growth, innovation, payments, progress */
             --primary-navy: #0C1930;    /* Trust, reliability, professionalism */
             --white: #FFFFFF;           /* Backgrounds, text contrast, clean minimalism */
-            --accent-gray: #F4F4F4;     /* Backgrounds, subtle dividers, dashboard UI */
+            --accent-gray: #F8FAFC;     /* Backgrounds, subtle dividers, dashboard UI */
+            --border-color: #E2E8F0;    /* Border color for UI elements */
+            --text-body: #1E293B;       /* Main text color */
+            --text-muted: #64748B;      /* Muted text color */
+            
+            /* Typography */
+            --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, sans-serif;
+            --font-regular: 400;
+            --font-medium: 500;
+            --font-semibold: 600;
+            --font-bold: 700;
+            --border-radius: 8px;       /* Consistent border radius */
             
             /* Semantic Colors */
             --primary: var(--primary-green);
@@ -84,18 +95,19 @@ function mvp_enqueue_scripts() {
             --bg-light: var(--accent-gray);
             --bg-white: var(--white);
             --text-dark: var(--primary-navy);
-            --text-body: #333333;
-            --text-muted: #666666;
+            --text-body: #1E293B;
+            --text-muted: #64748B;
             
             /* UI Colors */
             --success: var(--primary-green);
-            --warning: #FFA726;         /* Orange for warnings */
-            --danger: #F44336;          /* Red for errors */
-            --border-color: rgba(12, 25, 48, 0.1);
+            --warning: #F59E0B;         /* Amber for warnings */
+            --danger: #EF4444;          /* Red for errors */
+            --border-color: #E2E8F0;
             
             /* Effects */
-            --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            --transition: all 0.2s ease;
+            --border-radius: 8px;
             
             /* Backward compatibility */
             --primary-color: var(--primary);
@@ -116,17 +128,18 @@ function mvp_enqueue_scripts() {
         }
         
         .mvp-card {
-            background: white;
-            border-radius: 8px;
-            box-shadow: var(--card-shadow);
-            padding: 20px;
-            margin-bottom: 20px;
-            transition: var(--transition);
+            background: var(--bg-white);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: var(--box-shadow);
+            padding: 1.75rem 2rem;
+            margin-bottom: 1.5rem;
+            transition: all 0.2s ease;
         }
         
         .mvp-card:hover {
+            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
             transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
         }
         
         .mvp-form-group {
@@ -135,38 +148,69 @@ function mvp_enqueue_scripts() {
         
         .mvp-form-control {
             width: 100%;
-            padding: 10px 15px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            margin-bottom: 10px;
-            font-size: 16px;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            font-family: var(--font-family);
+            font-size: 0.9375rem;
+            color: var(--text-body);
+            background-color: var(--bg-white);
+            transition: var(--transition);
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+        
+        .mvp-form-control:focus {
+            border-color: var(--primary-green);
+            box-shadow: 0 0 0 3px rgba(100, 196, 147, 0.15);
+            outline: none;
         }
         
         .mvp-btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.6875rem 1.5rem;
+            border-radius: var(--border-radius);
+            font-family: var(--font-family);
+            font-size: 0.9375rem;
+            font-weight: var(--font-medium);
+            line-height: 1.5;
             cursor: pointer;
-            font-weight: 500;
-            transition: var(--transition);
-            font-size: 14px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+            text-align: center;
+            white-space: nowrap;
+            vertical-align: middle;
+            user-select: none;
+            gap: 0.5rem;
         }
         
         .mvp-btn-primary {
             background: var(--primary-green);
             color: white;
+            border: none;
+            font-weight: var(--font-semibold);
         }
         
         .mvp-btn-primary:hover {
-            background: #4eaf7d;
-            box-shadow: 0 4px 8px rgba(100, 196, 147, 0.3);
+            background: #4CAF7D;
+        }
+        
+        .mvp-btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
         
         .mvp-btn-secondary {
-            background: var(--primary-navy);
-            color: white;
+            background: var(--white);
+            color: var(--primary-navy);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+        
+        .mvp-btn-secondary:hover {
+            background: var(--bg-light);
+            border-color: var(--border-color);
         }
         
         .mvp-btn-secondary:hover {
@@ -175,8 +219,14 @@ function mvp_enqueue_scripts() {
         }
         
         .mvp-btn-danger {
-            background: #F44336;
-            color: white;
+            background: var(--white);
+            color: #EF4444;
+            border: 1px solid #FECACA;
+        }
+        
+        .mvp-btn-danger:hover {
+            background: #FEE2E2;
+            color: #DC2626;
         }
         
         .mvp-btn-danger:hover {
@@ -185,13 +235,16 @@ function mvp_enqueue_scripts() {
         }
         
         .mvp-category-badge {
-            display: inline-block;
-            background: var(--light-bg);
-            padding: 3px 10px;
-            border-radius: 12px;
-            font-size: 12px;
-            margin-right: 5px;
-            margin-bottom: 5px;
+            display: inline-flex;
+            align-items: center;
+            background: var(--white);
+            color: var(--primary-navy);
+            padding: 0.35rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: var(--font-medium);
+            border: 1px solid var(--border-color);
+            transition: all 0.2s ease;
         }
         
         .mvp-category-selector {
@@ -200,26 +253,154 @@ function mvp_enqueue_scripts() {
         }
         
         .mvp-service-actions {
-            margin-top: 15px;
             display: flex;
-            gap: 10px;
+            gap: 0.75rem;
+            margin-top: auto;
+            padding-top: 1rem;
+            border-top: 1px dashed var(--border-color);
         }
         
         /* Responsive grid for services */
         .mvp-services-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-            margin-top: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        
+        .mvp-service-card {
+            background: var(--white);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            transition: all 0.2s ease;
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        
+        .mvp-service-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .mvp-service-card-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--accent-gray);
+        }
+        
+        .mvp-service-card-title {
+            margin: 0 0 0.5rem;
+            color: var(--primary-navy);
+            font-size: 1.25rem;
+            font-weight: var(--font-semibold);
+            line-height: 1.4;
+            font-family: var(--font-family);
+        }
+        
+        .mvp-service-card-categories {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+        
+        .mvp-category-badge {
+            display: inline-flex;
+            align-items: center;
+            background: var(--white);
+            color: var(--primary-navy);
+            padding: 0.35rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: var(--font-medium);
+            border: 1px solid var(--border-color);
+            transition: all 0.2s ease;
+        }
+        
+        .mvp-service-card-body {
+            padding: 1.5rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .mvp-service-description {
+            color: var(--text-body);
+            margin: 0 0 1.5rem;
+            line-height: 1.6;
+            flex: 1;
+            font-family: var(--font-family);
+            font-weight: var(--font-regular);
+            font-size: 0.9375rem;
+        }
+        
+        .mvp-service-card-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border-color);
+            background: var(--bg-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .mvp-service-meta {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+        
+        .mvp-service-price {
+            font-weight: var(--font-semibold);
+            color: var(--primary-green);
+        }
+        
+        .mvp-service-duration {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        
+        /* Card Styles */
+        .mvp-service-manager-card {
+            background: var(--white);
+            border-radius: var(--border-radius);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+        
+        .mvp-card-header {
+            padding: 1.25rem 1.5rem;
+            background: var(--accent-gray);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .mvp-card-title {
+            margin: 0;
+            color: var(--primary-navy);
+            font-size: 1.25rem;
+            font-weight: var(--font-semibold);
+        }
+        
+        .mvp-card-body {
+            padding: 1.5rem;
         }
         
         /* Form styles */
         .mvp-form-container {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: var(--card-shadow);
-            margin-bottom: 30px;
+            background: var(--white);
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
+            margin: 1.5rem 0;
         }
         
         /* Category management */
@@ -574,18 +755,41 @@ function mvp_manager_shortcode() {
     ));
 
     ob_start(); ?>
-    <div class="mvp-manager">
-        <div class="mvp-manager-header">
-            <h2><?php _e('Service Manager', 'service-manager'); ?></h2>
+    <div class="mvp-service-manager-card">
+        <div class="mvp-card-header">
+            <h2 class="mvp-card-title"><?php _e('Service Manager', 'service-manager'); ?></h2>
             <button type="button" class="mvp-btn mvp-btn-primary" id="mvp-toggle-form">
                 <span class="dashicons dashicons-plus"></span> <?php _e('Add New Service', 'service-manager'); ?>
             </button>
         </div>
+        
+        <div class="mvp-card-body">
+            <!-- Add/Edit Form -->
+            <div class="mvp-form-container" id="mvp-form-container" style="display: none;">
+                <form id="mvp-service-form">
+                    <input type="hidden" name="action" value="mvp_add_service">
+                    <?php wp_nonce_field('mvp_nonce', 'mvp_nonce'); ?>
+                    <input type="hidden" name="service_id" id="mvp-service-id" value="">
+                    
+                    <div class="mvp-form-group">
+                        <label for="mvp-service-title"><?php _e('Service Title', 'service-manager'); ?> *</label>
+                        <input type="text" id="mvp-service-title" name="title" class="mvp-form-control" required>
+                    </div>
+                    
+                    <div class="mvp-form-group">
+                        <label for="mvp-service-description"><?php _e('Description', 'service-manager'); ?> *</label>
+                        <textarea id="mvp-service-description" name="description" class="mvp-form-control" rows="5" required></textarea>
+                    </div>
+                    
+                    <div class="mvp-form-group">
+                        <label for="mvp-service-price"><?php _e('Price', 'service-manager'); ?></label>
+                        <input type="text" id="mvp-service-price" name="price" class="mvp-form-control" placeholder="e.g. 1200.00">
+                    </div>
 
-        <!-- Add/Edit Form -->
-        <div class="mvp-form-container" id="mvp-form-container" style="display: none;">
-            <form id="mvp-service-form">
-                <input type="hidden" name="action" value="mvp_add_service">
+                    <div class="mvp-form-group">
+                        <label for="mvp-service-duration"><?php _e('Duration', 'service-manager'); ?></label>
+                        <input type="text" id="mvp-service-duration" name="duration" class="mvp-form-control" placeholder="e.g. 30 mins">
+                    </div>
                 <?php wp_nonce_field('mvp_nonce', 'mvp_nonce'); ?>
                 <input type="hidden" name="service_id" id="mvp-service-id" value="">
                 
