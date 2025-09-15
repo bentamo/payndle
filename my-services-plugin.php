@@ -26,7 +26,7 @@ function mvp_register_service_post_type() {
         'has_archive' => true,
         'supports' => array('title', 'editor', 'thumbnail'),
         'menu_icon' => 'dashicons-admin-tools',
-        'show_in_rest' => true,
+        'show_ui' => true,
     ));
 
     // Register Service Category Taxonomy
