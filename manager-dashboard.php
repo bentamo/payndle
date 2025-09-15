@@ -6,6 +6,7 @@ Description: Clean and simple business management dashboard. Use shortcode [mana
 Version:     1.2
 Author:      Payndle
 License:     GPL2
+Shortcode: [manager_dashboard]
 */
 
 if ( ! defined( 'ABSPATH' ) ) exit;
