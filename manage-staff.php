@@ -123,88 +123,14 @@ function elite_cuts_manage_staff_page() {
         </div>
     </div>
 
-    <!-- Add/Edit Staff Modal -->
-    <div id="staff-modal" class="elite-modal" style="display: none;">
-        <div class="elite-modal-content">
-            <div class="elite-modal-header">
-                <h3>Add New Staff</h3>
-                <span class="elite-close staff-close">&times;</span>
-            </div>
-            <div class="elite-modal-body">
-                <form id="staff-form">
-                    <input type="hidden" id="staff-id" value="">
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="staff-name">Full Name</label>
-                            <input type="text" id="staff-name" class="elite-input" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="staff-role">Role</label>
-                            <select id="staff-role" class="elite-select" required>
-                                <option value="">Select Role</option>
-                                <option value="Master Barber">Master Barber</option>
-                                <option value="Barber">Barber</option>
-                                <option value="Stylist">Stylist</option>
-                                <option value="Receptionist">Receptionist</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="staff-email">Email</label>
-                            <input type="email" id="staff-email" class="elite-input" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="staff-phone">Phone</label>
-                            <input type="text" id="staff-phone" class="elite-input" required>
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="staff-availability">Availability</label>
-                            <select id="staff-availability" class="elite-select" required>
-                                <option value="Available">Available</option>
-                                <option value="Busy">Busy</option>
-                                <option value="On Leave">On Leave</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="staff-status">Status</label>
-                            <select id="staff-status" class="elite-select" required>
-                                <option value="active">Active</option>
-                                <option value="inactive">Inactive</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="staff-avatar">Profile Photo URL</label>
-                        <div style="display:flex; gap:0.5rem; align-items:center;">
-                            <input type="url" id="staff-avatar" class="elite-input" placeholder="https://example.com/photo.jpg" style="flex:1;">
-                            <?php if ( current_user_can('upload_files') ) : ?>
-                                <button type="button" id="staff-avatar-upload" class="elite-button secondary" title="Upload or select from Media Library" data-can-upload="1"><i class="fa-solid fa-image"></i> Upload</button>
-                            <?php else: ?>
-                                <button type="button" class="elite-button secondary" title="You don't have permission to upload files" disabled><i class="fa-solid fa-image"></i> Upload</button>
-                            <?php endif; ?>
-                        </div>
-                        <div class="avatar-preview-row">
-                            <img id="staff-avatar-preview" src="" alt="Avatar preview" class="avatar-preview" style="display:none;"/>
-                            <button type="button" id="staff-avatar-clear" class="elite-button secondary small" style="display:none;">Clear</button>
-                        </div>
-                        <div class="help-text">Paste an image URL or click <em>Upload</em> to select from the Media Library.</div>
-                    </div>
-
-                    <div class="form-actions">
-                        <button type="button" class="elite-button secondary staff-cancel">Cancel</button>
-                        <button type="submit" class="elite-button primary">Save Staff</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
+    <!-- Shared Staff Form Template (rendered by shortcode file) -->
+    <?php
+    // Ensure the shortcode file is loaded so the renderer function exists
+    if (!function_exists('payndle_render_staff_form')) {
+        include_once plugin_dir_path(__FILE__) . 'manage-staff-shortcode.php';
+    }
+    if (function_exists('payndle_render_staff_form')) payndle_render_staff_form();
+    ?>
 
     <!-- Assign Schedule Modal -->
     <div id="schedule-modal" class="elite-modal" style="display: none;">
@@ -365,15 +291,9 @@ function elite_cuts_manage_staff_page() {
         .help-text { color: var(--text-secondary); font-size: 0.8rem; margin-top: 0.35rem; }
     </style>
 
+    <?php if ( is_admin() ) : ?>
     <script>
     jQuery(document).ready(function($) {
-        // Demo staff data (simulate backend)
-        let staffData = [
-            { id: 1, name: 'Miguel Santos', role: 'Master Barber', email: 'miguel@elitecuts.com', phone: '+63 917 000 1111', availability: 'Available', status: 'active', avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=200&q=80' },
-            { id: 2, name: 'Antonio Cruz', role: 'Barber', email: 'antonio@elitecuts.com', phone: '+63 917 000 2222', availability: 'Busy', status: 'active', avatar: 'https://images.unsplash.com/photo-1583864692221-95a2c5ba9d5b?auto=format&fit=crop&w=200&q=80' },
-            { id: 3, name: 'Rafael Reyes', role: 'Stylist', email: 'rafael@elitecuts.com', phone: '+63 917 000 3333', availability: 'On Leave', status: 'inactive', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80' }
-        ];
-
         const staffTbody = $('#staff-list');
 
         function renderStaff(list) {
@@ -385,9 +305,8 @@ function elite_cuts_manage_staff_page() {
             list.forEach(member => {
                 const statusLabel = member.status === 'active' ? 'Active' : 'Inactive';
                 const initial = (member.name || '').trim().charAt(0).toUpperCase() || '?';
-                const avatarHtml = (member.avatar && String(member.avatar).trim() !== '')
-                    ? `<img class=\"avatar\" src=\"${member.avatar}\" alt=\"${member.name}\">`
-                    : `<div class=\"avatar-initial\" aria-hidden=\"true\">${initial}</div>`;
+                const avatarHtml = `<div class="avatar-initial" aria-hidden="true">${initial}</div>`;
+                const servicesHtml = (member.services || []).map(s => `<span class="mvp-category-badge">${s.title}</span>`).join(' ');
                 const row = `
                     <tr>
                         <td>
@@ -395,20 +314,13 @@ function elite_cuts_manage_staff_page() {
                                 ${avatarHtml}
                                 <div class="staff-meta">
                                     <span class="staff-name">${member.name}</span>
+                                    <span class="staff-sub">${servicesHtml}</span>
                                 </div>
                             </div>
                         </td>
-                        <td>${member.role}</td>
+                        <td></td>
                         <td>${member.email}<br><span class="staff-sub">${member.phone}</span></td>
-                        <td>
-                            ${(() => {
-                                const avail = member.availability;
-                                if (avail === 'On Leave') {
-                                    return `<span class=\"availability-badge avail-On\\ Leave\"><i class=\"fa-solid fa-umbrella-beach\"></i> On Leave</span>`;
-                                }
-                                return `<span class=\"availability-badge avail-${member.availability.replace(' ', '\\ ')}\">${member.availability}</span>`;
-                            })()}
-                        </td>
+                        <td></td>
                         <td><span class="status-badge status-${member.status}">${statusLabel}</span></td>
                         <td>
                             <div class="action-buttons">
@@ -424,32 +336,34 @@ function elite_cuts_manage_staff_page() {
             });
         }
 
-        function applyFilters() {
-            const role = $('#filter-role').val().toLowerCase();
-            const availability = $('#filter-availability').val();
-            const status = $('#filter-status').val();
-            const q = $('#staff-search').val().toLowerCase();
-
-            const filtered = staffData.filter(m => {
-                const matchesRole = !role || (m.role || '').toLowerCase() === role;
-                const matchesAvail = !availability || m.availability === availability;
-                const matchesStatus = !status || m.status === status;
-                const matchesQuery = !q || [m.name, m.role, m.email, m.phone].join(' ').toLowerCase().includes(q);
-                return matchesRole && matchesAvail && matchesStatus && matchesQuery;
-            });
-            renderStaff(filtered);
+        function loadStaff(filters = {}) {
+            const payload = { action_type: 'get_staff', data: filters };
+            $.post(ajaxurl, { action: 'manage_staff', nonce: '<?php echo wp_create_nonce('staff_management_nonce'); ?>', action_type: 'get_staff', data: JSON.stringify(filters) }, function(resp) {
+                if (!resp || !resp.success) {
+                    staffTbody.html('<tr><td colspan="6">Could not load staff</td></tr>');
+                    return;
+                }
+                renderStaff(resp.data.staff || []);
+            }).fail(function(){ staffTbody.html('<tr><td colspan="6">Could not load staff (server error)</td></tr>'); });
         }
 
-        function resetFilters() {
-            $('#filter-role').val('');
-            $('#filter-availability').val('');
+        // Initial load
+        loadStaff();
+
+        // Apply filters button
+        $('#apply-staff-filters').on('click', function(){
+            const serviceId = $('#filter-service').length ? parseInt($('#filter-service').val() || '0') : 0;
+            const status = $('#filter-status').val() || '';
+            const q = $('#staff-search').val() || '';
+            loadStaff({ service_id: serviceId, status: status, search: q });
+        });
+
+        $('#reset-staff-filters').on('click', function(){
+            $('#filter-service').val('');
             $('#filter-status').val('');
             $('#staff-search').val('');
-            renderStaff(staffData);
-        }
-
-        // Initial render
-        setTimeout(() => renderStaff(staffData), 300);
+            loadStaff();
+        });
 
         // Filter actions
         $('#apply-staff-filters').on('click', applyFilters);
@@ -563,7 +477,21 @@ function elite_cuts_manage_staff_page() {
                 alert('You do not have permission to upload files or the Media Library is unavailable.');
                 return;
             }
-            openAvatarFrame();
+            // Admin media frame
+            if (typeof wp !== 'undefined' && wp.media) {
+                const frame = wp.media({ title: 'Select Profile Photo', multiple: false });
+                frame.on('select', function(){
+                    const attachment = frame.state().get('selection').first().toJSON();
+                    if (!attachment) return;
+                    const url = attachment.sizes && attachment.sizes.thumbnail ? attachment.sizes.thumbnail.url : attachment.url;
+                    $('#staff-avatar').val(attachment.url);
+                    $('#staff-avatar-id').val(attachment.id);
+                    $('#staff-avatar-preview').attr('src', url).show();
+                    $('#staff-avatar-placeholder').hide();
+                    $('#staff-avatar-clear').show();
+                });
+                frame.open();
+            }
         });
 
         // Toast helper
@@ -588,6 +516,7 @@ function elite_cuts_manage_staff_page() {
         }
     });
     </script>
+    <?php endif; ?>
     <?php
 }
 

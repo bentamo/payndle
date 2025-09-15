@@ -75,12 +75,13 @@ jQuery(document).ready(function($) {
         staff.forEach(function(member) {
             const statusClass = member.status === 'active' ? 'status-active' : 'status-inactive';
             const statusText = member.status === 'active' ? 'Active' : 'Inactive';
+            const serviceTitle = (member.services && member.services.length) ? member.services[0].title : '';
 
             const row = `
                 <tr data-id="${member.id}">
-                    <td class="staff-name">${member.first_name} ${member.last_name}</td>
-                    <td class="staff-role">${member.role}</td>
-                    <td class="staff-email">${member.email}</td>
+                    <td class="staff-name">${member.name || ''}</td>
+                    <td class="staff-role">${serviceTitle}</td>
+                    <td class="staff-email">${member.email || ''}</td>
                     <td class="staff-phone">${member.phone || 'N/A'}</td>
                     <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                     <td class="staff-actions">
@@ -147,30 +148,50 @@ jQuery(document).ready(function($) {
         $form[0].reset();
 
         if (staffId) {
-            $('#modal-title').text('Edit Staff Member');
+            $('#staff-modal-title').text('Edit Staff');
             $form.find('button[type="submit"]').text('Update Staff');
 
-            // Fetch single staff
+            // Fetch single staff using the existing get_staff action with id filter
             $.ajax({
                 url: staffManager.ajax_url,
                 type: 'POST',
                 data: {
                     action: 'manage_staff',
                     nonce: staffManager.nonce,
-                    action_type: 'get_single_staff',
-                    staff_id: staffId
+                    action_type: 'get_staff',
+                    data: { id: staffId }
                 },
                 success: function(response) {
-                    if (response.success && response.data) {
-                        const staff = response.data;
+                    if (response.success && response.data && response.data.staff && response.data.staff.length) {
+                        const staff = response.data.staff[0];
                         $('#staff-id').val(staff.id);
-                        $('#first-name').val(staff.first_name);
-                        $('#last-name').val(staff.last_name);
-                        $('#email').val(staff.email);
-                        $('#phone').val(staff.phone);
-                        $('#role').val(staff.role);
-                        $('#status').val(staff.status);
-                        $('#bio').val(staff.bio);
+                        $('#staff-name').val(staff.name || '');
+                        $('#staff-email').val(staff.email || '');
+                        $('#staff-phone').val(staff.phone || '');
+                        $('#staff-status').val(staff.status || 'active');
+                        if (staff.services && staff.services.length) {
+                            $('#staff-service').val(staff.services[0].id);
+                        }
+                        
+                        // avatar preview
+                        if (staff.avatar) {
+                            if ($('#staff-avatar-preview').length) {
+                                $('#staff-avatar-preview').attr('src', staff.avatar).show();
+                                $('#staff-avatar-placeholder').hide();
+                                $('#staff-avatar-clear').show();
+                            }
+                            $('#staff-avatar').val(staff.avatar);
+                        } else {
+                            $('#staff-avatar-preview').hide();
+                            $('#staff-avatar-placeholder').show();
+                            $('#staff-avatar-clear').hide();
+                            $('#staff-avatar').val('');
+                        }
+                        if (staff.avatar_id) {
+                            $('#staff-avatar-id').val(staff.avatar_id);
+                        } else {
+                            $('#staff-avatar-id').val('');
+                        }
                     } else {
                         showPopup('error', response.message || 'Failed to load staff details');
                     }
@@ -180,7 +201,7 @@ jQuery(document).ready(function($) {
                 }
             });
         } else {
-            $('#modal-title').text('Add New Staff');
+            $('#staff-modal-title').text('Add New Staff');
             $form.find('button[type="submit"]').text('Add Staff');
             $('#staff-id').val('');
         }
@@ -199,44 +220,79 @@ jQuery(document).ready(function($) {
         const staffId = $('#staff-id').val();
         const isEdit = !!staffId;
 
+    console.log('handleStaffFormSubmit invoked', { staffId: staffId });
+
+        var $form = $('#staff-form');
+        var $submitBtn = $form.find('button[type="submit"]');
+        if ($form.data('submitting')) {
+            console.log('Form already submitting; ignoring duplicate submit');
+            return;
+        }
+        $form.data('submitting', true);
+        $submitBtn.prop('disabled', true);
+
+        // Read fields from the shared template (single full name, service select)
+        const nameVal = $('#staff-name').length ? $('#staff-name').val().trim() : '';
+        const emailVal = $('#staff-email').length ? $('#staff-email').val().trim() : '';
+        const phoneVal = $('#staff-phone').length ? $('#staff-phone').val().trim() : '';
+        const statusVal = $('#staff-status').length ? $('#staff-status').val() : 'active';
+        const serviceVal = $('#staff-service').length ? $('#staff-service').val() : '';
+
         const formData = {
-            first_name: $('#first-name').val().trim(),
-            last_name: $('#last-name').val().trim(),
-            email: $('#email').val().trim(),
-            phone: $('#phone').val().trim(),
-            role: $('#role').val(),
-            status: $('#status').val(),
-            bio: $('#bio').val()
+            name: nameVal,
+            email: emailVal,
+            phone: phoneVal,
+            status: statusVal,
+            services: serviceVal ? [serviceVal] : []
         };
 
-        if (!formData.first_name || !formData.last_name || !formData.email) {
+            // include avatar fields from the shared template
+            if ($('#staff-avatar').length) formData.avatar = $('#staff-avatar').val();
+            if ($('#staff-avatar-id').length) formData.avatar_id = $('#staff-avatar-id').val();
+
+        if (!formData.name || !formData.email) {
             showPopup('error', 'Please fill in all required fields');
+            // re-enable submit on validation failure
+            $form.data('submitting', false);
+            $submitBtn.prop('disabled', false);
             return;
         }
 
         const actionType = isEdit ? 'update_staff' : 'add_staff';
 
+        // Debug: print payload before sending
+        var payload = {
+            action: 'manage_staff',
+            nonce: (typeof staffManager !== 'undefined' ? staffManager.nonce : ''),
+            action_type: actionType,
+            staff_id: staffId,
+            data: JSON.stringify(formData)  // Convert to JSON string as PHP expects
+        };
+        console.log('Sending AJAX payload', payload);
+
         $.ajax({
             url: staffManager.ajax_url,
             type: 'POST',
-            data: {
-                action: 'manage_staff',
-                nonce: staffManager.nonce,
-                action_type: actionType,
-                staff_id: staffId,
-                data: formData
-            },
+            data: payload,
             success: function(response) {
-                if (response.success) {
+                console.log('AJAX success response', response);
+                if (response && response.success) {
                     showPopup('success', response.message || (isEdit ? 'Staff updated' : 'Staff added'));
                     closeStaffModal();
                     loadStaffList();
                 } else {
-                    showPopup('error', response.message || 'Operation failed');
+                    showPopup('error', response && response.message ? response.message : 'Operation failed');
                 }
             },
             error: function(xhr, status, error) {
+                console.log('AJAX error', { xhr: xhr, status: status, error: error });
                 showPopup('error', 'Error: ' + error);
+            }
+            ,
+            complete: function() {
+                // re-enable submit regardless of outcome
+                $form.data('submitting', false);
+                $submitBtn.prop('disabled', false);
             }
         });
     }

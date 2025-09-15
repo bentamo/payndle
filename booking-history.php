@@ -2,6 +2,7 @@
 /**
  * Simple Booking History Log
  * A clean log view for managers to see completed services
+ * Shortcode: [booking_log]
  */
 
 if (!defined('ABSPATH')) {

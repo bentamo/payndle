@@ -5,6 +5,7 @@
  * Version: 1.0.0
  * Author: Bentamo
  * License: GPL2
+ * Shortcode: []
  */
 
 // Exit if accessed directly.
