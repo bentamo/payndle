@@ -2,6 +2,7 @@
 /**
  * Modern Barbershop Landing Page
  * Clean, professional design for a barbershop business
+ * Shortcode: [modern_barbershop_landing]
  */
 function modern_barbershop_landing_shortcode() {
     ob_start();

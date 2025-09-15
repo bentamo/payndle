@@ -2,6 +2,7 @@
 /**
  * Elite Cuts - Manage Bookings
  * Admin interface for managing barbershop appointments
+ * Shortcode: [elite_cuts_manage_bookings]
  */
 
 if (!defined('ABSPATH')) {

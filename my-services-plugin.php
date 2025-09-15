@@ -4,6 +4,7 @@ Plugin Name: Service Manager Pro
 Description: Modern service management system with categories and AJAX interface.
 Version: 2.0
 Author: Your Name
+Shortcode: [manager_add_service]
 */
 
 if ( ! defined( 'ABSPATH' ) ) exit;
@@ -25,7 +26,7 @@ function mvp_register_service_post_type() {
         'has_archive' => true,
         'supports' => array('title', 'editor', 'thumbnail'),
         'menu_icon' => 'dashicons-admin-tools',
-        'show_in_rest' => true,
+        'show_ui' => true,
     ));
 
     // Register Service Category Taxonomy
