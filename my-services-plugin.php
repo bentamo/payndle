@@ -4,6 +4,7 @@ Plugin Name: Service Manager Pro
 Description: Modern service management system with categories and AJAX interface.
 Version: 2.0
 Author: Your Name
+Shortcode: [manager_add_service]
 */
 
 if ( ! defined( 'ABSPATH' ) ) exit;
