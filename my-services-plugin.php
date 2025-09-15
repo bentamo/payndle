@@ -1215,3 +1215,6 @@ add_shortcode('manager_add_service', 'mvp_manager_shortcode');
 if (defined('WP_DEBUG') && WP_DEBUG) {
     include_once plugin_dir_path(__FILE__) . 'test-upload-debug.php';
 }
+
+
+// test
