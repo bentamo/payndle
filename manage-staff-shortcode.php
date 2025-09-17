@@ -152,9 +152,20 @@ function manage_staff_shortcode($atts) {
                 <div class="filter-group">
                     <select id="filter-role" class="regular-text">
                         <option value=""><?php _e('All Roles', 'payndle'); ?></option>
-                        <option value="barber"><?php _e('Barber', 'payndle'); ?></option>
-                        <option value="stylist"><?php _e('Stylist', 'payndle'); ?></option>
-                        <option value="receptionist"><?php _e('Receptionist', 'payndle'); ?></option>
+                        <?php
+                        $services_for_filter = get_posts(array(
+                            'post_type' => 'service',
+                            'post_status' => 'publish',
+                            'posts_per_page' => -1,
+                            'orderby' => 'title',
+                            'order' => 'ASC',
+                            'fields' => 'ids'
+                        ));
+                        foreach ($services_for_filter as $sid) {
+                            $title = get_the_title($sid);
+                            echo '<option value="' . esc_attr($sid) . '">' . esc_html($title) . '</option>';
+                        }
+                        ?>
                     </select>
                 </div>
                 <div class="filter-group">
@@ -228,6 +239,17 @@ function manage_staff_shortcode($atts) {
             </div>
         </div>
     </div>
+    <style>
+        /* Minimal modal styles for frontend confirm dialog */
+        #confirm-modal { position: fixed !important; z-index: 999999 !important; left: 0 !important; top: 0 !important; width: 100% !important; height: 100% !important; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; padding: 1rem; }
+        #confirm-modal .modal-content { background: #fff; border-radius: 8px; width: 90%; max-width: 440px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); overflow: hidden; position: relative; }
+        #confirm-modal .modal-header, #confirm-modal .modal-footer { padding: 0.9rem 1rem; border-bottom: 1px solid #e6e9ee; display: flex; align-items: center; justify-content: space-between; }
+        #confirm-modal .modal-footer { border-bottom: none; border-top: 1px solid #e6e9ee; justify-content: flex-end; gap: .5rem; }
+        #confirm-modal .modal-body { padding: 1rem; }
+        #confirm-modal .close { cursor: pointer; font-size: 1.2rem; color: #62708a; }
+        .button-danger { background: #F44336; color: #fff; border: none; }
+        .button-danger:hover { background: #d63a2f; }
+    </style>
     
     <!-- Message Container -->
     <div id="message-container"></div>
@@ -258,7 +280,13 @@ function manage_staff_shortcode($atts) {
     
     <script type="text/template" id="staff-row-template">
         <tr data-id="<%= id %>">
-            <td class="staff-name"><%= name %></td>
+            <td class="staff-name">
+                <% if (avatar && avatar.length) { %>
+                    <div class="staff-cell"><img src="<%= avatar %>" alt="<%= name %>" class="avatar" /><div class="staff-meta"><div class="staff-name-text"><%= name %></div></div></div>
+                <% } else { %>
+                    <div class="staff-cell"><div class="avatar-initial"><%= (name || '').split(' ').map(function(n){ return n.charAt(0); }).join('').toUpperCase().substring(0,2) %></div><div class="staff-meta"><div class="staff-name-text"><%= name %></div></div></div>
+                <% } %>
+            </td>
             <td class="staff-role"><%= role %></td>
             <td class="staff-email"><%= email %></td>
             <td class="staff-phone"><%= phone %></td>
@@ -281,33 +309,29 @@ function manage_staff_shortcode($atts) {
     <script>
     (function(){
         function init() {
-        console.log('=== STAFF MANAGEMENT INIT START ===');
-        console.log('DOM ready state:', document.readyState);
-        console.log('Underscore available:', typeof _);
+    // Production: initialization (debug logs removed)
 
         // Initialize unified upload system
         function initializeUploadSystem() {
-            console.log('Initializing unified upload system...');
+            // initialize upload system
             
             const uploadBtn = document.getElementById('staff-avatar-upload');
             const fileInput = document.getElementById('staff-avatar-file');
             
             if (!uploadBtn) {
-                console.warn('Upload button not found');
+                // Upload button not present in this context.
                 return;
             }
             
-            console.log('Upload button found, setting up handlers...');
             
             // Check if wp.media is available (admin context)
             const hasWpMedia = typeof wp !== 'undefined' && wp.media;
-            console.log('WordPress media available:', hasWpMedia);
+            // check for wp.media availability
             
             if (hasWpMedia) {
                 // Use WordPress media library
                 uploadBtn.addEventListener('click', function(e) {
                     e.preventDefault();
-                    console.log('Opening WordPress media library...');
                     
                     const frame = wp.media({
                         title: 'Select Profile Photo',
@@ -316,7 +340,7 @@ function manage_staff_shortcode($atts) {
                     
                     frame.on('select', function() {
                         const attachment = frame.state().get('selection').first().toJSON();
-                        console.log('Media selected:', attachment);
+                        // media selected
                         
                         if (attachment) {
                             updateAvatarPreview(attachment.url, attachment.id);
@@ -329,23 +353,14 @@ function manage_staff_shortcode($atts) {
                 // Use file input + REST API
                 uploadBtn.addEventListener('click', function(e) {
                     e.preventDefault();
-                    console.log('Triggering file input...');
-                    
-                    if (fileInput) {
-                        fileInput.click();
-                    } else {
-                        console.error('File input not found');
-                    }
+                    if (fileInput) fileInput.click();
                 });
-                
-                if (fileInput) {
-                    fileInput.addEventListener('change', handleFileUpload);
-                }
+                if (fileInput) fileInput.addEventListener('change', handleFileUpload);
             }
         }
         
         function updateAvatarPreview(url, id) {
-            console.log('Updating avatar preview:', { url, id });
+            // update avatar preview (debug logs removed)
             
             // Update hidden fields
             const avatarInput = document.getElementById('staff-avatar');
@@ -368,8 +383,6 @@ function manage_staff_shortcode($atts) {
         async function handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
-            
-            console.log('Uploading file:', file.name);
             
             const uploadBtn = document.getElementById('staff-avatar-upload');
             if (uploadBtn) {
@@ -394,13 +407,10 @@ function manage_staff_shortcode($atts) {
                 }
                 
                 const result = await response.json();
-                console.log('Upload successful:', result);
-                
                 updateAvatarPreview(result.url, result.id);
                 showMessage('Upload successful');
                 
             } catch (error) {
-                console.error('Upload error:', error);
                 showMessage('Upload failed: ' + error.message, 'error');
             } finally {
                 if (uploadBtn) {
@@ -414,47 +424,6 @@ function manage_staff_shortcode($atts) {
         // Initialize upload system
         initializeUploadSystem();
         
-        // SIMPLE DEBUG TEST - Add direct button click handler
-        setTimeout(function() {
-            const uploadBtn = document.getElementById('staff-avatar-upload');
-            console.log('DEBUG: Upload button found after timeout:', !!uploadBtn);
-            if (uploadBtn) {
-                // Remove any existing handlers and add a simple test
-                uploadBtn.onclick = function(e) {
-                    e.preventDefault();
-                    console.log('DEBUG: Upload button clicked!');
-                    alert('Upload button works! Checking wp.media availability...');
-                    
-                    if (typeof wp !== 'undefined' && wp.media) {
-                        console.log('DEBUG: wp.media available, opening media library');
-                        const frame = wp.media({
-                            title: 'Select Profile Photo',
-                            multiple: false,
-                            library: { type: 'image' }
-                        });
-                        
-                        frame.on('select', function() {
-                            const attachment = frame.state().get('selection').first().toJSON();
-                            console.log('DEBUG: Media selected:', attachment);
-                            alert('Image selected: ' + attachment.filename);
-                            updateAvatarPreview(attachment.url, attachment.id);
-                        });
-                        
-                        frame.open();
-                    } else {
-                        console.log('DEBUG: wp.media not available, triggering file input');
-                        const fileInput = document.getElementById('staff-avatar-file');
-                        if (fileInput) {
-                            fileInput.click();
-                        } else {
-                            alert('File input not found');
-                        }
-                    }
-                };
-                console.log('DEBUG: Simple click handler attached');
-            }
-        }, 1000);
-        
         const staffForm = document.getElementById('staff-form');
         const staffList = document.getElementById('staff-list');
         const addStaffBtn = document.getElementById('add-staff-btn');
@@ -463,29 +432,24 @@ function manage_staff_shortcode($atts) {
         const closeBtns = document.querySelectorAll('.elite-close, .staff-cancel, #confirm-cancel');
         const messageContainer = document.getElementById('message-container');
         
-        console.log('Elements found:');
-        console.log('- staffForm:', !!staffForm);
-        console.log('- staffList:', !!staffList);
-        console.log('- addStaffBtn:', !!addStaffBtn);
-        console.log('- modal:', !!modal);
-        
-        const templateEl = document.getElementById('staff-row-template');
-        console.log('- template element:', !!templateEl);
+    // Elements
+    const templateEl = document.getElementById('staff-row-template');
         
         let staffRowTemplate;
         if (templateEl && typeof _ !== 'undefined') {
             try {
                 staffRowTemplate = _.template(templateEl.innerHTML);
-                console.log('Using underscore template');
             } catch (e) {
-                console.error('Error creating underscore template:', e);
+                // Fallback to null template if underscore compilation fails
                 staffRowTemplate = null;
             }
         } else {
-            console.log('Underscore not available or template element missing, using fallback');
             staffRowTemplate = function(data) {
+                const avatar = data.avatar || '';
+                const initials = (data.name || '').split(' ').map(n => n.charAt(0)).join('').toUpperCase().substring(0,2) || '??';
+                const photoHtml = avatar.length ? `<img src="${avatar}" alt="${data.name}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;" />` : `<div class="avatar-initial">${initials}</div>`;
                 return `<tr data-id="${data.id}">
-                    <td class="staff-name">${data.name || ''}</td>
+                    <td class="staff-name"><div class="staff-cell">${photoHtml}<div class="staff-meta"><div class="staff-name-text">${data.name || ''}</div></div></div></td>
                     <td class="staff-role">${data.role || ''}</td>
                     <td class="staff-email">${data.email || ''}</td>
                     <td class="staff-phone">${data.phone || ''}</td>
@@ -533,7 +497,7 @@ function manage_staff_shortcode($atts) {
         }
 
         function loadStaff(filters = {}) {
-            const postData = { action: 'manage_staff', nonce: '<?php echo wp_create_nonce('staff_management_nonce'); ?>', action_type: 'get_staff', data: JSON.stringify(filters) };
+            const postData = { action: 'manage_staff_public', nonce: '<?php echo wp_create_nonce('staff_management_nonce'); ?>', action_type: 'get_staff', data: JSON.stringify(filters) };
             fetch('<?php echo admin_url('admin-ajax.php'); ?>', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' }, body: new URLSearchParams(postData) })
             .then(r => r.json())
             .then(resp => { if (resp && resp.success) renderStaff(resp.data.staff || []); else staffList.innerHTML = '<tr><td colspan="6"><?php _e('Could not load staff', 'payndle'); ?></td></tr>'; })
@@ -544,7 +508,7 @@ function manage_staff_shortcode($atts) {
             const tr = e.currentTarget.closest('tr');
             const id = tr.dataset.id;
             // Fetch single staff record using get_staff with id
-            fetch('<?php echo admin_url('admin-ajax.php'); ?>', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' }, body: new URLSearchParams({ action: 'manage_staff', nonce: '<?php echo wp_create_nonce('staff_management_nonce'); ?>', action_type: 'get_staff', data: JSON.stringify({ id: id }) }) })
+            fetch('<?php echo admin_url('admin-ajax.php'); ?>', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' }, body: new URLSearchParams({ action: 'manage_staff_public', nonce: '<?php echo wp_create_nonce('staff_management_nonce'); ?>', action_type: 'get_staff', data: JSON.stringify({ id: id }) }) })
             .then(r => r.json()).then(resp => {
                 if (!resp || !resp.success) return showMessage('<?php _e('Could not load staff record', 'payndle'); ?>', 'error');
                 const item = (resp.data.staff && resp.data.staff[0]) ? resp.data.staff[0] : null;
@@ -567,8 +531,43 @@ function manage_staff_shortcode($atts) {
         function onDeleteClick(e) {
             const tr = e.currentTarget.closest('tr');
             const id = tr.dataset.id;
-            if (!confirm('<?php _e('Are you sure you want to delete this staff member?', 'payndle'); ?>')) return;
-            fetch('<?php echo admin_url('admin-ajax.php'); ?>', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' }, body: new URLSearchParams({ action: 'manage_staff', nonce: '<?php echo wp_create_nonce('staff_management_nonce'); ?>', action_type: 'delete_staff', data: JSON.stringify({ id: id }) }) })
+            const modal = document.getElementById('confirm-modal');
+            const msg = document.getElementById('confirm-message');
+            const confirmBtn = document.getElementById('confirm-action');
+            const cancelBtn = document.getElementById('confirm-cancel');
+            const closeBtn = document.querySelector('#confirm-modal .close');
+
+            // If modal elements missing, do not use native confirm; show inline message and abort
+            if (!modal || !confirmBtn || !cancelBtn) {
+                return showMessage('<?php _e('Confirmation UI is unavailable. Please refresh and try again.', 'payndle'); ?>', 'error');
+            }
+
+            if (msg) msg.textContent = '<?php _e('Are you sure you want to delete this staff member?', 'payndle'); ?>';
+
+            // Ensure modal is at document.body level to avoid stacking/overflow issues
+            if (modal && modal.parentNode !== document.body) {
+                document.body.appendChild(modal);
+            }
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+
+            const cleanup = () => {
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+                confirmBtn.removeEventListener('click', onConfirm);
+                cancelBtn.removeEventListener('click', onCancel);
+                if (closeBtn) closeBtn.removeEventListener('click', onCancel);
+            };
+            const onCancel = () => cleanup();
+            const onConfirm = () => { cleanup(); performDelete(id); };
+
+            confirmBtn.addEventListener('click', onConfirm);
+            cancelBtn.addEventListener('click', onCancel);
+            if (closeBtn) closeBtn.addEventListener('click', onCancel);
+        }
+
+        function performDelete(id) {
+            fetch('<?php echo admin_url('admin-ajax.php'); ?>', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' }, body: new URLSearchParams({ action: 'manage_staff_public', nonce: '<?php echo wp_create_nonce('staff_management_nonce'); ?>', action_type: 'delete_staff', data: JSON.stringify({ id: id }) }) })
             .then(r => r.json()).then(resp => { if (resp && resp.success) { showMessage(resp.message || '<?php _e('Deleted', 'payndle'); ?>'); loadStaff(); } else showMessage(resp.message || '<?php _e('Could not delete', 'payndle'); ?>', 'error'); })
             .catch(() => showMessage('<?php _e('Server error', 'payndle'); ?>', 'error'));
         }
@@ -585,7 +584,7 @@ function manage_staff_shortcode($atts) {
                 const serviceEl = document.getElementById('staff-service');
                 const services = serviceEl && serviceEl.value ? [serviceEl.value] : [];
                 const actionType = id ? 'update_staff' : 'add_staff';
-                const postData = { action: 'manage_staff', nonce: '<?php echo wp_create_nonce('staff_management_nonce'); ?>', action_type: actionType, data: JSON.stringify({ id: id, name: name, email: email, phone: phone, status: status, services: services }) };
+                const postData = { action: 'manage_staff_public', nonce: '<?php echo wp_create_nonce('staff_management_nonce'); ?>', action_type: actionType, data: JSON.stringify({ id: id, name: name, email: email, phone: phone, status: status, services: services }) };
                 fetch('<?php echo admin_url('admin-ajax.php'); ?>', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' }, body: new URLSearchParams(postData) })
                 .then(r => r.json()).then(resp => { if (resp && resp.success) { showMessage(resp.message || '<?php _e('Saved', 'payndle'); ?>'); closeModal(); loadStaff(); } else showMessage(resp.message || '<?php _e('Could not save', 'payndle'); ?>', 'error'); })
                 .catch(() => showMessage('<?php _e('Server error', 'payndle'); ?>', 'error'));
@@ -595,19 +594,43 @@ function manage_staff_shortcode($atts) {
         // Bind add button
         if (addStaffBtn) addStaffBtn.addEventListener('click', function(){ document.getElementById('staff-form').reset(); document.getElementById('staff-id').value = ''; document.getElementById('staff-modal-title').textContent = '<?php _e('Add New Staff', 'payndle'); ?>'; openModal(); });
 
+        // Public filters: Role (Service) Apply/Reset
+        const roleFilterEl = document.getElementById('filter-role');
+        const applyBtn = document.getElementById('apply-filters');
+        const resetBtn = document.getElementById('reset-filters');
+        if (applyBtn) applyBtn.addEventListener('click', function(){
+            const val = roleFilterEl && roleFilterEl.value ? roleFilterEl.value : '';
+            const statusEl = document.getElementById('filter-status');
+            const searchEl = document.getElementById('staff-search');
+            const filters = {};
+            if (/^\d+$/.test(val)) { filters.service_id = parseInt(val, 10); }
+            if (statusEl && statusEl.value) { filters.status = statusEl.value; }
+            if (searchEl && searchEl.value) { filters.search = searchEl.value.trim(); }
+            loadStaff(filters);
+        });
+        if (resetBtn) resetBtn.addEventListener('click', function(){
+            if (roleFilterEl) roleFilterEl.value = '';
+            const statusEl = document.getElementById('filter-status');
+            const searchEl = document.getElementById('staff-search');
+            if (statusEl) statusEl.value = '';
+            if (searchEl) searchEl.value = '';
+            loadStaff({});
+        });
+
         // close handlers
         closeBtns.forEach(b => b.addEventListener('click', closeModal));
 
-        // loadStaff();
+        // Initial load with current selection (if any)
+        (function(){
+            const val = roleFilterEl && roleFilterEl.value ? roleFilterEl.value : '';
+            const filters = {};
+            if (/^\d+$/.test(val)) { filters.service_id = parseInt(val, 10); }
+            loadStaff(filters);
+        })();
         
         } // End of init function
         
-        // Debug: Check what's available
-        console.log('=== SCRIPT LOADING DEBUG ===');
-        console.log('Document ready state:', document.readyState);
-        console.log('Underscore available:', typeof _);
-        console.log('jQuery available:', typeof jQuery);
-        console.log('WordPress available:', typeof wp);
+    // Production: runtime environment checks removed
         
         // Ensure DOM ready before init (don't block on underscore; init will gracefully handle its absence)
         (function whenDOMReady(fn){
@@ -634,8 +657,9 @@ add_shortcode('payndle_test', 'payndle_test_shortcode');
 /**
  * AJAX handler for staff management
  */
-add_action('wp_ajax_manage_staff', 'handle_staff_ajax');
-add_action('wp_ajax_nopriv_manage_staff', 'handle_staff_ajax');
+// Use a dedicated public action name to avoid clashing with admin-only handler
+add_action('wp_ajax_manage_staff_public', 'handle_staff_ajax');
+add_action('wp_ajax_nopriv_manage_staff_public', 'handle_staff_ajax');
 function handle_staff_ajax() {
     // Verify nonce
     check_ajax_referer('staff_management_nonce', 'nonce');
@@ -668,6 +692,7 @@ function handle_staff_ajax() {
                 $search = isset($data['search']) ? sanitize_text_field($data['search']) : '';
                 $status = isset($data['status']) ? sanitize_text_field($data['status']) : '';
                 $service_id = isset($data['service_id']) ? absint($data['service_id']) : 0;
+                $role = isset($data['role']) ? sanitize_text_field($data['role']) : '';
                 $id = isset($data['id']) ? absint($data['id']) : 0;
 
                 $args = array(
@@ -693,11 +718,37 @@ function handle_staff_ajax() {
                 }
 
                 if (!empty($service_id)) {
-                    // staff_services is stored as array; use LIKE on serialized value
+                    // staff_services is stored as serialized array; match both string and integer encodings
+                    $service_or = array(
+                        'relation' => 'OR',
+                        array(
+                            'key' => 'staff_services',
+                            'value' => '"' . $service_id . '"', // serialized string form s:N:"ID"
+                            'compare' => 'LIKE'
+                        ),
+                        array(
+                            'key' => 'staff_services',
+                            'value' => 'i:' . $service_id . ';', // serialized integer form i:ID;
+                            'compare' => 'LIKE'
+                        )
+                    );
+                    // Legacy: some installs used staff_role text equal to service title
+                    $s_post = get_post($service_id);
+                    if ($s_post && !empty($s_post->post_title)) {
+                        $service_or[] = array(
+                            'key' => 'staff_role',
+                            'value' => $s_post->post_title,
+                            'compare' => '='
+                        );
+                    }
+                    $meta_query[] = $service_or;
+                }
+                // If role string provided (non-numeric), also match legacy staff_role exactly
+                if (!empty($role) && !is_numeric($role)) {
                     $meta_query[] = array(
-                        'key' => 'staff_services',
-                        'value' => '"' . $service_id . '"',
-                        'compare' => 'LIKE'
+                        'key' => 'staff_role',
+                        'value' => $role,
+                        'compare' => '='
                     );
                 }
 
@@ -719,13 +770,43 @@ function handle_staff_ajax() {
                             }
                         }
 
+                        $avatar = get_post_meta($post_id, 'staff_avatar', true);
+                        $avatar_id = get_post_meta($post_id, 'staff_avatar_id', true);
+                        // If avatar URL is missing but an attachment ID exists, resolve it to a URL
+                        if (empty($avatar) && !empty($avatar_id)) {
+                            if (function_exists('wp_get_attachment_image_url')) {
+                                $resolved = wp_get_attachment_image_url($avatar_id, 'thumbnail');
+                            } else {
+                                $resolved = wp_get_attachment_url($avatar_id);
+                            }
+                            if (empty($resolved)) {
+                                $resolved = wp_get_attachment_url($avatar_id);
+                            }
+                            if (!empty($resolved)) {
+                                $avatar = $resolved;
+                                // Do not force-write back to meta here; just return the resolved URL
+                            }
+                        }
+                        // Fallback to featured image if avatar meta missing
+                        if (empty($avatar)) {
+                            $thumb_id = function_exists('get_post_thumbnail_id') ? get_post_thumbnail_id($post_id) : 0;
+                            if ($thumb_id) {
+                                $resolved = function_exists('wp_get_attachment_image_url') ? wp_get_attachment_image_url($thumb_id, 'thumbnail') : wp_get_attachment_url($thumb_id);
+                                if (empty($resolved)) { $resolved = wp_get_attachment_url($thumb_id); }
+                                if (!empty($resolved)) {
+                                    $avatar = $resolved;
+                                    if (empty($avatar_id)) { $avatar_id = $thumb_id; }
+                                }
+                            }
+                        }
+
                         $staff[] = array(
                             'id' => $post_id,
                             'name' => get_the_title(),
-                            'email' => get_post_meta($post_id, 'email', true),
-                            'phone' => get_post_meta($post_id, 'phone', true),
-                            'avatar' => get_post_meta($post_id, 'staff_avatar', true),
-                            'avatar_id' => get_post_meta($post_id, 'staff_avatar_id', true),
+                            'email' => get_post_meta($post_id, 'staff_email', true) ?: get_post_meta($post_id, 'email', true),
+                            'phone' => get_post_meta($post_id, 'staff_phone', true) ?: get_post_meta($post_id, 'phone', true),
+                            'avatar' => $avatar,
+                            'avatar_id' => $avatar_id,
                             'status' => get_post_meta($post_id, 'staff_status', true) ?: 'active',
                             'services' => $service_items
                         );
@@ -914,35 +995,51 @@ function handle_staff_ajax() {
 add_action('wp_ajax_upload_avatar', 'handle_avatar_upload');
 add_action('wp_ajax_nopriv_upload_avatar', 'handle_avatar_upload');
 function handle_avatar_upload() {
-    error_log('=== AVATAR UPLOAD SERVER DEBUG START ===');
-    error_log('POST data: ' . print_r($_POST, true));
-    error_log('FILES data: ' . print_r($_FILES, true));
+    if ( defined('WP_DEBUG') && WP_DEBUG ) {
+        error_log('=== AVATAR UPLOAD SERVER DEBUG START ===');
+        error_log('POST data: ' . print_r($_POST, true));
+        error_log('FILES data: ' . print_r($_FILES, true));
+    }
     
     if (!function_exists('wp_handle_upload')) require_once(ABSPATH . 'wp-admin/includes/file.php');
     if (!function_exists('wp_generate_attachment_metadata')) require_once(ABSPATH . 'wp-admin/includes/image.php');
 
     // Verify nonce
     $nonce = isset($_POST['nonce']) ? sanitize_text_field($_POST['nonce']) : '';
-    error_log('Nonce received: ' . $nonce);
+    if ( defined('WP_DEBUG') && WP_DEBUG ) {
+        error_log('Nonce received: ' . $nonce);
+    }
     if (!wp_verify_nonce($nonce, 'staff_management_nonce')) {
-        error_log('Nonce verification failed');
+        if ( defined('WP_DEBUG') && WP_DEBUG ) {
+            error_log('Nonce verification failed');
+        }
         wp_send_json_error(__('Invalid nonce', 'payndle'));
     }
-    error_log('Nonce verified successfully');
+    if ( defined('WP_DEBUG') && WP_DEBUG ) {
+        error_log('Nonce verified successfully');
+    }
 
     if (empty($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
-        error_log('File upload error. FILES: ' . print_r($_FILES, true));
+        if ( defined('WP_DEBUG') && WP_DEBUG ) {
+            error_log('File upload error. FILES: ' . print_r($_FILES, true));
+        }
         wp_send_json_error(__('No file uploaded or upload error', 'payndle'));
     }
     
     $file = $_FILES['file'];
-    error_log('Processing file: ' . $file['name']);
+    if ( defined('WP_DEBUG') && WP_DEBUG ) {
+        error_log('Processing file: ' . $file['name']);
+    }
     $overrides = array('test_form' => false);
     $movefile = wp_handle_upload($file, $overrides);
-    error_log('wp_handle_upload result: ' . print_r($movefile, true));
+    if ( defined('WP_DEBUG') && WP_DEBUG ) {
+        error_log('wp_handle_upload result: ' . print_r($movefile, true));
+    }
     
     if (!$movefile || isset($movefile['error'])) {
-        error_log('wp_handle_upload failed: ' . ($movefile['error'] ?? 'Unknown error'));
+        if ( defined('WP_DEBUG') && WP_DEBUG ) {
+            error_log('wp_handle_upload failed: ' . ($movefile['error'] ?? 'Unknown error'));
+        }
         wp_send_json_error($movefile['error'] ?? __('Upload failed', 'payndle'));
     }
 
@@ -954,20 +1051,28 @@ function handle_avatar_upload() {
         'post_content' => '',
         'post_status' => 'inherit'
     );
-    error_log('Creating attachment with data: ' . print_r($attachment, true));
+    if ( defined('WP_DEBUG') && WP_DEBUG ) {
+        error_log('Creating attachment with data: ' . print_r($attachment, true));
+    }
     $attach_id = wp_insert_attachment($attachment, $movefile['file']);
-    error_log('wp_insert_attachment result: ' . $attach_id);
+    if ( defined('WP_DEBUG') && WP_DEBUG ) {
+        error_log('wp_insert_attachment result: ' . $attach_id);
+    }
     
     if (is_wp_error($attach_id)) {
-        error_log('wp_insert_attachment failed: ' . $attach_id->get_error_message());
+        if ( defined('WP_DEBUG') && WP_DEBUG ) {
+            error_log('wp_insert_attachment failed: ' . $attach_id->get_error_message());
+        }
         wp_send_json_error($attach_id->get_error_message());
     }
     $attach_data = wp_generate_attachment_metadata($attach_id, $movefile['file']);
     wp_update_attachment_metadata($attach_id, $attach_data);
     
     $response_data = array('id' => $attach_id, 'url' => $movefile['url']);
-    error_log('Success response: ' . print_r($response_data, true));
-    error_log('=== AVATAR UPLOAD SERVER DEBUG END ===');
+    if ( defined('WP_DEBUG') && WP_DEBUG ) {
+        error_log('Success response: ' . print_r($response_data, true));
+        error_log('=== AVATAR UPLOAD SERVER DEBUG END ===');
+    }
     wp_send_json_success($response_data);
 }
 
@@ -1116,6 +1221,8 @@ function enqueue_staff_management_assets($hook) {
             'nonce' => wp_create_nonce('staff_management_nonce'),
             'rest_url' => rest_url(),
             'rest_nonce' => wp_create_nonce('wp_rest'),
+            'context' => is_admin() ? 'admin' : 'frontend',
+            'ajax_action' => 'manage_staff_public',
             'confirm_delete' => __('Are you sure you want to delete this staff member?', 'payndle'),
         ));
     }

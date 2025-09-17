@@ -21,6 +21,33 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+/**
+ * Helper: centralised plugin debug logger.
+ * Writes to error_log only when WP_DEBUG is enabled.
+ */
+if (!function_exists('payndle_log')) {
+    function payndle_log($message) {
+        if ( defined('WP_DEBUG') && WP_DEBUG ) {
+            if ( is_array($message) || is_object($message) ) {
+                error_log(print_r($message, true));
+            } else {
+                error_log($message);
+            }
+        }
+    }
+}
+
+// Expose a JS flag for debug mode to front-end scripts (useful if needed)
+add_action('wp_enqueue_scripts', function() {
+    wp_add_inline_script('jquery', sprintf("window.payndleDebug = %s;", (defined('WP_DEBUG') && WP_DEBUG) ? 'true' : 'false'));
+});
+
+// If debug is off, provide a small safeguard to silence console calls in front-end
+add_action('wp_head', function() {
+    if ( defined('WP_DEBUG') && WP_DEBUG ) return;
+    echo "<script>(function(){if(!window.payndleDebug){var i=['log','info','warn','error','debug'];i.forEach(function(k){if(!console[k]) return;console[k]=function(){};});}})();</script>";
+});
+
 // Load plugin class files.
 require_once 'includes/class-wordpress-plugin-template.php';
 require_once 'includes/class-wordpress-plugin-template-settings.php';

@@ -10,7 +10,6 @@ jQuery(document).ready(function($) {
     let currentPage = 1;
     const perPage = 10;
     let totalPages = 1;
-    let totalItems = 0;
 
     // Initialize
     initStaffManagement();
@@ -24,16 +23,17 @@ jQuery(document).ready(function($) {
     // Load staff list
     function loadStaffList() {
         const search = $('#staff-search').val();
-        const role = $('#filter-role').val();
+    const role = $('#filter-role').val();
         const status = $('#filter-status').val();
+        const availability = $('#filter-availability').val ? $('#filter-availability').val() : '';
 
         showLoading(true);
 
-        $.ajax({
+    $.ajax({
             url: staffManager.ajax_url,
             type: 'POST',
             data: {
-                action: 'manage_staff',
+        action: (staffManager.ajax_action || 'manage_staff'),
                 nonce: staffManager.nonce,
                 action_type: 'get_staff',
                 data: JSON.stringify({
@@ -41,11 +41,13 @@ jQuery(document).ready(function($) {
                     per_page: perPage,
                     search: search,
                     role: role,
-                    status: status
+                    // If role is a numeric ID, treat it as a service filter for backend
+                    service_id: (/^\d+$/.test(role) ? parseInt(role, 10) : ''),
+                    status: status,
+                    availability: availability
                 })
             },
             success: function(response) {
-                console.log('AJAX Response:', response);
                 if (response.success) {
                     renderStaffList(response.data.staff);
                     updatePagination(response.data.pagination);
@@ -55,7 +57,6 @@ jQuery(document).ready(function($) {
                 }
             },
             error: function(xhr, status, error) {
-                console.log('AJAX Error:', xhr, status, error);
                 renderEmptyTable();
                 showPopup('error', 'Error: ' + error);
             },
@@ -67,12 +68,12 @@ jQuery(document).ready(function($) {
 
     // Render staff table
     function renderStaffList(staff) {
-        console.log('Rendering staff list:', staff);
+        // rendering staff list aligned with 6-column header (Staff, Role, Contact, Availability, Status, Actions)
         const $staffList = $('#staff-list');
         $staffList.empty();
 
-        if (!staff || staff.length === 0) {
-            console.log('No staff found, rendering empty table');
+            if (!staff || staff.length === 0) {
+                // no staff found
             renderEmptyTable();
             return;
         }
@@ -80,14 +81,33 @@ jQuery(document).ready(function($) {
         staff.forEach(function(member) {
             const statusClass = member.status === 'active' ? 'status-active' : 'status-inactive';
             const statusText = member.status === 'active' ? 'Active' : 'Inactive';
-            const serviceTitle = (member.services && member.services.length) ? member.services[0].title : '';
+            const serviceTitle = (member.services && member.services.length) ? (member.services[0].title || member.services[0]) : '';
+            const roleText = member.role || serviceTitle || '';
+
+            // avatar inside name cell
+            let avatarHtml = '';
+            if (member.avatar && member.avatar.trim() !== '') {
+                avatarHtml = `<img src="${member.avatar}" alt="${member.name}" class="avatar" />`;
+            } else {
+                const initials = member.name ? member.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0,2) : '??';
+                avatarHtml = `<div class="avatar-initial">${initials}</div>`;
+            }
+
+            // contact cell (email + phone)
+            const contactEmail = member.email ? `${member.email}` : '';
+            const contactPhone = member.phone ? `${member.phone}` : '';
+            const contactHtml = `<div class="contact-cell">${contactEmail ? `<div class="contact-email">${contactEmail}</div>` : ''}${contactPhone ? `<div class="contact-phone">${contactPhone}</div>` : ''}</div>`;
+
+            // availability cell (badge, default Available)
+            const availability = member.availability || 'Available';
+            const availabilityHtml = `<span class="availability-badge avail-${availability.replace(/\s+/g,'')}">${availability}</span>`;
 
             const row = `
                 <tr data-id="${member.id}">
-                    <td class="staff-name">${member.name || ''}</td>
-                    <td class="staff-role">${serviceTitle}</td>
-                    <td class="staff-email">${member.email || ''}</td>
-                    <td class="staff-phone">${member.phone || 'N/A'}</td>
+                    <td class="staff-name"><div class="staff-cell">${avatarHtml}<div class="staff-meta"><div class="staff-name-text">${member.name || ''}</div></div></div></td>
+                    <td class="staff-role">${roleText}</td>
+                    <td class="staff-contact">${contactHtml || '—'}</td>
+                    <td class="staff-availability">${availabilityHtml}</td>
                     <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                     <td class="staff-actions">
                         <button class="button button-small edit-staff" data-id="${member.id}" title="Edit">
@@ -112,10 +132,10 @@ jQuery(document).ready(function($) {
     // Pagination controls
     function updatePagination(pagination) {
         totalPages = pagination.total_pages;
-        totalItems = pagination.total_items;
         currentPage = pagination.current_page;
 
-        $('.displaying-num').text(totalItems + ' items');
+        var total = (typeof pagination.total !== 'undefined') ? pagination.total : 0;
+        $('.displaying-num').text(total + ' items');
         $('.total-pages').text(totalPages);
         $('.tablenav-pages .current-page').val(currentPage);
 
@@ -161,7 +181,7 @@ jQuery(document).ready(function($) {
                 url: staffManager.ajax_url,
                 type: 'POST',
                 data: {
-                    action: 'manage_staff',
+                    action: (staffManager.ajax_action || 'manage_staff'),
                     nonce: staffManager.nonce,
                     action_type: 'get_staff',
                     data: JSON.stringify({ id: staffId })
@@ -224,15 +244,14 @@ jQuery(document).ready(function($) {
     function handleStaffFormSubmit(e) {
         e.preventDefault();
 
-        const staffId = $('#staff-id').val();
+    const staffId = $('#staff-id').val();
         const isEdit = !!staffId;
 
-    console.log('handleStaffFormSubmit invoked', { staffId: staffId });
+    // handle staff form submit
 
         var $form = $('#staff-form');
         var $submitBtn = $form.find('button[type="submit"]');
         if ($form.data('submitting')) {
-            console.log('Form already submitting; ignoring duplicate submit');
             return;
         }
         $form.data('submitting', true);
@@ -256,9 +275,7 @@ jQuery(document).ready(function($) {
             errors.push('Please enter a valid email address.');
         }
         
-        if (phoneVal && !isValidPhone(phoneVal)) {
-            errors.push('Please enter a valid phone number.');
-        }
+        // Phone validation relaxed per requirements
         
         if (errors.length > 0) {
             showPopup('error', errors.join(' '));
@@ -275,28 +292,28 @@ jQuery(document).ready(function($) {
             services: serviceVal ? [serviceVal] : []
         };
 
+        if (isEdit) { formData.id = staffId; }
+
         // Include avatar fields from the shared template
         if ($('#staff-avatar').length) formData.avatar = $('#staff-avatar').val();
         if ($('#staff-avatar-id').length) formData.avatar_id = $('#staff-avatar-id').val();
 
         const actionType = isEdit ? 'update_staff' : 'add_staff';
 
-        // Debug: print payload before sending
         var payload = {
-            action: 'manage_staff',
+            action: (staffManager.ajax_action || 'manage_staff'),
             nonce: (typeof staffManager !== 'undefined' ? staffManager.nonce : ''),
             action_type: actionType,
             staff_id: staffId,
             data: JSON.stringify(formData)  // Convert to JSON string as PHP expects
         };
-        console.log('Sending AJAX payload', payload);
+        
 
         $.ajax({
             url: staffManager.ajax_url,
             type: 'POST',
             data: payload,
             success: function(response) {
-                console.log('AJAX success response', response);
                 if (response && response.success) {
                     showPopup('success', response.message || (isEdit ? 'Staff updated' : 'Staff added'));
                     closeStaffModal();
@@ -306,7 +323,6 @@ jQuery(document).ready(function($) {
                 }
             },
             error: function(xhr, status, error) {
-                console.log('AJAX error', { xhr: xhr, status: status, error: error });
                 showPopup('error', 'Error: ' + error);
             }
             ,
@@ -320,29 +336,63 @@ jQuery(document).ready(function($) {
 
     // Delete
     function deleteStaff(staffId) {
-        if (!confirm(staffManager.confirm_delete)) return;
+        // Use confirmation modal if present; otherwise fallback to confirm
+        const modal = document.getElementById('confirm-modal');
+        const msg = document.getElementById('confirm-message');
+        const confirmBtn = document.getElementById('confirm-action');
+        const cancelBtn = document.getElementById('confirm-cancel');
+        const closeBtn = document.querySelector('#confirm-modal .close');
 
-        $.ajax({
-            url: staffManager.ajax_url,
-            type: 'POST',
-            data: {
-                action: 'manage_staff',
-                nonce: staffManager.nonce,
-                action_type: 'delete_staff',
-                staff_id: staffId
-            },
-            success: function(response) {
-                if (response.success) {
-                    showPopup('success', response.message || 'Staff deleted');
-                    loadStaffList();
-                } else {
-                    showPopup('error', response.message || 'Failed to delete staff');
+        const performDelete = function() {
+            $.ajax({
+                url: staffManager.ajax_url,
+                type: 'POST',
+                data: {
+                    action: (staffManager.ajax_action || 'manage_staff'),
+                    nonce: staffManager.nonce,
+                    action_type: 'delete_staff',
+                    data: JSON.stringify({ id: staffId })
+                },
+                success: function(response) {
+                    if (response.success) {
+                        showPopup('success', response.message || 'Staff deleted');
+                        loadStaffList();
+                    } else {
+                        showPopup('error', response.message || 'Failed to delete staff');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    showPopup('error', 'Error: ' + error);
                 }
-            },
-            error: function(xhr, status, error) {
-                showPopup('error', 'Error: ' + error);
-            }
-        });
+            });
+        };
+
+        if (!modal || !confirmBtn || !cancelBtn) {
+            if (!confirm(staffManager.confirm_delete)) return;
+            return performDelete();
+        }
+
+        if (msg) msg.textContent = staffManager.confirm_delete || 'Are you sure you want to delete this staff member?';
+
+        if (modal && modal.parentNode !== document.body) {
+            document.body.appendChild(modal);
+        }
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+
+        const cleanup = function() {
+            modal.style.display = 'none';
+            document.body.style.overflow = '';
+            confirmBtn.removeEventListener('click', onConfirm);
+            cancelBtn.removeEventListener('click', onCancel);
+            if (closeBtn) closeBtn.removeEventListener('click', onCancel);
+        };
+        const onCancel = function() { cleanup(); };
+        const onConfirm = function() { cleanup(); performDelete(); };
+
+        confirmBtn.addEventListener('click', onConfirm);
+        cancelBtn.addEventListener('click', onCancel);
+        if (closeBtn) closeBtn.addEventListener('click', onCancel);
     }
 
     // Avatar Upload System

@@ -233,6 +233,12 @@
     min-width: 100px;
 }
 .staff-table td.staff-status,
+/* Combined avatar + name cell styling (shared with admin) */
+.staff-cell { display: flex; align-items: center; gap: 0.9rem; }
+.avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(201, 167, 77, 0.35); }
+.avatar-initial { width: 42px; height: 42px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.95rem; color: var(--color-white, #ffffff); border: 2px solid rgba(100,196,147,0.25); background: linear-gradient(135deg, var(--color-green), var(--color-green-dark)); box-shadow: inset 0 1px 0 rgba(255,255,255,0.12); }
+.staff-meta { display: flex; flex-direction: column; }
+.staff-name-text { font-weight: 600; color: var(--color-navy); }
 .staff-table th:nth-child(5) {
     width: 10%;
     min-width: 80px;

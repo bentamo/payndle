@@ -911,14 +911,16 @@ class UserBookingForm {
      * Handle AJAX booking submission
      */
     public function submit_user_booking_ajax() {
-        // Log all received data for debugging
-        file_put_contents(
-            plugin_dir_path(__FILE__) . 'booking-debug.log', 
-            date('Y-m-d H:i:s') . " - Booking submission started\n" . 
-            "POST data: " . print_r($_POST, true) . "\n" .
-            "Headers: " . print_r(getallheaders(), true) . "\n\n", 
-            FILE_APPEND
-        );
+        // Log all received data for debugging (only when WP_DEBUG enabled)
+        if ( defined('WP_DEBUG') && WP_DEBUG ) {
+            file_put_contents(
+                plugin_dir_path(__FILE__) . 'booking-debug.log', 
+                date('Y-m-d H:i:s') . " - Booking submission started\n" . 
+                "POST data: " . print_r($_POST, true) . "\n" .
+                "Headers: " . print_r(getallheaders(), true) . "\n\n", 
+                FILE_APPEND
+            );
+        }
         
         // Test database structure first
         global $wpdb;
@@ -928,27 +930,33 @@ class UserBookingForm {
         $columns = $wpdb->get_results("DESCRIBE $booking_table");
         if ($columns) {
             $column_names = array_column($columns, 'Field');
-            file_put_contents(
-                plugin_dir_path(__FILE__) . 'booking-debug.log', 
-                date('Y-m-d H:i:s') . " - Booking table columns: " . implode(', ', $column_names) . "\n", 
-                FILE_APPEND
-            );
+            if ( defined('WP_DEBUG') && WP_DEBUG ) {
+                file_put_contents(
+                    plugin_dir_path(__FILE__) . 'booking-debug.log', 
+                    date('Y-m-d H:i:s') . " - Booking table columns: " . implode(', ', $column_names) . "\n", 
+                    FILE_APPEND
+                );
+            }
         } else {
-            file_put_contents(
-                plugin_dir_path(__FILE__) . 'booking-debug.log', 
-                date('Y-m-d H:i:s') . " - Could not describe booking table or table does not exist\n", 
-                FILE_APPEND
-            );
+            if ( defined('WP_DEBUG') && WP_DEBUG ) {
+                file_put_contents(
+                    plugin_dir_path(__FILE__) . 'booking-debug.log', 
+                    date('Y-m-d H:i:s') . " - Could not describe booking table or table does not exist\n", 
+                    FILE_APPEND
+                );
+            }
         }
         
         // Check nonce - be more lenient for debugging
         $nonce_check = check_ajax_referer('user_booking_nonce', 'nonce', false);
         if (!$nonce_check) {
-            file_put_contents(
-                plugin_dir_path(__FILE__) . 'booking-debug.log', 
-                date('Y-m-d H:i:s') . " - Nonce verification failed. Nonce received: " . ($_POST['nonce'] ?? 'none') . "\n", 
-                FILE_APPEND
-            );
+            if ( defined('WP_DEBUG') && WP_DEBUG ) {
+                file_put_contents(
+                    plugin_dir_path(__FILE__) . 'booking-debug.log', 
+                    date('Y-m-d H:i:s') . " - Nonce verification failed. Nonce received: " . ($_POST['nonce'] ?? 'none') . "\n", 
+                    FILE_APPEND
+                );
+            }
             
             // For debugging, let's try to continue anyway but log it
             // wp_send_json([

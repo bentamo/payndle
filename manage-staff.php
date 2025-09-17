@@ -38,10 +38,21 @@ function elite_cuts_manage_staff_page() {
                         <label for="filter-role">Role</label>
                         <select id="filter-role" class="elite-select">
                             <option value="">All Roles</option>
-                            <option value="Master Barber">Master Barber</option>
-                            <option value="Barber">Barber</option>
-                            <option value="Stylist">Stylist</option>
-                            <option value="Receptionist">Receptionist</option>
+                            <?php
+                            // Populate from Service posts (actual services)
+                            $services = get_posts(array(
+                                'post_type' => 'service',
+                                'post_status' => 'publish',
+                                'posts_per_page' => -1,
+                                'orderby' => 'title',
+                                'order' => 'ASC',
+                                'fields' => 'ids'
+                            ));
+                            foreach ($services as $sid) {
+                                $title = get_the_title($sid);
+                                echo '<option value="' . esc_attr($sid) . '">' . esc_html($title) . '</option>';
+                            }
+                            ?>
                         </select>
                     </div>
                 </div>
@@ -108,18 +119,35 @@ function elite_cuts_manage_staff_page() {
                         <th>Contact</th>
                         <th>Availability</th>
                         <th>Status</th>
-                        <th>Actions</th>
+                           <th><?php _e('Actions', 'payndle'); ?></th>
                     </tr>
                 </thead>
                 <tbody id="staff-list">
-                    <tr class="loading-row">
-                        <td colspan="6">
+                        <tr class="loading-row">
+                            <td colspan="6">
                             <div class="loading-spinner"></div>
                             <span>Loading staff...</span>
                         </td>
                     </tr>
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal (admin) -->
+    <div id="confirm-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><?php _e('Confirm Action', 'payndle'); ?></h3>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p id="confirm-message"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="confirm-cancel" class="button"><?php _e('Cancel', 'payndle'); ?></button>
+                <button type="button" id="confirm-action" class="button button-danger"><?php _e('Delete', 'payndle'); ?></button>
+            </div>
         </div>
     </div>
 
@@ -289,8 +317,6 @@ function elite_cuts_manage_staff_page() {
     .elite-input:focus, .elite-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(100,196,147,0.14); }
         .form-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 0.75rem; }
 
-        }
-
         /* Ensure WordPress Media Library overlays our modal */
         .media-modal {
             z-index: 200000 !important;
@@ -323,13 +349,22 @@ function elite_cuts_manage_staff_page() {
         .avatar-preview { width: 54px; height: 54px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(201, 167, 77, 0.35); background:#f6f6f6; }
         .elite-button.small { padding: 0.4rem 0.7rem; font-size: 0.75rem; }
         .help-text { color: var(--text-secondary); font-size: 0.8rem; margin-top: 0.35rem; }
+
+    /* Simple modal styles for confirmation dialog */
+    #confirm-modal { position: fixed !important; z-index: 200000 !important; left: 0 !important; top: 0 !important; width: 100% !important; height: 100% !important; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; padding: 1rem; }
+    #confirm-modal .modal-content { background: #fff; border-radius: var(--radius); width: 90%; max-width: 440px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); overflow: hidden; }
+    #confirm-modal .modal-header, #confirm-modal .modal-footer { padding: 0.9rem 1rem; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; }
+    #confirm-modal .modal-footer { border-bottom: none; border-top: 1px solid var(--border-color); justify-content: flex-end; gap: .5rem; }
+    #confirm-modal .modal-body { padding: 1rem; }
+    #confirm-modal .close { cursor: pointer; font-size: 1.2rem; color: var(--text-secondary); }
     </style>
     <?php
 }
 
 // Enqueue admin styles and scripts - now using same enhanced JS as shortcode
 function elite_cuts_admin_scripts($hook) {
-    if ('elite-cuts_page_elite-cuts-staff' !== $hook) {
+    // Load assets on our Staff submenu page; be tolerant of different hook formats
+    if (strpos($hook, 'elite-cuts-staff') === false) {
         return;
     }
     
@@ -341,7 +376,8 @@ function elite_cuts_admin_scripts($hook) {
     // Localize script with admin context variables (same as shortcode but fixed variable name)
     wp_localize_script('staff-management-js', 'staffManager', array(
         'ajax_url' => admin_url('admin-ajax.php'),
-        'rest_url' => rest_url('wp/v2/'),
+        // Use root REST URL so JS can append custom routes like 'payndle/v1/upload-avatar'
+        'rest_url' => rest_url(),
         'nonce' => wp_create_nonce('staff_management_nonce'),
         'rest_nonce' => wp_create_nonce('wp_rest'),
         'context' => 'admin',
@@ -398,12 +434,60 @@ function elite_cuts_get_staff($filters = array()) {
         $args['s'] = sanitize_text_field($filters['search']);
     }
 
+    // Build meta_query with AND relation; include status and service filters
+    $meta_query = array('relation' => 'AND');
+
     if (isset($filters['status']) && !empty($filters['status'])) {
-        $args['meta_query'][] = array(
+        $meta_query[] = array(
             'key' => 'staff_status',
             'value' => sanitize_text_field($filters['status']),
             'compare' => '='
         );
+    }
+
+    if (isset($filters['service_id']) && !empty($filters['service_id'])) {
+        $service_id = intval($filters['service_id']);
+        $service_title = '';
+        $s_post = get_post($service_id);
+        if ($s_post) { $service_title = $s_post->post_title; }
+
+        // Match either: staff_services serialized array contains ID OR staff_role equals service title (legacy data)
+        $service_clause = array('relation' => 'OR');
+        // Case 1: staff_services stored as array of strings => serialized contains "123"
+        $service_clause[] = array(
+            'key' => 'staff_services',
+            'value' => '"' . $service_id . '"',
+            'compare' => 'LIKE'
+        );
+        // Case 2: staff_services stored as array of integers => serialized contains i:123;
+        $service_clause[] = array(
+            'key' => 'staff_services',
+            'value' => 'i:' . $service_id . ';',
+            'compare' => 'LIKE'
+        );
+        if (!empty($service_title)) {
+            $service_clause[] = array(
+                'key' => 'staff_role',
+                'value' => $service_title,
+                'compare' => '='
+            );
+        }
+
+        $meta_query[] = $service_clause;
+    }
+
+    // If role is provided as a non-numeric string, match legacy staff_role directly
+    if (isset($filters['role']) && !empty($filters['role']) && !is_numeric($filters['role'])) {
+        $meta_query[] = array(
+            'key' => 'staff_role',
+            'value' => sanitize_text_field($filters['role']),
+            'compare' => '='
+        );
+    }
+
+    // Only set meta_query if we actually added conditions
+    if (count($meta_query) > 1) {
+        $args['meta_query'] = $meta_query;
     }
 
     if (isset($filters['id']) && !empty($filters['id'])) {
@@ -420,17 +504,53 @@ function elite_cuts_get_staff($filters = array()) {
             
             $avatar = get_post_meta($post_id, 'staff_avatar', true);
             $avatar_id = get_post_meta($post_id, 'staff_avatar_id', true);
-            
+            // Resolve attachment ID to URL if avatar is empty
+            if (empty($avatar) && !empty($avatar_id)) {
+                if (function_exists('wp_get_attachment_image_url')) {
+                    $resolved = wp_get_attachment_image_url($avatar_id, 'thumbnail');
+                } else {
+                    $resolved = wp_get_attachment_url($avatar_id);
+                }
+                if (empty($resolved)) {
+                    $resolved = wp_get_attachment_url($avatar_id);
+                }
+                if (!empty($resolved)) {
+                    $avatar = $resolved;
+                }
+            }
+            // Fallback to featured image if no avatar meta is set
+            if (empty($avatar)) {
+                $thumb_id = function_exists('get_post_thumbnail_id') ? get_post_thumbnail_id($post_id) : 0;
+                if ($thumb_id) {
+                    $resolved = function_exists('wp_get_attachment_image_url') ? wp_get_attachment_image_url($thumb_id, 'thumbnail') : wp_get_attachment_url($thumb_id);
+                    if (empty($resolved)) { $resolved = wp_get_attachment_url($thumb_id); }
+                    if (!empty($resolved)) {
+                        $avatar = $resolved;
+                        if (empty($avatar_id)) { $avatar_id = $thumb_id; }
+                    }
+                }
+            }
+
+            // Build service items (id + title) from staff_services meta
+            $service_items = array();
+            $services_meta = get_post_meta($post_id, 'staff_services', true) ?: array();
+            if (!empty($services_meta) && is_array($services_meta)) {
+                foreach ($services_meta as $sid) {
+                    $s_post = get_post($sid);
+                    if ($s_post) $service_items[] = array('id' => $sid, 'title' => $s_post->post_title);
+                }
+            }
+
             $staff[] = array(
                 'id' => $post_id,
                 'name' => get_the_title(),
-                'email' => get_post_meta($post_id, 'staff_email', true),
-                'phone' => get_post_meta($post_id, 'staff_phone', true),
+                'email' => get_post_meta($post_id, 'staff_email', true) ?: get_post_meta($post_id, 'email', true),
+                'phone' => get_post_meta($post_id, 'staff_phone', true) ?: get_post_meta($post_id, 'phone', true),
                 'status' => get_post_meta($post_id, 'staff_status', true),
                 'role' => get_post_meta($post_id, 'staff_role', true),
                 'avatar' => $avatar,
                 'avatar_id' => $avatar_id,
-                'services' => array(), // TODO: implement services relationship
+                'services' => $service_items,
             );
         }
         wp_reset_postdata();
@@ -463,6 +583,9 @@ function elite_cuts_add_staff($data) {
         update_post_meta($post_id, 'staff_phone', sanitize_text_field($data['phone']));
         update_post_meta($post_id, 'staff_status', sanitize_text_field($data['status']));
         update_post_meta($post_id, 'staff_role', sanitize_text_field($data['role']));
+        // services from admin form (single select sent as array)
+        $services = isset($data['services']) && is_array($data['services']) ? array_map('absint', $data['services']) : array();
+        update_post_meta($post_id, 'staff_services', $services);
         
         if (isset($data['avatar']) && !empty($data['avatar'])) {
             update_post_meta($post_id, 'staff_avatar', esc_url_raw($data['avatar']));
@@ -470,6 +593,15 @@ function elite_cuts_add_staff($data) {
         if (isset($data['avatar_id']) && !empty($data['avatar_id'])) {
             update_post_meta($post_id, 'staff_avatar_id', intval($data['avatar_id']));
             set_post_thumbnail($post_id, intval($data['avatar_id']));
+        }
+
+        // Sync assigned_staff on each service post
+        foreach ($services as $sid) {
+            $assigned = get_post_meta($sid, 'assigned_staff', true) ?: array();
+            if (!in_array($post_id, $assigned)) {
+                $assigned[] = $post_id;
+                update_post_meta($sid, 'assigned_staff', $assigned);
+            }
         }
 
         wp_send_json_success(array('message' => 'Staff member added successfully', 'id' => $post_id));
@@ -494,6 +626,9 @@ function elite_cuts_update_staff($data) {
         update_post_meta($post_id, 'staff_phone', sanitize_text_field($data['phone']));
         update_post_meta($post_id, 'staff_status', sanitize_text_field($data['status']));
         update_post_meta($post_id, 'staff_role', sanitize_text_field($data['role']));
+        // services update
+        $old_services = get_post_meta($post_id, 'staff_services', true) ?: array();
+        $services = isset($data['services']) && is_array($data['services']) ? array_map('absint', $data['services']) : array();
         
         if (isset($data['avatar']) && !empty($data['avatar'])) {
             update_post_meta($post_id, 'staff_avatar', esc_url_raw($data['avatar']));
@@ -501,6 +636,26 @@ function elite_cuts_update_staff($data) {
         if (isset($data['avatar_id']) && !empty($data['avatar_id'])) {
             update_post_meta($post_id, 'staff_avatar_id', intval($data['avatar_id']));
             set_post_thumbnail($post_id, intval($data['avatar_id']));
+        }
+
+        // Persist services
+        update_post_meta($post_id, 'staff_services', $services);
+
+        // Sync removals from assigned_staff
+        $removed = array_diff($old_services, $services);
+        foreach ($removed as $sid) {
+            $assigned = get_post_meta($sid, 'assigned_staff', true) ?: array();
+            $assigned = array_values(array_filter($assigned, function($v) use ($post_id){ return intval($v) !== intval($post_id); }));
+            update_post_meta($sid, 'assigned_staff', $assigned);
+        }
+        // Sync additions to assigned_staff
+        $added = array_diff($services, $old_services);
+        foreach ($added as $sid) {
+            $assigned = get_post_meta($sid, 'assigned_staff', true) ?: array();
+            if (!in_array($post_id, $assigned)) {
+                $assigned[] = $post_id;
+                update_post_meta($sid, 'assigned_staff', $assigned);
+            }
         }
 
         wp_send_json_success(array('message' => 'Staff member updated successfully'));
