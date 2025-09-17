@@ -23,7 +23,7 @@ jQuery(document).ready(function($) {
     // Load staff list
     function loadStaffList() {
         const search = $('#staff-search').val();
-        const role = $('#filter-role').val();
+    const role = $('#filter-role').val();
         const status = $('#filter-status').val();
         const availability = $('#filter-availability').val ? $('#filter-availability').val() : '';
 
@@ -41,6 +41,8 @@ jQuery(document).ready(function($) {
                     per_page: perPage,
                     search: search,
                     role: role,
+                    // If role is a numeric ID, treat it as a service filter for backend
+                    service_id: (/^\d+$/.test(role) ? parseInt(role, 10) : ''),
                     status: status,
                     availability: availability
                 })

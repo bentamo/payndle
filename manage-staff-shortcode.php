@@ -152,9 +152,20 @@ function manage_staff_shortcode($atts) {
                 <div class="filter-group">
                     <select id="filter-role" class="regular-text">
                         <option value=""><?php _e('All Roles', 'payndle'); ?></option>
-                        <option value="barber"><?php _e('Barber', 'payndle'); ?></option>
-                        <option value="stylist"><?php _e('Stylist', 'payndle'); ?></option>
-                        <option value="receptionist"><?php _e('Receptionist', 'payndle'); ?></option>
+                        <?php
+                        $services_for_filter = get_posts(array(
+                            'post_type' => 'service',
+                            'post_status' => 'publish',
+                            'posts_per_page' => -1,
+                            'orderby' => 'title',
+                            'order' => 'ASC',
+                            'fields' => 'ids'
+                        ));
+                        foreach ($services_for_filter as $sid) {
+                            $title = get_the_title($sid);
+                            echo '<option value="' . esc_attr($sid) . '">' . esc_html($title) . '</option>';
+                        }
+                        ?>
                     </select>
                 </div>
                 <div class="filter-group">
@@ -583,10 +594,39 @@ function manage_staff_shortcode($atts) {
         // Bind add button
         if (addStaffBtn) addStaffBtn.addEventListener('click', function(){ document.getElementById('staff-form').reset(); document.getElementById('staff-id').value = ''; document.getElementById('staff-modal-title').textContent = '<?php _e('Add New Staff', 'payndle'); ?>'; openModal(); });
 
+        // Public filters: Role (Service) Apply/Reset
+        const roleFilterEl = document.getElementById('filter-role');
+        const applyBtn = document.getElementById('apply-filters');
+        const resetBtn = document.getElementById('reset-filters');
+        if (applyBtn) applyBtn.addEventListener('click', function(){
+            const val = roleFilterEl && roleFilterEl.value ? roleFilterEl.value : '';
+            const statusEl = document.getElementById('filter-status');
+            const searchEl = document.getElementById('staff-search');
+            const filters = {};
+            if (/^\d+$/.test(val)) { filters.service_id = parseInt(val, 10); }
+            if (statusEl && statusEl.value) { filters.status = statusEl.value; }
+            if (searchEl && searchEl.value) { filters.search = searchEl.value.trim(); }
+            loadStaff(filters);
+        });
+        if (resetBtn) resetBtn.addEventListener('click', function(){
+            if (roleFilterEl) roleFilterEl.value = '';
+            const statusEl = document.getElementById('filter-status');
+            const searchEl = document.getElementById('staff-search');
+            if (statusEl) statusEl.value = '';
+            if (searchEl) searchEl.value = '';
+            loadStaff({});
+        });
+
         // close handlers
         closeBtns.forEach(b => b.addEventListener('click', closeModal));
 
-        // loadStaff();
+        // Initial load with current selection (if any)
+        (function(){
+            const val = roleFilterEl && roleFilterEl.value ? roleFilterEl.value : '';
+            const filters = {};
+            if (/^\d+$/.test(val)) { filters.service_id = parseInt(val, 10); }
+            loadStaff(filters);
+        })();
         
         } // End of init function
         
@@ -652,6 +692,7 @@ function handle_staff_ajax() {
                 $search = isset($data['search']) ? sanitize_text_field($data['search']) : '';
                 $status = isset($data['status']) ? sanitize_text_field($data['status']) : '';
                 $service_id = isset($data['service_id']) ? absint($data['service_id']) : 0;
+                $role = isset($data['role']) ? sanitize_text_field($data['role']) : '';
                 $id = isset($data['id']) ? absint($data['id']) : 0;
 
                 $args = array(
@@ -677,11 +718,37 @@ function handle_staff_ajax() {
                 }
 
                 if (!empty($service_id)) {
-                    // staff_services is stored as array; use LIKE on serialized value
+                    // staff_services is stored as serialized array; match both string and integer encodings
+                    $service_or = array(
+                        'relation' => 'OR',
+                        array(
+                            'key' => 'staff_services',
+                            'value' => '"' . $service_id . '"', // serialized string form s:N:"ID"
+                            'compare' => 'LIKE'
+                        ),
+                        array(
+                            'key' => 'staff_services',
+                            'value' => 'i:' . $service_id . ';', // serialized integer form i:ID;
+                            'compare' => 'LIKE'
+                        )
+                    );
+                    // Legacy: some installs used staff_role text equal to service title
+                    $s_post = get_post($service_id);
+                    if ($s_post && !empty($s_post->post_title)) {
+                        $service_or[] = array(
+                            'key' => 'staff_role',
+                            'value' => $s_post->post_title,
+                            'compare' => '='
+                        );
+                    }
+                    $meta_query[] = $service_or;
+                }
+                // If role string provided (non-numeric), also match legacy staff_role exactly
+                if (!empty($role) && !is_numeric($role)) {
                     $meta_query[] = array(
-                        'key' => 'staff_services',
-                        'value' => '"' . $service_id . '"',
-                        'compare' => 'LIKE'
+                        'key' => 'staff_role',
+                        'value' => $role,
+                        'compare' => '='
                     );
                 }
 
