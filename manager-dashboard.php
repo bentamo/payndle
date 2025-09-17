@@ -119,7 +119,8 @@ function manager_dashboard_shortcode() {
                     </button>
                 </div>
                 
-                <form id="business-info-form" class="info-grid" style="display: none;">
+                <div class="ubf-v3-container">
+                <form id="business-info-form" class="info-grid ubf-v3-form" style="display: none;">
                     <?php wp_nonce_field('business_info_nonce', 'business_info_nonce'); ?>
                     <input type="hidden" name="business_id" value="<?php echo esc_attr($business_id); ?>">
                     
@@ -182,6 +183,7 @@ function manager_dashboard_shortcode() {
                         <button type="submit" class="btn btn-primary">Save Changes</button>
                     </div>
                 </form>
+                </div>
                 
                 <div id="business-info-display" class="info-grid">
                     <div class="info-card">

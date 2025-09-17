@@ -167,8 +167,8 @@ function elite_cuts_manage_staff_page() {
                 <h3>Assign Schedule</h3>
                 <span class="elite-close schedule-close">&times;</span>
             </div>
-            <div class="elite-modal-body">
-                <form id="schedule-form">
+            <div class="elite-modal-body ubf-v3-container">
+                <form id="schedule-form" class="ubf-v3-form">
                     <input type="hidden" id="schedule-staff-id" value="">
                     <div class="form-group">
                         <label for="schedule-date">Date</label>

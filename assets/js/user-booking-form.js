@@ -711,10 +711,12 @@
             }
             console.log('[Booking v3] Loading staff grid for service', serviceId);
             $grid.html('<div class="staff-grid-empty">Loading staff...</div>');
+            // Support both frontend (userBookingAjax) and admin/localized (userBookingV3)
+            const ajaxSettings = window.userBookingAjax || window.userBookingV3 || {};
             $.ajax({
-                url: userBookingAjax.ajaxurl,
+                url: ajaxSettings.ajaxurl || '',
                 method: 'POST',
-                data: { action: 'get_staff_for_service', nonce: userBookingAjax.nonce, service_id: serviceId },
+                data: { action: 'get_staff_for_service', nonce: ajaxSettings.nonce || '', service_id: serviceId },
                 success: function(resp){
                     if (resp && resp.success && Array.isArray(resp.staff) && resp.staff.length){
                         const cards = resp.staff.map(function(s){
@@ -906,8 +908,20 @@
         });
     }
 
-    // Initialize v3 form if present
+    // Initialize v3 form(s) if present
+    // Support multiple admin forms that use the UBF v3 markup by initializing
+    // a UBFv3 instance for each `.ubf-v3-form`. Fall back to the legacy
+    // `#user-booking-form-v3` selector for backward compatibility.
     $(function(){
+        const $v3Forms = $('.ubf-v3-form');
+        if ($v3Forms.length){
+            $v3Forms.each(function(){
+                try { new UBFv3(this); } catch (e){ console.error('Failed to init UBFv3 on element', this, e); }
+            });
+            return;
+        }
+
+        // Backwards-compatible single-form init
         if ($('#user-booking-form-v3').length){
             new UBFv3('#user-booking-form-v3');
         }

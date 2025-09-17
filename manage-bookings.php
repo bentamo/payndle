@@ -261,51 +261,34 @@ function elite_cuts_manage_bookings_page() {
     <!-- Manager Booking Form Overlay -->
     <div id="manager-booking-overlay" class="manager-booking-overlay">
         <div class="manager-booking-backdrop"></div>
-        <div class="manager-booking-container">
-            <div class="manager-booking-header">
+        <div class="ubf-v3-container manager-booking-container">
+            <div class="ubf-v3-header manager-booking-header">
                 <div class="header-content">
-                    <h1 class="booking-title">
-                        <i class="fas fa-calendar-plus"></i>
-                        New Booking
-                    </h1>
-                    <p class="booking-subtitle">Create a new appointment for the barbershop</p>
+                    <h1 class="ubf-v3-title booking-title">New Booking</h1>
+                    <p class="ubf-v3-sub booking-subtitle">Create a new appointment for the barbershop</p>
                 </div>
                 <button class="close-overlay" id="close-booking-overlay">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
 
-            <div class="manager-booking-form-wrapper">
-                <div class="manager-stepper">
-                    <div class="steps">
-                        <div class="step active" data-step="1">
-                            <div class="num">1</div>
-                            <div class="label">Customer</div>
-                        </div>
-                        <div class="step" data-step="2">
-                            <div class="num">2</div>
-                            <div class="label">Service</div>
-                        </div>
-                        <div class="step" data-step="3">
-                            <div class="num">3</div>
-                            <div class="label">Schedule</div>
-                        </div>
-                        <div class="step" data-step="4">
-                            <div class="num">4</div>
-                            <div class="label">Confirm</div>
-                        </div>
+            <div class="ubf-v3-form-wrapper manager-booking-form-wrapper">
+                <div class="ubf-v3-stepper manager-stepper">
+                    <div class="ubf-steps steps">
+                        <div class="ubf-step step active" data-step="1"><div class="num">1</div><div class="label">Customer</div></div>
+                        <div class="ubf-step step" data-step="2"><div class="num">2</div><div class="label">Service</div></div>
+                        <div class="ubf-step step" data-step="3"><div class="num">3</div><div class="label">Schedule</div></div>
+                        <div class="ubf-step step" data-step="4"><div class="num">4</div><div class="label">Confirm</div></div>
                     </div>
-                    <div class="progress">
-                        <div class="progress-fill" style="width: 25%"></div>
-                    </div>
+                    <div class="ubf-progress progress"><div class="ubf-progress-fill progress-fill" style="width:25%"></div></div>
                 </div>
 
-                <form id="manager-booking-form" class="manager-booking-form">
+                <form id="manager-booking-form" class="ubf-v3-form manager-booking-form">
                     <?php wp_nonce_field('manager_booking_nonce', 'booking_nonce'); ?>
                     <input type="hidden" id="booking-id" value="">
 
                     <!-- Step 1: Customer Information -->
-                    <div class="form-step active" data-step="1">
+                    <div class="ubf-form-step form-step active" data-step="1">
                         <h3 class="section-title">
                             <i class="fas fa-user"></i>
                             Customer Information
@@ -314,17 +297,17 @@ function elite_cuts_manage_bookings_page() {
                         <div class="form-grid">
                             <div class="form-group">
                                 <label for="customer-name">Customer Name <span class="required">*</span></label>
-                                <div class="input-wrapper">
-                                    <i class="input-icon fas fa-user"></i>
-                                    <input type="text" id="customer-name" name="customer_name" placeholder="Full name" required>
-                                </div>
+                                    <div class="input-wrapper">
+                                        <i class="input-icon fas fa-user"></i>
+                                        <input type="text" id="ubf_customer_name" name="customer_name" placeholder="Full name" required>
+                                    </div>
                             </div>
                             
                             <div class="form-group">
                                 <label for="customer-email">Email Address <span class="required">*</span></label>
                                 <div class="input-wrapper">
                                     <i class="input-icon fas fa-envelope"></i>
-                                    <input type="email" id="customer-email" name="customer_email" placeholder="Email address" required>
+                                    <input type="email" id="ubf_customer_email" name="customer_email" placeholder="Email address" required>
                                 </div>
                             </div>
                             
@@ -332,7 +315,7 @@ function elite_cuts_manage_bookings_page() {
                                 <label for="customer-phone">Phone Number</label>
                                 <div class="input-wrapper">
                                     <i class="input-icon fas fa-phone"></i>
-                                    <input type="tel" id="customer-phone" name="customer_phone" placeholder="Phone number">
+                                    <input type="tel" id="ubf_customer_phone" name="customer_phone" placeholder="Phone number">
                                 </div>
                             </div>
                         </div>
@@ -343,7 +326,7 @@ function elite_cuts_manage_bookings_page() {
                     </div>
 
                     <!-- Step 2: Service Selection -->
-                    <div class="form-step" data-step="2">
+                    <div class="ubf-form-step form-step" data-step="2">
                         <h3 class="section-title">
                             <i class="fas fa-cut"></i>
                             Select Service & Staff
@@ -353,7 +336,7 @@ function elite_cuts_manage_bookings_page() {
                             <label for="service-select">Service <span class="required">*</span></label>
                             <div class="service-selector">
                                 <i class="input-icon fas fa-cut"></i>
-                                <select id="service-select" name="service_id" required>
+                                <select id="ubf_service_id" name="service_id" required>
                                     <option value="">Choose a service</option>
                                     <?php echo elite_cuts_get_services_options(); ?>
                                 </select>
@@ -369,21 +352,21 @@ function elite_cuts_manage_bookings_page() {
                         </div>
                         
                         <div class="form-group">
-                            <label for="staff-select">Preferred Staff</label>
-                            <input type="hidden" id="staff-select" name="staff_id" value="">
-                            <div id="staff-grid" class="staff-grid" aria-live="polite">
+                            <label for="ubf_staff_id">Preferred Staff</label>
+                            <input type="hidden" id="ubf_staff_id" name="staff_id" value="">
+                            <div id="ubf_staff_grid" class="staff-grid" aria-live="polite">
                                 <div class="staff-grid-empty">Select a service to choose staff</div>
                             </div>
                         </div>
                         
-                        <div class="step-nav">
-                            <button type="button" class="btn-prev">Previous</button>
-                            <button type="button" class="btn-next">Next Step</button>
+                        <div class="ubf-step-nav">
+                            <button type="button" class="ubf-prev">Previous</button>
+                            <button type="button" class="ubf-next">Next</button>
                         </div>
                     </div>
 
                     <!-- Step 3: Schedule -->
-                    <div class="form-step" data-step="3">
+                    <div class="ubf-form-step form-step" data-step="3">
                         <h3 class="section-title">
                             <i class="fas fa-calendar-alt"></i>
                             Schedule Appointment
@@ -394,7 +377,7 @@ function elite_cuts_manage_bookings_page() {
                                 <label for="booking-date">Appointment Date <span class="required">*</span></label>
                                 <div class="input-wrapper">
                                     <i class="input-icon fas fa-calendar-alt"></i>
-                                    <input type="date" id="booking-date" name="preferred_date" min="<?php echo date('Y-m-d'); ?>" required>
+                                    <input type="date" id="ubf_preferred_date" name="preferred_date" min="<?php echo date('Y-m-d'); ?>" required>
                                 </div>
                             </div>
                             
@@ -402,27 +385,27 @@ function elite_cuts_manage_bookings_page() {
                                 <label for="booking-time">Appointment Time <span class="required">*</span></label>
                                 <div class="input-wrapper">
                                     <i class="input-icon fas fa-clock"></i>
-                                    <input type="time" id="booking-time" name="preferred_time" required>
+                                    <input type="time" id="ubf_preferred_time" name="preferred_time" required>
                                 </div>
                             </div>
                         </div>
                         
                         <div class="form-group full-width">
-                            <label for="booking-notes">Additional Notes</label>
+                                <label for="ubf_message">Additional Notes</label>
                             <div class="textarea-wrapper">
                                 <i class="input-icon fas fa-comment-alt"></i>
-                                <textarea id="booking-notes" name="booking_notes" placeholder="Any special requests or notes..."></textarea>
+                                <textarea id="ubf_message" name="message" placeholder="Any special requests or notes..."></textarea>
                             </div>
                         </div>
                         
-                        <div class="step-nav">
-                            <button type="button" class="btn-prev">Previous</button>
-                            <button type="button" class="btn-next">Next Step</button>
+                        <div class="ubf-step-nav">
+                            <button type="button" class="ubf-prev">Previous</button>
+                            <button type="button" class="ubf-next">Next</button>
                         </div>
                     </div>
 
                     <!-- Step 4: Confirmation -->
-                    <div class="form-step" data-step="4">
+                    <div class="ubf-form-step form-step" data-step="4">
                         <h3 class="section-title">
                             <i class="fas fa-check-circle"></i>
                             Confirm Booking
@@ -461,15 +444,23 @@ function elite_cuts_manage_bookings_page() {
                             </div>
                         </div>
                         
-                        <div class="step-nav">
-                            <button type="button" class="btn-prev">Previous</button>
-                            <button type="submit" class="btn-submit">Create Booking</button>
+                        <div class="ubf-step-nav">
+                            <button type="button" class="ubf-prev">Previous</button>
+                            <button type="submit" class="ubf-btn-primary btn-submit">Create Booking</button>
                         </div>
                     </div>
                 </form>
             </div>
         </div>
     </div>
+
+    <script>
+        /* Provide UBF v3 AJAX settings in admin so the UBFv3 JS can submit bookings */
+        window.userBookingV3 = window.userBookingV3 || {};
+        window.userBookingV3.ajaxurl = '<?php echo admin_url('admin-ajax.php'); ?>';
+        window.userBookingV3.nonce = '<?php echo wp_create_nonce('user_booking_nonce'); ?>';
+        window.userBookingV3.messages = window.userBookingV3.messages || { error: 'An error occurred' };
+    </script>
 
     <!-- Success Message -->
     <div id="manager-booking-success" class="manager-booking-success">
@@ -479,8 +470,8 @@ function elite_cuts_manage_bookings_page() {
                 <div class="success-icon">
                     <i class="fas fa-check"></i>
                 </div>
-                <h3 class="success-title">Booking Created Successfully</h3>
-                <p class="success-message">The appointment has been added to the system.</p>
+                <h3 class="success-title">Booking Complete</h3>
+                <p class="success-message">The appointment has been added to Manage Bookings.</p>
                 <div class="success-actions">
                     <button class="btn-primary" id="view-booking">View Booking</button>
                     <button class="btn-secondary" id="create-another">Create Another</button>
@@ -505,6 +496,63 @@ function elite_cuts_manage_bookings_page() {
         .service-name * {
             color: var(--text-primary) !important;
             font-weight: 700;
+        }
+
+        /* ===== Admin UBF v3 visual polish =====
+           These overrides only affect UBF v3 forms in the admin bookings modal
+           to better match the provided design (rounded pale-blue inputs, green
+           progress fill, pill Next button, etc.). */
+        .ubf-v3-container .ubf-v3-form-wrapper { padding: 2rem; border-radius: 12px; }
+        .ubf-v3-form .form-grid { gap: 1.75rem; }
+
+        .ubf-v3-form .form-group input,
+        .ubf-v3-form .form-group textarea,
+        .ubf-v3-form .form-group select {
+            background: #eef6fb; /* pale blue */
+            border: 1px solid rgba(12,25,48,0.06);
+            border-radius: 12px;
+            padding: 0.9rem 1rem;
+            height: 48px;
+            box-shadow: none;
+        }
+        .ubf-v3-form .form-group textarea { min-height: 120px; height: auto; padding-top: 1rem; }
+
+        /* Stepper circles and active state */
+
+    /* Highlight newly created booking row briefly */
+    #bookings-list tr.new-booking-highlight { background: linear-gradient(90deg, rgba(198,255,226,0.5), rgba(255,255,255,0)); }
+    #bookings-list tr.new-booking-highlight td { transition: background 0.3s ease; }
+        .ubf-v3-stepper .ubf-step { color: var(--text-secondary); }
+        .ubf-v3-stepper .ubf-step .num {
+            width: 36px; height: 36px; line-height: 36px; border-radius: 999px;
+            background: #fff; color: var(--text-primary); border: 2px solid rgba(12,25,48,0.06);
+            box-shadow: none; font-weight: 700;
+        }
+        .ubf-v3-stepper .ubf-step.active .num {
+            background: var(--accent); color: #fff; border-color: var(--accent);
+            box-shadow: 0 6px 18px rgba(100,196,147,0.12);
+        }
+
+        /* Progress fill thicker and green */
+        .ubf-progress { height: 6px; border-radius: 6px; background: rgba(12,25,48,0.06); }
+        .ubf-progress-fill { background: var(--accent) !important; height: 6px; border-radius: 6px; }
+
+        /* Next/Previous buttons styling to match the pill button on screenshot */
+        .ubf-step-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; }
+        .ubf-step-nav .ubf-next, .ubf-step-nav .ubf-prev, .ubf-step-nav .ubf-btn-primary {
+            border-radius: 10px; padding: 0.6rem 1.1rem; font-weight: 700; border: none; cursor: pointer;
+        }
+        .ubf-step-nav .ubf-next { background: var(--accent); color: #fff; float: right; }
+        .ubf-step-nav .ubf-prev { background: transparent; color: var(--text-secondary); border: 1px solid rgba(12,25,48,0.06); }
+
+        /* Make labels slightly bolder and adjust spacing */
+        .ubf-v3-form .form-group label { font-weight: 600; margin-bottom: 0.5rem; }
+
+        /* Fix small screens inside admin modal */
+        @media (max-width: 767px) {
+            .ubf-v3-form .form-group input, .ubf-v3-form .form-group select { height: 44px; }
+            .ubf-v3-form .form-grid { grid-template-columns: 1fr; }
+            .ubf-step-nav { margin-top: 1rem; }
         }
         
         /* Theme variables updated to the requested palette (green/navy/white/gray) */
@@ -2164,6 +2212,57 @@ function elite_cuts_manage_bookings_page() {
         }
     </style>
 
+    <style>
+    /* UBF v3 visual tokens for manager overlay */
+    :root{
+        --ubf-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        --ubf-primary-navy: #0C1930;
+        --ubf-accent: #64C493;
+        --ubf-radius: 12px;
+        --ubf-shadow: 0 8px 24px rgba(12,25,48,0.06);
+        --ubf-bg: #FFFFFF;
+    }
+
+    .manager-booking-container { font-family: var(--ubf-font-family); color: var(--ubf-primary-navy); background: var(--ubf-bg); padding: 20px; border-radius: var(--ubf-radius); max-width: 820px; margin: 0 auto; box-shadow: var(--ubf-shadow); }
+    .manager-booking-header { margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(12,25,48,0.06); }
+    .manager-booking-header .booking-title { font-weight:700; font-size:1.6rem; margin:0; color:var(--ubf-primary-navy); }
+    .manager-booking-header .booking-subtitle { color:#51647a; margin-top:6px; }
+
+    .manager-booking-form-wrapper { background: var(--ubf-bg); padding: 20px; border-radius: var(--ubf-radius); box-shadow: var(--ubf-shadow); }
+    .manager-booking-form .form-section { margin-bottom: 18px; }
+    .manager-booking-form .section-title { font-size: 1.05rem; font-weight:600; color:var(--ubf-primary-navy); margin-bottom:8px; }
+
+    /* Inputs like UBF v3 */
+    .manager-booking-form input[type="text"],
+    .manager-booking-form input[type="email"],
+    .manager-booking-form input[type="tel"],
+    .manager-booking-form input[type="date"],
+    .manager-booking-form input[type="time"],
+    .manager-booking-form select,
+    .manager-booking-form textarea {
+        width:100%;
+        padding:12px;
+        border:1px solid #e6eaef;
+        border-radius:var(--ubf-radius);
+        margin-bottom:12px;
+        font-size:0.95rem;
+        box-sizing:border-box;
+        background: var(--ubf-bg);
+        color: var(--ubf-primary-navy);
+    }
+
+    .manager-booking-form textarea { min-height:100px; }
+
+    .manager-booking-form .form-actions { display:flex; gap:12px; justify-content:flex-end; margin-top:16px; }
+    .manager-booking-form .btn { padding: 10px 20px; border-radius: 10px; font-weight:700; }
+    .manager-booking-form .btn-primary { background: var(--ubf-accent); color: #fff; border: 1px solid var(--ubf-accent); }
+    .manager-booking-form .btn-secondary { background: transparent; color: rgba(12,25,48,0.65); border:1px solid #e6eaef; }
+
+    /* keep inputs compact now that icons are removed */
+    .manager-booking-form input, .manager-booking-form select, .manager-booking-form textarea { padding-left: 12px !important; }
+    @media (max-width:767px) { .manager-booking-container { padding:16px; } .manager-booking-form .form-actions { flex-direction:column; } }
+    </style>
+
     <script>
     jQuery(document).ready(function($) {
         console.log('Manage Bookings initialized with server-side data');
@@ -2274,17 +2373,17 @@ function elite_cuts_manage_bookings_page() {
             filterBookings();
         });
 
-        // Edit/Delete button handlers
-        $('.edit-booking').on('click', function() {
+        // Edit/Delete button handlers (delegated for robustness)
+        $(document).on('click', '.edit-booking', function() {
             const bookingId = $(this).data('id');
-            console.log('Edit booking:', bookingId);
+            console.log('Edit booking (delegated):', bookingId);
             alert('Edit booking #' + bookingId + ' - functionality to be implemented');
         });
-        
-        $('.delete-booking').on('click', function() {
+
+        $(document).on('click', '.delete-booking', function() {
             if (confirm('Are you sure you want to delete this booking?')) {
                 const bookingId = $(this).data('id');
-                console.log('Delete booking:', bookingId);
+                console.log('Delete booking (delegated):', bookingId);
                 alert('Delete booking #' + bookingId + ' - functionality to be implemented');
             }
         });
@@ -2296,59 +2395,86 @@ function elite_cuts_manage_bookings_page() {
         let currentStep = 1;
         const totalSteps = 4;
         
-        // Open overlay
-        $('#add-booking-btn').on('click', function() {
-            console.log('Opening manager booking overlay');
+        // Open overlay (delegated)
+        $(document).on('click', '#add-booking-btn', function() {
+            console.log('Opening manager booking overlay (delegated)');
             resetForm();
             showOverlay();
         });
 
-        // Close overlay
-        $('#close-booking-overlay, .manager-booking-backdrop').on('click', function() {
+        // Close overlay (delegated)
+        $(document).on('click', '#close-booking-overlay, .manager-booking-backdrop', function() {
+            console.log('Closing overlay (delegated)');
             hideOverlay();
         });
 
-        // Step navigation
-        $('.btn-next').on('click', function() {
+        // Step navigation (delegated)
+        $(document).on('click', '.btn-next', function() {
+            console.log('Next button clicked (delegated) - currentStep', currentStep);
             if (validateCurrentStep()) {
                 nextStep();
             }
         });
 
-        $('.btn-prev').on('click', function() {
+        $(document).on('click', '.btn-prev', function() {
+            console.log('Prev button clicked (delegated) - currentStep', currentStep);
             prevStep();
         });
 
-        // Form submission
-        $('#manager-booking-form').on('submit', function(e) {
+        // Form submission (delegated) - ensures handler fires when form is submitted
+        $(document).on('submit', '#manager-booking-form', function(e) {
+            console.log('Manager booking form submit intercepted (delegated)');
             e.preventDefault();
             if (validateCurrentStep()) {
                 submitBooking();
+            } else {
+                console.log('Validation failed on submit - not proceeding');
             }
         });
 
-        // Service selection change
-        $('#service-select').on('change', function() {
+        // Fallback: click on the Create Booking button should also trigger submission
+        $(document).on('click', '#manager-booking-form .btn-submit, #manager-booking-form .ubf-btn-primary.btn-submit', function(e) {
+            console.log('Create Booking button clicked (delegated fallback)');
+            e.preventDefault();
+            // Trigger form submit flow
+            if (validateCurrentStep()) {
+                submitBooking();
+            } else {
+                console.log('Validation failed on create button click - not proceeding');
+            }
+        });
+
+        // Service selection change - support both UBF v3 and legacy selects
+        $('#ubf_service_id, #service-select').on('change', function() {
             const serviceId = $(this).val();
             const $selected = $(this).find('option:selected');
-            
+
             if (serviceId) {
-                // Show service info
-                const price = $selected.data('price');
-                const duration = $selected.data('duration');
-                const description = $selected.data('description');
-                
+                // Show service info (use selected option data attributes where available)
+                const price = $selected.data('price') || $selected.attr('data-price');
+                const duration = $selected.data('duration') || $selected.attr('data-duration');
+                const description = $selected.data('description') || $selected.attr('data-description');
+
                 $('#selected-service-info .service-description').text(description || 'No description available');
                 $('#selected-service-info .service-duration span').text(duration || 'Not specified');
                 $('#selected-service-info .service-price span').text(price ? '₱' + parseFloat(price).toFixed(2) : 'Price varies');
                 $('#selected-service-info').show();
-                
-                // Load staff for this service
-                loadStaffForService(serviceId);
+
+                // Load staff for this service (prefer admin loader)
+                if (typeof loadStaffForService === 'function') {
+                    loadStaffForService(serviceId);
+                }
             } else {
                 hideServiceInfo();
                 clearStaffGrid();
             }
+
+            updateSummary();
+        });
+
+        // Live-update summary when fields change (support UBF v3 and legacy IDs)
+        $('#ubf_customer_name, #customer-name, #ubf_customer_email, #customer-email, #ubf_customer_phone, #customer-phone, #ubf_preferred_date, #booking-date, #ubf_preferred_time, #booking-time, #ubf_message, #booking-notes, #ubf_service_id, #service-select').on('input change', function() {
+            updateSummary();
         });
 
         // Functions
@@ -2397,11 +2523,11 @@ function elite_cuts_manage_bookings_page() {
 
         function updateStepDisplay() {
             // Hide all steps
-            $('.form-step').removeClass('active');
+            $('.form-step, .ubf-form-step').removeClass('active');
             $('.step').removeClass('active');
             
             // Show current step
-            $(`.form-step[data-step="${currentStep}"]`).addClass('active');
+            $(`.form-step[data-step="${currentStep}"], .ubf-form-step[data-step="${currentStep}"]`).addClass('active');
             $(`.step[data-step="${currentStep}"]`).addClass('active');
             
             // Update completed steps
@@ -2417,7 +2543,7 @@ function elite_cuts_manage_bookings_page() {
 
         function validateCurrentStep() {
             let isValid = true;
-            const currentStepEl = $(`.form-step[data-step="${currentStep}"]`);
+            const currentStepEl = $(`.form-step[data-step="${currentStep}"], .ubf-form-step[data-step="${currentStep}"]`);
             
             // Clear previous errors
             currentStepEl.find('.error').removeClass('error');
@@ -2482,7 +2608,8 @@ function elite_cuts_manage_bookings_page() {
 
         function loadStaffForService(serviceId) {
             console.log('Loading staff for service:', serviceId);
-            const $staffGrid = $('#staff-grid');
+            // prefer the UBF v3 grid if present, otherwise fallback to legacy grid
+            const $staffGrid = $('#ubf_staff_grid').length ? $('#ubf_staff_grid') : $('#staff-grid');
             $staffGrid.html('<div class="staff-grid-empty">Loading staff...</div>');
             
             $.ajax({
@@ -2514,12 +2641,13 @@ function elite_cuts_manage_bookings_page() {
         }
 
         function renderStaffGrid(staff) {
-            const $staffGrid = $('#staff-grid');
+            // prefer the UBF v3 grid when available
+            const $staffGrid = $('#ubf_staff_grid').length ? $('#ubf_staff_grid') : $('#staff-grid');
             $staffGrid.empty();
             
             // Add "Any staff" option
             const anyStaffCard = $(`
-                <div class="staff-card" data-staff-id="">
+                <div class="staff-card" data-staff-id="" data-id="">
                     <div class="staff-avatar">
                         <div class="staff-initials">ANY</div>
                     </div>
@@ -2536,7 +2664,7 @@ function elite_cuts_manage_bookings_page() {
                     `<div class="staff-initials">${initials}</div>`;
                 
                 const staffCard = $(`
-                    <div class="staff-card" data-staff-id="${member.id}">
+                    <div class="staff-card" data-staff-id="${member.id}" data-id="${member.id}">
                         <div class="staff-avatar">${avatarHtml}</div>
                         <div class="staff-name">${member.name}</div>
                     </div>
@@ -2544,11 +2672,15 @@ function elite_cuts_manage_bookings_page() {
                 $staffGrid.append(staffCard);
             });
             
-            // Add click handlers
-            $('.staff-card').on('click', function() {
-                $('.staff-card').removeClass('selected');
+            // Add delegated click handler on the grid - set the UBF v3 hidden staff id so summary and submit use it
+            $staffGrid.off('click', '.staff-card').on('click', '.staff-card', function() {
+                $staffGrid.find('.staff-card').removeClass('selected');
                 $(this).addClass('selected');
-                $('#staff-select').val($(this).data('staff-id'));
+                // support both legacy #staff-select and UBF v3 hidden input #ubf_staff_id
+                const sid = $(this).data('staff-id') || $(this).data('id');
+                console.log('Staff card selected, id:', sid, 'name:', $(this).find('.staff-name').text());
+                if ($('#ubf_staff_id').length) { $('#ubf_staff_id').val(sid); }
+                if ($('#staff-select').length) { $('#staff-select').val(sid); }
             });
             
             // Select "Any staff" by default
@@ -2558,7 +2690,8 @@ function elite_cuts_manage_bookings_page() {
 
         function clearStaffGrid() {
             $('#staff-grid').html('<div class="staff-grid-empty">Select a service to choose staff</div>');
-            $('#staff-select').val('');
+            if ($('#ubf_staff_id').length) { $('#ubf_staff_id').val(''); }
+            if ($('#staff-select').length) { $('#staff-select').val(''); }
         }
 
         function hideServiceInfo() {
@@ -2566,26 +2699,29 @@ function elite_cuts_manage_bookings_page() {
         }
 
         function updateSummary() {
-            // Customer info
-            const customerName = $('#customer-name').val();
-            const customerEmail = $('#customer-email').val();
-            const customerPhone = $('#customer-phone').val();
-            
+            // Customer info - support UBF v3 IDs with legacy fallbacks
+            const customerName = ($('#ubf_customer_name').val() || $('#customer-name').val() || '').trim();
+            const customerEmail = ($('#ubf_customer_email').val() || $('#customer-email').val() || '').trim();
+            const customerPhone = ($('#ubf_customer_phone').val() || $('#customer-phone').val() || '').trim();
+
             $('#summary-customer').text(customerName || 'Not specified');
-            $('#summary-contact').text(`${customerEmail || 'No email'}${customerPhone ? ' • ' + customerPhone : ''}`);
-            
-            // Service info
-            const serviceName = $('#service-select option:selected').text();
-            const selectedStaffCard = $('.staff-card.selected');
-            const staffName = selectedStaffCard.length ? selectedStaffCard.find('.staff-name').text() : 'Any available staff';
-            
+            $('#summary-contact').text((customerEmail || 'No email') + (customerPhone ? ' • ' + customerPhone : ''));
+
+            // Service info - prefer UBF v3 select
+            const serviceName = ($('#ubf_service_id option:selected').text() || $('#service-select option:selected').text() || '').trim();
+            // Staff name: prefer selected card in UBF grid, then legacy staff-select text
+            let staffName = 'Any available staff';
+            const ubfSelected = $('#ubf_staff_grid .staff-card.selected');
+            if (ubfSelected.length) { staffName = ubfSelected.find('.staff-name').text().trim() || staffName; }
+            else if ($('#staff-select option:selected').length) { const t = $('#staff-select option:selected').text().trim(); if (t) staffName = t; }
+
             $('#summary-service').text(serviceName || 'No service selected');
             $('#summary-staff').text(staffName);
-            
-            // Date/time info
-            const date = $('#booking-date').val();
-            const time = $('#booking-time').val();
-            
+
+            // Date/time info - support UBF v3 inputs or legacy
+            const date = ($('#ubf_preferred_date').val() || $('#booking-date').val() || '');
+            const time = ($('#ubf_preferred_time').val() || $('#booking-time').val() || '');
+
             if (date && time) {
                 const formattedDate = new Date(date).toLocaleDateString();
                 $('#summary-datetime').text(`${formattedDate} at ${time}`);
@@ -2596,38 +2732,60 @@ function elite_cuts_manage_bookings_page() {
 
         function submitBooking() {
             console.log('Submitting booking...');
-            
+
             // Show loading state
             $('.btn-submit').text('Creating...').prop('disabled', true);
-            
-            // Collect form data
-            const formData = {
-                customer_name: $('#customer-name').val(),
-                customer_email: $('#customer-email').val(),
-                customer_phone: $('#customer-phone').val(),
-                service_id: $('#service-select').val(),
-                staff_id: $('#staff-select').val(),
-                preferred_date: $('#booking-date').val(),
-                preferred_time: $('#booking-time').val(),
-                booking_notes: $('#booking-notes').val(),
-                booking_status: $('#booking-status').val(),
-                nonce: $('input[name="booking_nonce"]').val()
+
+            // Prefer UBF v3 inputs, fall back to legacy IDs
+            // Robustly determine staff id: prefer hidden ubf field, then select, then selected card's data attributes
+            let staffIdRaw = ($('#ubf_staff_id').length ? $('#ubf_staff_id').val() : '') || ($('#staff-select').length ? $('#staff-select').val() : '');
+            if (!staffIdRaw) {
+                // try selected cards in either UBF or legacy grid
+                const s1 = $('#ubf_staff_grid .staff-card.selected').data('staff-id') || $('#ubf_staff_grid .staff-card.selected').data('id');
+                const s2 = $('#staff-grid .staff-card.selected').data('staff-id') || $('#staff-grid .staff-card.selected').data('id');
+                staffIdRaw = s1 || s2 || '';
+            }
+            const staffId = staffIdRaw ? parseInt(staffIdRaw, 10) : '';
+
+            const data = {
+                action: 'submit_user_booking_v3',
+                nonce: (window.userBookingV3 && userBookingV3.nonce) || $('input[name="booking_nonce"]').val() || '',
+                service_id: ($('#ubf_service_id').val() || $('#service-select').val() || ''),
+                customer_name: ($('#ubf_customer_name').val() || $('#customer-name').val() || ''),
+                customer_email: ($('#ubf_customer_email').val() || $('#customer-email').val() || ''),
+                customer_phone: ($('#ubf_customer_phone').val() || $('#customer-phone').val() || ''),
+                preferred_date: ($('#ubf_preferred_date').val() || $('#booking-date').val() || ''),
+                preferred_time: ($('#ubf_preferred_time').val() || $('#booking-time').val() || ''),
+                message: ($('#ubf_message').val() || $('#booking-notes').val() || ''),
+                staff_id: staffId,
+                booking_status: ($('#booking-status').val() || '')
             };
-            
-            // Mock submission - replace with actual AJAX call
-            setTimeout(() => {
-                console.log('Booking created:', formData);
-                
-                // Reset button
-                $('.btn-submit').text('Create Booking').prop('disabled', false);
-                
-                // Hide main overlay and show success
-                hideOverlay();
-                showSuccessMessage();
-                
-                // Optionally reload the page or update the bookings table
-                // location.reload();
-            }, 1500);
+
+            var ajaxEndpoint = (window.userBookingV3 && userBookingV3.ajaxurl) || ajaxurl || admin_url || '';
+            console.log('Booking submit AJAX endpoint:', ajaxEndpoint, 'data:', data);
+
+            $.post(ajaxEndpoint, data)
+                .done(function(resp){
+                    console.log('Server response:', resp);
+                    $('.btn-submit').text('Create Booking').prop('disabled', false);
+                            if (resp && resp.success) {
+                                // store the newly created booking id so the UI can jump to it
+                                if (resp.id) {
+                                    window.newBookingId = resp.id;
+                                    if ($('#booking-id').length) { $('#booking-id').val(resp.id); }
+                                }
+
+                                hideOverlay();
+                                showSuccessMessage();
+                    } else {
+                        alert((resp && resp.message) ? resp.message : 'Failed to create booking');
+                    }
+                })
+                .fail(function(xhr, status, err){
+                    console.error('Booking submit failed', status, err);
+                    $('.btn-submit').text('Create Booking').prop('disabled', false);
+                    alert('Failed to submit booking. Please try again.');
+                });
         }
 
         function showSuccessMessage() {
@@ -2643,7 +2801,21 @@ function elite_cuts_manage_bookings_page() {
         // Success overlay handlers
         $('#view-booking').on('click', function() {
             hideSuccessMessage();
-            // Optionally scroll to the new booking in the table
+            // If we have a newBookingId, try to scroll to it and highlight; otherwise reload to refresh list
+            var id = window.newBookingId || $('#booking-id').val();
+            if (id) {
+                var $row = $('#bookings-list').find('tr[data-booking-id="' + id + '"]');
+                if ($row.length) {
+                    // ensure table is visible and scroll to row
+                    $('html, body').animate({ scrollTop: $row.offset().top - 100 }, 400);
+                    // Add highlight class
+                    $row.addClass('new-booking-highlight');
+                    setTimeout(function() { $row.removeClass('new-booking-highlight'); }, 5000);
+                    return;
+                }
+            }
+            // Fallback: reload the page so the booking list is refreshed
+            location.reload();
         });
 
         $('#create-another').on('click', function() {
@@ -2711,6 +2883,45 @@ function elite_cuts_admin_enqueue_scripts($hook) {
     wp_localize_script('jquery', 'eliteManageBookings', array(
         'ajaxUrl' => admin_url('admin-ajax.php'),
         'nonce' => wp_create_nonce('manage_bookings_nonce')
+    ));
+
+    // Enqueue UBF v3 assets so admin forms can mirror the front-end booking design
+    $css_ver = @filemtime(plugin_dir_path(__FILE__) . 'assets/css/user_booking_form.css') ?: '1.0.0';
+    wp_enqueue_style(
+        'user-booking-form-css-admin',
+        plugin_dir_url(__FILE__) . 'assets/css/user_booking_form.css',
+        [],
+        $css_ver
+    );
+
+    $js_ver = @filemtime(plugin_dir_path(__FILE__) . 'assets/js/user-booking-form.js') ?: '1.0.0';
+    wp_enqueue_script(
+        'user-booking-form-js-admin',
+        plugin_dir_url(__FILE__) . 'assets/js/user-booking-form.js',
+        array('jquery'),
+        $js_ver,
+        true
+    );
+
+    // Localize booking JS objects expected by UBF v3 (frontend uses userBookingAjax and userBookingV3)
+    wp_localize_script('user-booking-form-js-admin', 'userBookingV3', array(
+        'ajaxurl' => admin_url('admin-ajax.php'),
+        'nonce' => wp_create_nonce('user_booking_nonce'),
+        'messages' => array(
+            'saved' => __('Booking saved. We will contact you shortly.', 'payndle'),
+            'error' => __('There was a problem. Please try again.', 'payndle')
+        ),
+        'bookingHistoryUrl' => ''
+    ));
+
+    // Also provide the older userBookingAjax object for compatibility with other scripts
+    wp_localize_script('user-booking-form-js-admin', 'userBookingAjax', array(
+        'ajaxurl' => admin_url('admin-ajax.php'),
+        'nonce' => wp_create_nonce('user_booking_nonce'),
+        'messages' => array(
+            'success' => 'Your booking request has been submitted successfully!',
+            'error' => 'Something went wrong. Please try again.'
+        )
     ));
 }
 add_action('admin_enqueue_scripts', 'elite_cuts_admin_enqueue_scripts');
