@@ -108,12 +108,12 @@ function elite_cuts_manage_staff_page() {
                         <th>Contact</th>
                         <th>Availability</th>
                         <th>Status</th>
-                        <th>Actions</th>
+                           <th><?php _e('Actions', 'payndle'); ?></th>
                     </tr>
                 </thead>
                 <tbody id="staff-list">
-                    <tr class="loading-row">
-                        <td colspan="6">
+                        <tr class="loading-row">
+                            <td colspan="6">
                             <div class="loading-spinner"></div>
                             <span>Loading staff...</span>
                         </td>
@@ -289,8 +289,6 @@ function elite_cuts_manage_staff_page() {
     .elite-input:focus, .elite-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(100,196,147,0.14); }
         .form-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 0.75rem; }
 
-        }
-
         /* Ensure WordPress Media Library overlays our modal */
         .media-modal {
             z-index: 200000 !important;
@@ -329,7 +327,8 @@ function elite_cuts_manage_staff_page() {
 
 // Enqueue admin styles and scripts - now using same enhanced JS as shortcode
 function elite_cuts_admin_scripts($hook) {
-    if ('elite-cuts_page_elite-cuts-staff' !== $hook) {
+    // Load assets on our Staff submenu page; be tolerant of different hook formats
+    if (strpos($hook, 'elite-cuts-staff') === false) {
         return;
     }
     
@@ -341,7 +340,8 @@ function elite_cuts_admin_scripts($hook) {
     // Localize script with admin context variables (same as shortcode but fixed variable name)
     wp_localize_script('staff-management-js', 'staffManager', array(
         'ajax_url' => admin_url('admin-ajax.php'),
-        'rest_url' => rest_url('wp/v2/'),
+        // Use root REST URL so JS can append custom routes like 'payndle/v1/upload-avatar'
+        'rest_url' => rest_url(),
         'nonce' => wp_create_nonce('staff_management_nonce'),
         'rest_nonce' => wp_create_nonce('wp_rest'),
         'context' => 'admin',
@@ -420,12 +420,38 @@ function elite_cuts_get_staff($filters = array()) {
             
             $avatar = get_post_meta($post_id, 'staff_avatar', true);
             $avatar_id = get_post_meta($post_id, 'staff_avatar_id', true);
-            
+            // Resolve attachment ID to URL if avatar is empty
+            if (empty($avatar) && !empty($avatar_id)) {
+                if (function_exists('wp_get_attachment_image_url')) {
+                    $resolved = wp_get_attachment_image_url($avatar_id, 'thumbnail');
+                } else {
+                    $resolved = wp_get_attachment_url($avatar_id);
+                }
+                if (empty($resolved)) {
+                    $resolved = wp_get_attachment_url($avatar_id);
+                }
+                if (!empty($resolved)) {
+                    $avatar = $resolved;
+                }
+            }
+            // Fallback to featured image if no avatar meta is set
+            if (empty($avatar)) {
+                $thumb_id = function_exists('get_post_thumbnail_id') ? get_post_thumbnail_id($post_id) : 0;
+                if ($thumb_id) {
+                    $resolved = function_exists('wp_get_attachment_image_url') ? wp_get_attachment_image_url($thumb_id, 'thumbnail') : wp_get_attachment_url($thumb_id);
+                    if (empty($resolved)) { $resolved = wp_get_attachment_url($thumb_id); }
+                    if (!empty($resolved)) {
+                        $avatar = $resolved;
+                        if (empty($avatar_id)) { $avatar_id = $thumb_id; }
+                    }
+                }
+            }
+
             $staff[] = array(
                 'id' => $post_id,
                 'name' => get_the_title(),
-                'email' => get_post_meta($post_id, 'staff_email', true),
-                'phone' => get_post_meta($post_id, 'staff_phone', true),
+                'email' => get_post_meta($post_id, 'staff_email', true) ?: get_post_meta($post_id, 'email', true),
+                'phone' => get_post_meta($post_id, 'staff_phone', true) ?: get_post_meta($post_id, 'phone', true),
                 'status' => get_post_meta($post_id, 'staff_status', true),
                 'role' => get_post_meta($post_id, 'staff_role', true),
                 'avatar' => $avatar,

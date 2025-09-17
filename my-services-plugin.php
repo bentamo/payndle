@@ -460,8 +460,10 @@ add_action('wp_enqueue_scripts', 'mvp_enqueue_scripts');
    AJAX: ADD/UPDATE SERVICE
    ====================== */
 function mvp_add_service() {
-    // Debug: log entry and incoming POST for failures
-    file_put_contents(plugin_dir_path(__FILE__) . 'service-debug.log', date('Y-m-d H:i:s') . " - mvp_add_service called\nPOST: " . print_r($_POST, true) . "\n\n", FILE_APPEND);
+    // Debug: log entry and incoming POST for failures (only when WP_DEBUG enabled)
+    if ( defined('WP_DEBUG') && WP_DEBUG ) {
+        file_put_contents(plugin_dir_path(__FILE__) . 'service-debug.log', date('Y-m-d H:i:s') . " - mvp_add_service called\nPOST: " . print_r($_POST, true) . "\n\n", FILE_APPEND);
+    }
     check_ajax_referer('mvp_nonce', 'nonce');
 
     $title = sanitize_text_field($_POST['title']);
@@ -489,8 +491,10 @@ function mvp_add_service() {
     }
 
     if (is_wp_error($post_id)) {
-    file_put_contents(plugin_dir_path(__FILE__) . 'service-debug.log', date('Y-m-d H:i:s') . " - wp_error when creating service: " . $post_id->get_error_message() . "\n", FILE_APPEND);
-    wp_send_json_error(array('message' => $post_id->get_error_message()));
+        if ( defined('WP_DEBUG') && WP_DEBUG ) {
+            file_put_contents(plugin_dir_path(__FILE__) . 'service-debug.log', date('Y-m-d H:i:s') . " - wp_error when creating service: " . $post_id->get_error_message() . "\n", FILE_APPEND);
+        }
+        wp_send_json_error(array('message' => $post_id->get_error_message()));
     }
 
     // Persist additional meta fields if provided
