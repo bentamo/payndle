@@ -27,8 +27,8 @@ if (!function_exists('payndle_render_staff_form')) {
                     <h3 id="staff-modal-title"><?php _e('Add New Staff', 'payndle'); ?></h3>
                     <span class="elite-close staff-close">&times;</span>
                 </div>
-                <div class="elite-modal-body">
-                    <form id="staff-form">
+                <div class="elite-modal-body ubf-v3-container">
+                    <form id="staff-form" class="ubf-v3-form">
                         <input type="hidden" id="staff-id" value="">
 
                         <div class="form-row">
@@ -92,6 +92,12 @@ if (!function_exists('payndle_render_staff_form')) {
                 </div>
             </div>
         </div>
+
+        <style>
+            /* Small UBF v3 adjustments for staff modal */
+            #staff-modal .ubf-v3-container { padding: 16px; }
+            #staff-modal .ubf-v3-form input, #staff-modal .ubf-v3-form select { padding: 10px; border-radius: 10px; border:1px solid #e6eaef; }
+        </style>
         <?php
         echo ob_get_clean();
     }

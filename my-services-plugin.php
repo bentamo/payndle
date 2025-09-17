@@ -770,8 +770,8 @@ function mvp_manager_shortcode() {
         
         <div class="mvp-card-body">
             <!-- Add/Edit Form -->
-            <div class="mvp-form-container" id="mvp-form-container" style="display: none;">
-                <form id="mvp-service-form">
+            <div class="mvp-form-container ubf-v3-container" id="mvp-form-container" style="display: none;">
+                <form id="mvp-service-form" class="ubf-v3-form">
                     <input type="hidden" name="action" value="mvp_add_service">
                     <?php wp_nonce_field('mvp_nonce', 'mvp_nonce'); ?>
                     <input type="hidden" name="service_id" id="mvp-service-id" value="">
@@ -845,8 +845,14 @@ function mvp_manager_shortcode() {
                         <?php _e('Cancel', 'service-manager'); ?>
                     </button>
                 </div>
-            </form>
-        </div>
+                </form>
+            </div>
+
+            <style>
+                /* Tiny UBF v3 tweaks for service manager form */
+                #mvp-form-container.ubf-v3-container { padding: 16px; }
+                #mvp-form-container .ubf-v3-form .mvp-form-control { padding: 10px; border:1px solid #e6eaef; border-radius:10px; }
+            </style>
 
         <!-- Category Management -->
         <div class="mvp-category-management">
