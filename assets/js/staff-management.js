@@ -29,11 +29,11 @@ jQuery(document).ready(function($) {
 
         showLoading(true);
 
-        $.ajax({
+    $.ajax({
             url: staffManager.ajax_url,
             type: 'POST',
             data: {
-                action: 'manage_staff',
+        action: (staffManager.ajax_action || 'manage_staff'),
                 nonce: staffManager.nonce,
                 action_type: 'get_staff',
                 data: JSON.stringify({
@@ -179,7 +179,7 @@ jQuery(document).ready(function($) {
                 url: staffManager.ajax_url,
                 type: 'POST',
                 data: {
-                    action: 'manage_staff',
+                    action: (staffManager.ajax_action || 'manage_staff'),
                     nonce: staffManager.nonce,
                     action_type: 'get_staff',
                     data: JSON.stringify({ id: staffId })
@@ -299,7 +299,7 @@ jQuery(document).ready(function($) {
         const actionType = isEdit ? 'update_staff' : 'add_staff';
 
         var payload = {
-            action: 'manage_staff',
+            action: (staffManager.ajax_action || 'manage_staff'),
             nonce: (typeof staffManager !== 'undefined' ? staffManager.nonce : ''),
             action_type: actionType,
             staff_id: staffId,
@@ -340,7 +340,7 @@ jQuery(document).ready(function($) {
             url: staffManager.ajax_url,
             type: 'POST',
             data: {
-                action: 'manage_staff',
+                action: (staffManager.ajax_action || 'manage_staff'),
                 nonce: staffManager.nonce,
                 action_type: 'delete_staff',
                 data: JSON.stringify({ id: staffId })

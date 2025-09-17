@@ -475,7 +475,7 @@ function manage_staff_shortcode($atts) {
         }
 
         function loadStaff(filters = {}) {
-            const postData = { action: 'manage_staff', nonce: '<?php echo wp_create_nonce('staff_management_nonce'); ?>', action_type: 'get_staff', data: JSON.stringify(filters) };
+            const postData = { action: 'manage_staff_public', nonce: '<?php echo wp_create_nonce('staff_management_nonce'); ?>', action_type: 'get_staff', data: JSON.stringify(filters) };
             fetch('<?php echo admin_url('admin-ajax.php'); ?>', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' }, body: new URLSearchParams(postData) })
             .then(r => r.json())
             .then(resp => { if (resp && resp.success) renderStaff(resp.data.staff || []); else staffList.innerHTML = '<tr><td colspan="6"><?php _e('Could not load staff', 'payndle'); ?></td></tr>'; })
@@ -486,7 +486,7 @@ function manage_staff_shortcode($atts) {
             const tr = e.currentTarget.closest('tr');
             const id = tr.dataset.id;
             // Fetch single staff record using get_staff with id
-            fetch('<?php echo admin_url('admin-ajax.php'); ?>', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' }, body: new URLSearchParams({ action: 'manage_staff', nonce: '<?php echo wp_create_nonce('staff_management_nonce'); ?>', action_type: 'get_staff', data: JSON.stringify({ id: id }) }) })
+            fetch('<?php echo admin_url('admin-ajax.php'); ?>', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' }, body: new URLSearchParams({ action: 'manage_staff_public', nonce: '<?php echo wp_create_nonce('staff_management_nonce'); ?>', action_type: 'get_staff', data: JSON.stringify({ id: id }) }) })
             .then(r => r.json()).then(resp => {
                 if (!resp || !resp.success) return showMessage('<?php _e('Could not load staff record', 'payndle'); ?>', 'error');
                 const item = (resp.data.staff && resp.data.staff[0]) ? resp.data.staff[0] : null;
@@ -510,7 +510,7 @@ function manage_staff_shortcode($atts) {
             const tr = e.currentTarget.closest('tr');
             const id = tr.dataset.id;
             if (!confirm('<?php _e('Are you sure you want to delete this staff member?', 'payndle'); ?>')) return;
-            fetch('<?php echo admin_url('admin-ajax.php'); ?>', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' }, body: new URLSearchParams({ action: 'manage_staff', nonce: '<?php echo wp_create_nonce('staff_management_nonce'); ?>', action_type: 'delete_staff', data: JSON.stringify({ id: id }) }) })
+            fetch('<?php echo admin_url('admin-ajax.php'); ?>', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' }, body: new URLSearchParams({ action: 'manage_staff_public', nonce: '<?php echo wp_create_nonce('staff_management_nonce'); ?>', action_type: 'delete_staff', data: JSON.stringify({ id: id }) }) })
             .then(r => r.json()).then(resp => { if (resp && resp.success) { showMessage(resp.message || '<?php _e('Deleted', 'payndle'); ?>'); loadStaff(); } else showMessage(resp.message || '<?php _e('Could not delete', 'payndle'); ?>', 'error'); })
             .catch(() => showMessage('<?php _e('Server error', 'payndle'); ?>', 'error'));
         }
@@ -527,7 +527,7 @@ function manage_staff_shortcode($atts) {
                 const serviceEl = document.getElementById('staff-service');
                 const services = serviceEl && serviceEl.value ? [serviceEl.value] : [];
                 const actionType = id ? 'update_staff' : 'add_staff';
-                const postData = { action: 'manage_staff', nonce: '<?php echo wp_create_nonce('staff_management_nonce'); ?>', action_type: actionType, data: JSON.stringify({ id: id, name: name, email: email, phone: phone, status: status, services: services }) };
+                const postData = { action: 'manage_staff_public', nonce: '<?php echo wp_create_nonce('staff_management_nonce'); ?>', action_type: actionType, data: JSON.stringify({ id: id, name: name, email: email, phone: phone, status: status, services: services }) };
                 fetch('<?php echo admin_url('admin-ajax.php'); ?>', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' }, body: new URLSearchParams(postData) })
                 .then(r => r.json()).then(resp => { if (resp && resp.success) { showMessage(resp.message || '<?php _e('Saved', 'payndle'); ?>'); closeModal(); loadStaff(); } else showMessage(resp.message || '<?php _e('Could not save', 'payndle'); ?>', 'error'); })
                 .catch(() => showMessage('<?php _e('Server error', 'payndle'); ?>', 'error'));
@@ -571,8 +571,9 @@ add_shortcode('payndle_test', 'payndle_test_shortcode');
 /**
  * AJAX handler for staff management
  */
-add_action('wp_ajax_manage_staff', 'handle_staff_ajax');
-add_action('wp_ajax_nopriv_manage_staff', 'handle_staff_ajax');
+// Use a dedicated public action name to avoid clashing with admin-only handler
+add_action('wp_ajax_manage_staff_public', 'handle_staff_ajax');
+add_action('wp_ajax_nopriv_manage_staff_public', 'handle_staff_ajax');
 function handle_staff_ajax() {
     // Verify nonce
     check_ajax_referer('staff_management_nonce', 'nonce');
@@ -1107,6 +1108,8 @@ function enqueue_staff_management_assets($hook) {
             'nonce' => wp_create_nonce('staff_management_nonce'),
             'rest_url' => rest_url(),
             'rest_nonce' => wp_create_nonce('wp_rest'),
+            'context' => is_admin() ? 'admin' : 'frontend',
+            'ajax_action' => 'manage_staff_public',
             'confirm_delete' => __('Are you sure you want to delete this staff member?', 'payndle'),
         ));
     }
