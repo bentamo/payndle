@@ -64,24 +64,36 @@ function elite_cuts_manage_bookings_page() {
                 $booking_status = get_post_meta($id, '_booking_status', true) ?: 'pending';
                 $created_at = get_post_meta($id, '_created_at', true) ?: get_the_date('Y-m-d H:i:s', $post);
 
-                // Resolve service and staff names from legacy tables if available
+                // Resolve service and staff names prioritizing CPT posts, with legacy table fallback
                 $service_name = null;
                 if (!empty($service_id)) {
-                    $services_table = $wpdb->prefix . 'manager_services';
-                    $svc = $wpdb->get_row($wpdb->prepare("SELECT service_name FROM $services_table WHERE id = %d", intval($service_id)));
-                    if ($svc) {
-                        $service_name = $svc->service_name;
+                    $service_post = get_post(intval($service_id));
+                    if ($service_post && $service_post->post_status !== 'trash') {
+                        $service_name = get_the_title($service_post);
+                    } else {
+                        // Legacy services table fallback
+                        $services_table = $wpdb->prefix . 'manager_services';
+                        $svc = $wpdb->get_row($wpdb->prepare("SELECT service_name FROM $services_table WHERE id = %d", intval($service_id)));
+                        if ($svc) { $service_name = $svc->service_name; }
                     }
                 }
 
                 $staff_name = null;
                 $staff_position = null;
                 if (!empty($staff_id)) {
-                    $staff_table = $wpdb->prefix . 'staff_members';
-                    $st = $wpdb->get_row($wpdb->prepare("SELECT staff_name, staff_position FROM $staff_table WHERE id = %d", intval($staff_id)));
-                    if ($st) {
-                        $staff_name = $st->staff_name;
-                        $staff_position = $st->staff_position;
+                    $staff_post = get_post(intval($staff_id));
+                    if ($staff_post && $staff_post->post_status !== 'trash') {
+                        // Staff stored as CPT (preferred)
+                        $staff_name = get_the_title($staff_post);
+                        $staff_position = get_post_meta($staff_post->ID, 'staff_position', true);
+                    } else {
+                        // Legacy staff table fallback
+                        $staff_table = $wpdb->prefix . 'staff_members';
+                        $st = $wpdb->get_row($wpdb->prepare("SELECT staff_name, staff_position FROM $staff_table WHERE id = %d", intval($staff_id)));
+                        if ($st) {
+                            $staff_name = $st->staff_name;
+                            $staff_position = $st->staff_position;
+                        }
                     }
                 }
 
