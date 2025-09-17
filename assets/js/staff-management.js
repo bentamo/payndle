@@ -334,29 +334,63 @@ jQuery(document).ready(function($) {
 
     // Delete
     function deleteStaff(staffId) {
-        if (!confirm(staffManager.confirm_delete)) return;
+        // Use confirmation modal if present; otherwise fallback to confirm
+        const modal = document.getElementById('confirm-modal');
+        const msg = document.getElementById('confirm-message');
+        const confirmBtn = document.getElementById('confirm-action');
+        const cancelBtn = document.getElementById('confirm-cancel');
+        const closeBtn = document.querySelector('#confirm-modal .close');
 
-        $.ajax({
-            url: staffManager.ajax_url,
-            type: 'POST',
-            data: {
-                action: (staffManager.ajax_action || 'manage_staff'),
-                nonce: staffManager.nonce,
-                action_type: 'delete_staff',
-                data: JSON.stringify({ id: staffId })
-            },
-            success: function(response) {
-                if (response.success) {
-                    showPopup('success', response.message || 'Staff deleted');
-                    loadStaffList();
-                } else {
-                    showPopup('error', response.message || 'Failed to delete staff');
+        const performDelete = function() {
+            $.ajax({
+                url: staffManager.ajax_url,
+                type: 'POST',
+                data: {
+                    action: (staffManager.ajax_action || 'manage_staff'),
+                    nonce: staffManager.nonce,
+                    action_type: 'delete_staff',
+                    data: JSON.stringify({ id: staffId })
+                },
+                success: function(response) {
+                    if (response.success) {
+                        showPopup('success', response.message || 'Staff deleted');
+                        loadStaffList();
+                    } else {
+                        showPopup('error', response.message || 'Failed to delete staff');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    showPopup('error', 'Error: ' + error);
                 }
-            },
-            error: function(xhr, status, error) {
-                showPopup('error', 'Error: ' + error);
-            }
-        });
+            });
+        };
+
+        if (!modal || !confirmBtn || !cancelBtn) {
+            if (!confirm(staffManager.confirm_delete)) return;
+            return performDelete();
+        }
+
+        if (msg) msg.textContent = staffManager.confirm_delete || 'Are you sure you want to delete this staff member?';
+
+        if (modal && modal.parentNode !== document.body) {
+            document.body.appendChild(modal);
+        }
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+
+        const cleanup = function() {
+            modal.style.display = 'none';
+            document.body.style.overflow = '';
+            confirmBtn.removeEventListener('click', onConfirm);
+            cancelBtn.removeEventListener('click', onCancel);
+            if (closeBtn) closeBtn.removeEventListener('click', onCancel);
+        };
+        const onCancel = function() { cleanup(); };
+        const onConfirm = function() { cleanup(); performDelete(); };
+
+        confirmBtn.addEventListener('click', onConfirm);
+        cancelBtn.addEventListener('click', onCancel);
+        if (closeBtn) closeBtn.addEventListener('click', onCancel);
     }
 
     // Avatar Upload System

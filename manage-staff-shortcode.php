@@ -228,6 +228,17 @@ function manage_staff_shortcode($atts) {
             </div>
         </div>
     </div>
+    <style>
+        /* Minimal modal styles for frontend confirm dialog */
+        #confirm-modal { position: fixed !important; z-index: 999999 !important; left: 0 !important; top: 0 !important; width: 100% !important; height: 100% !important; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; padding: 1rem; }
+        #confirm-modal .modal-content { background: #fff; border-radius: 8px; width: 90%; max-width: 440px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); overflow: hidden; position: relative; }
+        #confirm-modal .modal-header, #confirm-modal .modal-footer { padding: 0.9rem 1rem; border-bottom: 1px solid #e6e9ee; display: flex; align-items: center; justify-content: space-between; }
+        #confirm-modal .modal-footer { border-bottom: none; border-top: 1px solid #e6e9ee; justify-content: flex-end; gap: .5rem; }
+        #confirm-modal .modal-body { padding: 1rem; }
+        #confirm-modal .close { cursor: pointer; font-size: 1.2rem; color: #62708a; }
+        .button-danger { background: #F44336; color: #fff; border: none; }
+        .button-danger:hover { background: #d63a2f; }
+    </style>
     
     <!-- Message Container -->
     <div id="message-container"></div>
@@ -509,7 +520,42 @@ function manage_staff_shortcode($atts) {
         function onDeleteClick(e) {
             const tr = e.currentTarget.closest('tr');
             const id = tr.dataset.id;
-            if (!confirm('<?php _e('Are you sure you want to delete this staff member?', 'payndle'); ?>')) return;
+            const modal = document.getElementById('confirm-modal');
+            const msg = document.getElementById('confirm-message');
+            const confirmBtn = document.getElementById('confirm-action');
+            const cancelBtn = document.getElementById('confirm-cancel');
+            const closeBtn = document.querySelector('#confirm-modal .close');
+
+            // If modal elements missing, do not use native confirm; show inline message and abort
+            if (!modal || !confirmBtn || !cancelBtn) {
+                return showMessage('<?php _e('Confirmation UI is unavailable. Please refresh and try again.', 'payndle'); ?>', 'error');
+            }
+
+            if (msg) msg.textContent = '<?php _e('Are you sure you want to delete this staff member?', 'payndle'); ?>';
+
+            // Ensure modal is at document.body level to avoid stacking/overflow issues
+            if (modal && modal.parentNode !== document.body) {
+                document.body.appendChild(modal);
+            }
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+
+            const cleanup = () => {
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+                confirmBtn.removeEventListener('click', onConfirm);
+                cancelBtn.removeEventListener('click', onCancel);
+                if (closeBtn) closeBtn.removeEventListener('click', onCancel);
+            };
+            const onCancel = () => cleanup();
+            const onConfirm = () => { cleanup(); performDelete(id); };
+
+            confirmBtn.addEventListener('click', onConfirm);
+            cancelBtn.addEventListener('click', onCancel);
+            if (closeBtn) closeBtn.addEventListener('click', onCancel);
+        }
+
+        function performDelete(id) {
             fetch('<?php echo admin_url('admin-ajax.php'); ?>', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' }, body: new URLSearchParams({ action: 'manage_staff_public', nonce: '<?php echo wp_create_nonce('staff_management_nonce'); ?>', action_type: 'delete_staff', data: JSON.stringify({ id: id }) }) })
             .then(r => r.json()).then(resp => { if (resp && resp.success) { showMessage(resp.message || '<?php _e('Deleted', 'payndle'); ?>'); loadStaff(); } else showMessage(resp.message || '<?php _e('Could not delete', 'payndle'); ?>', 'error'); })
             .catch(() => showMessage('<?php _e('Server error', 'payndle'); ?>', 'error'));

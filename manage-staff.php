@@ -123,6 +123,23 @@ function elite_cuts_manage_staff_page() {
         </div>
     </div>
 
+    <!-- Confirmation Modal (admin) -->
+    <div id="confirm-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><?php _e('Confirm Action', 'payndle'); ?></h3>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p id="confirm-message"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="confirm-cancel" class="button"><?php _e('Cancel', 'payndle'); ?></button>
+                <button type="button" id="confirm-action" class="button button-danger"><?php _e('Delete', 'payndle'); ?></button>
+            </div>
+        </div>
+    </div>
+
     <!-- Shared Staff Form Template (rendered by shortcode file) -->
     <?php
     // Ensure the shortcode file is loaded so the renderer function exists
@@ -321,6 +338,14 @@ function elite_cuts_manage_staff_page() {
         .avatar-preview { width: 54px; height: 54px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(201, 167, 77, 0.35); background:#f6f6f6; }
         .elite-button.small { padding: 0.4rem 0.7rem; font-size: 0.75rem; }
         .help-text { color: var(--text-secondary); font-size: 0.8rem; margin-top: 0.35rem; }
+
+    /* Simple modal styles for confirmation dialog */
+    #confirm-modal { position: fixed !important; z-index: 200000 !important; left: 0 !important; top: 0 !important; width: 100% !important; height: 100% !important; background: rgba(0,0,0,0.4); display: none; align-items: center; justify-content: center; padding: 1rem; }
+    #confirm-modal .modal-content { background: #fff; border-radius: var(--radius); width: 90%; max-width: 440px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); overflow: hidden; }
+    #confirm-modal .modal-header, #confirm-modal .modal-footer { padding: 0.9rem 1rem; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; }
+    #confirm-modal .modal-footer { border-bottom: none; border-top: 1px solid var(--border-color); justify-content: flex-end; gap: .5rem; }
+    #confirm-modal .modal-body { padding: 1rem; }
+    #confirm-modal .close { cursor: pointer; font-size: 1.2rem; color: var(--text-secondary); }
     </style>
     <?php
 }
