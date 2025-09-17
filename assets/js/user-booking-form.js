@@ -913,16 +913,25 @@
     // a UBFv3 instance for each `.ubf-v3-form`. Fall back to the legacy
     // `#user-booking-form-v3` selector for backward compatibility.
     $(function(){
+        // Initialize UBF v3 forms but skip any that are rendered inside the
+        // admin/manager overlay (they use their own submit/update handlers).
         const $v3Forms = $('.ubf-v3-form');
         if ($v3Forms.length){
             $v3Forms.each(function(){
-                try { new UBFv3(this); } catch (e){ console.error('Failed to init UBFv3 on element', this, e); }
+                try {
+                    // skip manager/admin overlay forms to avoid duplicate submit handlers
+                    if ($(this).closest('.manager-booking-container').length) {
+                        console.log('[UBFv3] Skipping init for manager/admin overlay form to avoid conflicts');
+                        return; // continue to next form
+                    }
+                    new UBFv3(this);
+                } catch (e){ console.error('Failed to init UBFv3 on element', this, e); }
             });
             return;
         }
 
-        // Backwards-compatible single-form init
-        if ($('#user-booking-form-v3').length){
+        // Backwards-compatible single-form init (skip admin overlay similarly)
+        if ($('#user-booking-form-v3').length && !$('#user-booking-form-v3').closest('.manager-booking-container').length){
             new UBFv3('#user-booking-form-v3');
         }
     });

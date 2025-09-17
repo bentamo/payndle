@@ -1320,14 +1320,22 @@ function elite_cuts_manage_bookings_page() {
         }
 
         /* Form steps */
-        .form-step {
+        .form-step,
+        .ubf-form-step {
             display: none;
         }
 
-        .form-step.active {
+        .form-step.active,
+        .ubf-form-step.active {
             display: block;
             animation: fadeIn 0.4s ease;
         }
+
+        /* Ensure UBF v3 steps inside the manager overlay show when active.
+           Use higher specificity and !important to override external CSS that
+           may hide steps (some UBF CSS shows only data-step="1"). */
+        .manager-booking-container .ubf-form-step { display: none !important; }
+        .manager-booking-container .ubf-form-step.active { display: block !important; }
 
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
@@ -2265,7 +2273,23 @@ function elite_cuts_manage_bookings_page() {
 
     <script>
     jQuery(document).ready(function($) {
-        console.log('Manage Bookings initialized with server-side data');
+        // Native click capture logger (runs even if jQuery isn't bound yet)
+        try {
+            document.addEventListener('click', function(e){
+                var btn = e.target.closest && e.target.closest('button, .elite-button, .edit-booking, .delete-booking, #apply-filters, #reset-filters, #view-booking, #create-another');
+                if (btn) {
+                    try {
+                        console.log('[NativeClick] target:', btn.id || '(no-id)', 'classes:', btn.className || '(no-class)', 'text:', (btn.textContent || '').trim().slice(0,40));
+                    } catch(err) { console.log('[NativeClick] logging error', err); }
+                }
+            }, true);
+        } catch(err) { console.log('Native click logger not available', err); }
+
+    console.log('Manage Bookings initialized with server-side data');
+
+    // Resolve AJAX endpoint robustly: prefer localized UBF/admin objects, then global ajaxurl, then PHP admin-ajax URL
+    var manageAjaxUrl = (window.userBookingV3 && userBookingV3.ajaxurl) || (window.userBookingV3 && window.userBookingV3.ajaxurl) || (window.eliteManageBookings && eliteManageBookings.ajaxUrl) || (typeof ajaxurl !== 'undefined' && ajaxurl) || '<?php echo admin_url('admin-ajax.php'); ?>';
+    console.log('[ManageBookings] AJAX endpoint resolved to:', manageAjaxUrl);
         
         // Store original bookings data for filtering
         let allBookings = [];
@@ -2345,19 +2369,32 @@ function elite_cuts_manage_bookings_page() {
             console.log('Apply filters clicked');
             filterBookings();
         });
-        
+
+        // Live filtering when the dropdowns or date inputs change
+        $('#filter-status').on('change', function() { filterBookings(); });
+        $('#filter-from, #filter-to').on('change', function() { filterBookings(); });
+
+        // Reset filters: clear inputs, restore original order, and re-run filtering
         $('#reset-filters').on('click', function() {
             console.log('Reset filters clicked');
+            // Clear values (reset selects to first option)
             $('#filter-from').val('');
             $('#filter-to').val('');
-            $('#filter-status').val('');
+            $('#filter-status').prop('selectedIndex', 0);
             $('#booking-search').val('');
-            
-            // Show all bookings
-            allBookings.forEach(function(booking) {
-                booking.element.show();
+
+            // Restore original order (use originalIndex captured on load)
+            allBookings.sort(function(a,b){ return a.originalIndex - b.originalIndex; });
+            allBookings.forEach(function(booking){
+                $('#bookings-list').append(booking.element);
             });
+
+            // Show all bookings and clear any "no results" message
+            allBookings.forEach(function(booking) { booking.element.show(); });
             $('#no-filter-results').remove();
+
+            // Re-run the filtering once (now cleared) to ensure UI consistency
+            filterBookings();
         });
         
         // Search on enter key
@@ -2377,15 +2414,106 @@ function elite_cuts_manage_bookings_page() {
         $(document).on('click', '.edit-booking', function() {
             const bookingId = $(this).data('id');
             console.log('Edit booking (delegated):', bookingId);
-            alert('Edit booking #' + bookingId + ' - functionality to be implemented');
+            // Fetch booking details and populate the manager booking form for editing
+            $.post(manageAjaxUrl, { action: 'elite_cuts_get_booking', id: bookingId, nonce: '<?php echo wp_create_nonce('manage_bookings_nonce'); ?>' })
+                .done(function(resp){
+                    if (resp && resp.success && resp.data && resp.data.booking) {
+                        const b = resp.data.booking;
+                        // populate fields (support ubf ids and legacy)
+                        $('#booking-id').val(b.id || b.ID || '');
+                        if ($('#ubf_customer_name').length) { $('#ubf_customer_name').val(b.customer_name); } else { $('#customer-name').val(b.customer_name); }
+                        if ($('#ubf_customer_email').length) { $('#ubf_customer_email').val(b.customer_email); } else { $('#customer-email').val(b.customer_email); }
+                        if ($('#ubf_customer_phone').length) { $('#ubf_customer_phone').val(b.customer_phone); } else { $('#customer-phone').val(b.customer_phone); }
+                        if ($('#ubf_service_id').length) { $('#ubf_service_id').val(b.service_id); } else { $('#service-select').val(b.service_id); }
+                        if ($('#ubf_staff_id').length) { $('#ubf_staff_id').val(b.staff_id); }
+                        if ($('#staff-select').length) { $('#staff-select').val(b.staff_id); }
+                        if ($('#ubf_preferred_date').length) { $('#ubf_preferred_date').val(b.preferred_date); } else { $('#booking-date').val(b.preferred_date); }
+                        if ($('#ubf_preferred_time').length) { $('#ubf_preferred_time').val(b.preferred_time); } else { $('#booking-time').val(b.preferred_time); }
+                        if ($('#ubf_message').length) { $('#ubf_message').val(b.message); } else { $('#booking-notes').val(b.message); }
+                        if ($('#booking-status').length) { $('#booking-status').val(b.booking_status); }
+
+                        // Mark form as edit mode
+                        $('#manager-booking-form').data('editing', true);
+                        $('#manager-booking-form').data('editingId', b.id || b.ID || '');
+                        // Ensure service change triggers staff load and UI updates
+                        try {
+                            // Set current step to 1 (customer) so fields are visible
+                            currentStep = 1;
+                            updateStepDisplay();
+                            updateProgress();
+
+                            // Trigger change to load staff for the selected service; renderStaffGrid will auto-select staff
+                            if ($('#ubf_service_id').length) { $('#ubf_service_id').trigger('change'); }
+                            if ($('#service-select').length) { $('#service-select').trigger('change'); }
+                        } catch(err) { console.warn('Edit overlay preparation failed', err); }
+
+                        showOverlay();
+                    } else {
+                        alert('Failed to load booking details');
+                    }
+                })
+                .fail(function(){ alert('Failed to fetch booking'); });
         });
 
         $(document).on('click', '.delete-booking', function() {
-            if (confirm('Are you sure you want to delete this booking?')) {
-                const bookingId = $(this).data('id');
-                console.log('Delete booking (delegated):', bookingId);
-                alert('Delete booking #' + bookingId + ' - functionality to be implemented');
+            const bookingId = $(this).data('id');
+            if (!bookingId) return;
+            if (!confirm('Are you sure you want to delete this booking?')) return;
+            console.log('Delete booking (delegated):', bookingId);
+            $.post(manageAjaxUrl, { action: 'elite_cuts_delete_booking', id: bookingId, nonce: '<?php echo wp_create_nonce('manage_bookings_nonce'); ?>' })
+                .done(function(resp){
+                    if (resp && resp.success) {
+                        // remove row from DOM
+                        $('#bookings-list').find('tr[data-booking-id="' + bookingId + '"]').fadeOut(200, function(){
+                            $(this).remove();
+                            // Also remove from the in-memory allBookings so Reset won't re-insert it
+                            try {
+                                allBookings = allBookings.filter(function(b){ return String(b.id) !== String(bookingId); });
+                                console.log('Removed booking', bookingId, 'from allBookings. Remaining:', allBookings.length);
+                            } catch(err) { console.warn('Failed to remove booking from allBookings', err); }
+                        });
+                    } else {
+                        alert((resp && resp.data && resp.data.message) ? resp.data.message : (resp && resp.message) ? resp.message : 'Failed to delete booking');
+                    }
+                })
+                .fail(function(){ alert('Failed to delete booking'); });
+        });
+
+        // Diagnostic: log all button clicks inside the admin area to help debug missing handlers
+        $(document).on('click', '.elite-cuts-admin button, .elite-cuts-admin .elite-button, .manager-booking-success button', function(e){
+            try {
+                const $btn = $(this);
+                const id = $btn.attr('id') || '';
+                const classes = $btn.attr('class') || '';
+                const text = $btn.text().trim().slice(0,40);
+                console.log('[Debug][ManageBookings] Button clicked:', { id: id, classes: classes, text: text });
+            } catch(err) { console.log('[Debug][ManageBookings] Button click logging failed', err); }
+        });
+
+        // Success modal actions
+        $(document).on('click', '#view-booking', function() {
+            console.log('View Booking clicked');
+            // If a new booking was just created, try to highlight it; otherwise reload
+            const newId = window.newBookingId || $('#booking-id').val();
+            if (newId) {
+                const row = $('#bookings-list').find('tr[data-booking-id="' + newId + '"]');
+                if (row.length) {
+                    $('html,body').animate({ scrollTop: row.offset().top - 100 }, 300);
+                    row.addClass('new-booking-highlight');
+                    setTimeout(() => row.removeClass('new-booking-highlight'), 2500);
+                } else {
+                    console.log('New booking row not found, reloading to show it');
+                    location.reload();
+                }
+            } else {
+                location.reload();
             }
+        });
+
+        $(document).on('click', '#create-another', function() {
+            console.log('Create another booking clicked');
+            hideOverlay();
+            setTimeout(function(){ resetForm(); showOverlay(); }, 300);
         });
 
         // ========================================
@@ -2409,15 +2537,16 @@ function elite_cuts_manage_bookings_page() {
         });
 
         // Step navigation (delegated)
-        $(document).on('click', '.btn-next', function() {
-            console.log('Next button clicked (delegated) - currentStep', currentStep);
+        // Support both legacy (.btn-next/.btn-prev) and UBF v3 (.ubf-next/.ubf-prev) button classes
+        $(document).on('click', '.btn-next, .ubf-next', function(event) {
+            console.log('Next button clicked (delegated) - currentStep', currentStep, 'target:', event.target);
             if (validateCurrentStep()) {
                 nextStep();
             }
         });
 
-        $(document).on('click', '.btn-prev', function() {
-            console.log('Prev button clicked (delegated) - currentStep', currentStep);
+        $(document).on('click', '.btn-prev, .ubf-prev', function(event) {
+            console.log('Prev button clicked (delegated) - currentStep', currentStep, 'target:', event.target);
             prevStep();
         });
 
@@ -2425,20 +2554,96 @@ function elite_cuts_manage_bookings_page() {
         $(document).on('submit', '#manager-booking-form', function(e) {
             console.log('Manager booking form submit intercepted (delegated)');
             e.preventDefault();
-            if (validateCurrentStep()) {
-                submitBooking();
-            } else {
-                console.log('Validation failed on submit - not proceeding');
+            // Prevent double submissions
+            if ($(this).data('submitting')) {
+                console.log('Form is already submitting - ignoring duplicate submit');
+                return;
             }
+            $(this).data('submitting', true);
+
+            if (!validateCurrentStep()) {
+                console.log('Validation failed on submit - not proceeding');
+                $(this).data('submitting', false);
+                return;
+            }
+
+            // If editing an existing booking, call update endpoint
+            const isEditing = $(this).data('editing');
+            const editingId = $(this).data('editingId');
+            console.log('Submit state:', { isEditing: isEditing, editingId: editingId });
+            if (isEditing && editingId) {
+                console.log('Submitting update for booking', editingId);
+                const payload = {
+                    action: 'elite_cuts_update_booking',
+                    nonce: '<?php echo wp_create_nonce('manage_bookings_nonce'); ?>',
+                    id: editingId,
+                    customer_name: ($('#ubf_customer_name').val() || $('#customer-name').val() || ''),
+                    customer_email: ($('#ubf_customer_email').val() || $('#customer-email').val() || ''),
+                    customer_phone: ($('#ubf_customer_phone').val() || $('#customer-phone').val() || ''),
+                    service_id: ($('#ubf_service_id').val() || $('#service-select').val() || ''),
+                    staff_id: ($('#ubf_staff_id').val() || $('#staff-select').val() || ''),
+                    preferred_date: ($('#ubf_preferred_date').val() || $('#booking-date').val() || ''),
+                    preferred_time: ($('#ubf_preferred_time').val() || $('#booking-time').val() || ''),
+                    message: ($('#ubf_message').val() || $('#booking-notes').val() || ''),
+                    booking_status: ($('#booking-status').val() || '')
+                };
+
+                $.post(manageAjaxUrl, payload)
+                    .done(function(resp){
+                        console.log('Update response:', resp);
+                        if (resp && resp.success) {
+                            // update row in table if present
+                            const row = $('#bookings-list').find('tr[data-booking-id="' + editingId + '"]');
+                            if (row.length) {
+                                row.find('td:nth-child(2) strong').text(payload.customer_name || 'Unknown');
+                                row.find('.service-name').text($('#ubf_service_id option:selected').text() || $('#service-select option:selected').text() || payload.service_id);
+                                row.find('.contact-info').html((payload.customer_email || 'No email') + '<br><small>' + (payload.customer_phone || 'No phone') + '</small>');
+                                row.find('td:nth-child(6) strong').text(payload.preferred_date || 'No date');
+                                row.find('td:nth-child(6) small').text(payload.preferred_time || 'No time');
+                                row.find('.status-badge').text((payload.booking_status || 'pending').charAt(0).toUpperCase() + (payload.booking_status || 'pending').slice(1));
+                            }
+
+                                // Also update the in-memory booking snapshot so Reset doesn't revert the change
+                                try {
+                                    for (let i = 0; i < allBookings.length; i++) {
+                                        if (String(allBookings[i].id) === String(editingId)) {
+                                            allBookings[i].customer = (payload.customer_name || 'Unknown').toLowerCase();
+                                            allBookings[i].service = (row.length ? row.find('.service-name').text().trim().toLowerCase() : (payload.service_id || '')).toLowerCase();
+                                            allBookings[i].contact = ((payload.customer_email || 'No email') + ' ' + (payload.customer_phone || 'No phone')).trim().toLowerCase();
+                                            allBookings[i].date = payload.preferred_date || allBookings[i].date;
+                                            allBookings[i].status = payload.booking_status || allBookings[i].status;
+                                            break;
+                                        }
+                                    }
+                                } catch(err) { console.warn('Failed to update allBookings snapshot', err); }
+
+                            // clear editing state and hide overlay
+                            $('#manager-booking-form').data('editing', false).data('editingId', null);
+                            // clear submitting flag
+                            $('#manager-booking-form').data('submitting', false);
+                            hideOverlay();
+                            showSuccessMessage();
+                        } else {
+                            alert((resp && resp.data && resp.data.message) ? resp.data.message : 'Failed to update booking');
+                            $('#manager-booking-form').data('submitting', false);
+                        }
+                    })
+                    .fail(function(){ alert('Failed to update booking'); $('#manager-booking-form').data('submitting', false); });
+                
+                return;
+            }
+
+            // Not editing — proceed with new booking creation
+            submitBooking();
         });
 
-        // Fallback: click on the Create Booking button should also trigger submission
+        // Fallback: click on the Create Booking button should trigger the form submit so edit mode is respected
         $(document).on('click', '#manager-booking-form .btn-submit, #manager-booking-form .ubf-btn-primary.btn-submit', function(e) {
             console.log('Create Booking button clicked (delegated fallback)');
             e.preventDefault();
-            // Trigger form submit flow
+            // Trigger native form submit which will be handled by the delegated submit handler (which checks editing state)
             if (validateCurrentStep()) {
-                submitBooking();
+                $('#manager-booking-form').trigger('submit');
             } else {
                 console.log('Validation failed on create button click - not proceeding');
             }
@@ -2613,7 +2818,7 @@ function elite_cuts_manage_bookings_page() {
             $staffGrid.html('<div class="staff-grid-empty">Loading staff...</div>');
             
             $.ajax({
-                url: '<?php echo admin_url('admin-ajax.php'); ?>',
+                url: manageAjaxUrl,
                 type: 'POST',
                 data: {
                     action: 'elite_cuts_get_staff_for_service',
@@ -2683,6 +2888,23 @@ function elite_cuts_manage_bookings_page() {
                 if ($('#staff-select').length) { $('#staff-select').val(sid); }
             });
             
+            // Auto-select a staff card if the hidden input already has a value (useful when editing)
+            try {
+                const pref = ($('#ubf_staff_id').length ? $('#ubf_staff_id').val() : '') || ($('#staff-select').length ? $('#staff-select').val() : '');
+                if (pref) {
+                    const $match = $staffGrid.find('.staff-card').filter(function(){
+                        const sid = $(this).data('staff-id') || $(this).data('id');
+                        return String(sid) === String(pref);
+                    }).first();
+                    if ($match.length) {
+                        $match.addClass('selected').attr('aria-pressed','true').siblings().removeClass('selected').attr('aria-pressed','false');
+                        if ($('#ubf_staff_id').length) { $('#ubf_staff_id').val(pref); }
+                        if ($('#staff-select').length) { $('#staff-select').val(pref); }
+                        console.log('Auto-selected staff card for id', pref);
+                    }
+                }
+            } catch(err) { console.warn('Auto-select staff failed', err); }
+
             // Select "Any staff" by default
             anyStaffCard.addClass('selected');
             $('#staff-select').val('');
@@ -2733,6 +2955,15 @@ function elite_cuts_manage_bookings_page() {
         function submitBooking() {
             console.log('Submitting booking...');
 
+            // Safety: don't run create flow if the form is currently in edit mode
+            try {
+                if ($('#manager-booking-form').data('editing')) {
+                    console.log('Form is in editing mode - aborting create to avoid duplicate');
+                    $('#manager-booking-form').data('submitting', false);
+                    return;
+                }
+            } catch(err) { console.warn('Error checking editing state', err); }
+
             // Show loading state
             $('.btn-submit').text('Creating...').prop('disabled', true);
 
@@ -2761,20 +2992,21 @@ function elite_cuts_manage_bookings_page() {
                 booking_status: ($('#booking-status').val() || '')
             };
 
-            var ajaxEndpoint = (window.userBookingV3 && userBookingV3.ajaxurl) || ajaxurl || admin_url || '';
+            var ajaxEndpoint = manageAjaxUrl || ((window.userBookingV3 && userBookingV3.ajaxurl) || ajaxurl || admin_url || '');
             console.log('Booking submit AJAX endpoint:', ajaxEndpoint, 'data:', data);
 
             $.post(ajaxEndpoint, data)
                 .done(function(resp){
                     console.log('Server response:', resp);
                     $('.btn-submit').text('Create Booking').prop('disabled', false);
-                            if (resp && resp.success) {
+                    // clear submitting flag
+                    $('#manager-booking-form').data('submitting', false);
+                    if (resp && resp.success) {
                                 // store the newly created booking id so the UI can jump to it
                                 if (resp.id) {
                                     window.newBookingId = resp.id;
                                     if ($('#booking-id').length) { $('#booking-id').val(resp.id); }
                                 }
-
                                 hideOverlay();
                                 showSuccessMessage();
                     } else {
@@ -2784,6 +3016,8 @@ function elite_cuts_manage_bookings_page() {
                 .fail(function(xhr, status, err){
                     console.error('Booking submit failed', status, err);
                     $('.btn-submit').text('Create Booking').prop('disabled', false);
+                    // clear submitting flag
+                    $('#manager-booking-form').data('submitting', false);
                     alert('Failed to submit booking. Please try again.');
                 });
         }
@@ -3195,6 +3429,174 @@ function elite_cuts_get_staff_for_service() {
 }
 add_action('wp_ajax_elite_cuts_get_staff_for_service', 'elite_cuts_get_staff_for_service');
 add_action('wp_ajax_nopriv_elite_cuts_get_staff_for_service', 'elite_cuts_get_staff_for_service');
+
+/**
+ * AJAX: Delete a booking (admin)
+ */
+function elite_cuts_delete_booking_ajax() {
+    check_ajax_referer('manage_bookings_nonce', 'nonce');
+
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(['message' => 'Permission denied']);
+    }
+
+    $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+    if (!$id) {
+        wp_send_json_error(['message' => 'Invalid booking id']);
+    }
+
+    // Try to delete as CPT first (permanent delete)
+    $post = get_post($id);
+    if ($post && $post->post_type === 'service_booking') {
+        // Remove attached media (featured image and other attachments) to avoid orphaned files
+        // Delete featured image if present
+        $thumb_id = get_post_thumbnail_id($id);
+        if ($thumb_id) {
+            wp_delete_attachment($thumb_id, true);
+        }
+
+        // Delete any attachments attached to this post
+        $attachments = get_attached_media('', $id);
+        if (!empty($attachments)) {
+            foreach ($attachments as $att) {
+                wp_delete_attachment($att->ID, true);
+            }
+        }
+
+        // Finally delete the post permanently
+        $deleted = wp_delete_post($id, true);
+        // As a fallback, also remove any legacy table row that might exist with same id
+        global $wpdb;
+        $booking_table = $wpdb->prefix . 'service_bookings';
+        $wpdb->delete($booking_table, ['id' => $id]);
+
+        if ($deleted) {
+            wp_send_json_success(['message' => 'Booking permanently deleted', 'deleted' => true]);
+        } else {
+            wp_send_json_error(['message' => 'Failed to delete booking']);
+        }
+    }
+
+    // Fallback: legacy table deletion
+    global $wpdb;
+    $booking_table = $wpdb->prefix . 'service_bookings';
+    $deleted = $wpdb->delete($booking_table, ['id' => $id]);
+    if ($deleted) {
+        wp_send_json_success(['message' => 'Booking deleted (legacy)', 'deleted' => true]);
+    }
+
+    wp_send_json_error(['message' => 'Booking not found']);
+}
+add_action('wp_ajax_elite_cuts_delete_booking', 'elite_cuts_delete_booking_ajax');
+
+
+/**
+ * AJAX: Get booking details for editing
+ */
+function elite_cuts_get_booking_ajax() {
+    check_ajax_referer('manage_bookings_nonce', 'nonce');
+
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(['message' => 'Permission denied']);
+    }
+
+    $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+    if (!$id) {
+        wp_send_json_error(['message' => 'Invalid booking id']);
+    }
+
+    // Try CPT first
+    if (get_post_type($id) === 'service_booking') {
+        $data = [];
+        $data['id'] = $id;
+        $data['customer_name'] = get_post_meta($id, '_customer_name', true);
+        $data['customer_email'] = get_post_meta($id, '_customer_email', true);
+        $data['customer_phone'] = get_post_meta($id, '_customer_phone', true);
+        $data['service_id'] = get_post_meta($id, '_service_id', true);
+        $data['staff_id'] = get_post_meta($id, '_staff_id', true);
+        $data['preferred_date'] = get_post_meta($id, '_preferred_date', true);
+        $data['preferred_time'] = get_post_meta($id, '_preferred_time', true);
+        $data['message'] = get_post_field('post_content', $id);
+        $data['booking_status'] = get_post_meta($id, '_booking_status', true) ?: 'pending';
+
+        wp_send_json_success(['booking' => $data]);
+    }
+
+    // Legacy fallback from table
+    global $wpdb;
+    $booking_table = $wpdb->prefix . 'service_bookings';
+    $row = $wpdb->get_row($wpdb->prepare("SELECT * FROM $booking_table WHERE id = %d", $id));
+    if ($row) {
+        wp_send_json_success(['booking' => $row]);
+    }
+
+    wp_send_json_error(['message' => 'Booking not found']);
+}
+add_action('wp_ajax_elite_cuts_get_booking', 'elite_cuts_get_booking_ajax');
+
+
+/**
+ * AJAX: Update an existing booking (admin)
+ */
+function elite_cuts_update_booking_ajax() {
+    check_ajax_referer('manage_bookings_nonce', 'nonce');
+
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(['message' => 'Permission denied']);
+    }
+
+    $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+    if (!$id) {
+        wp_send_json_error(['message' => 'Invalid booking id']);
+    }
+
+    $customer_name = sanitize_text_field($_POST['customer_name'] ?? '');
+    $customer_email = sanitize_email($_POST['customer_email'] ?? '');
+    $customer_phone = sanitize_text_field($_POST['customer_phone'] ?? '');
+    $service_id = intval($_POST['service_id'] ?? 0);
+    $staff_id = intval($_POST['staff_id'] ?? 0);
+    $preferred_date = sanitize_text_field($_POST['preferred_date'] ?? '');
+    $preferred_time = sanitize_text_field($_POST['preferred_time'] ?? '');
+    $message = sanitize_textarea_field($_POST['message'] ?? '');
+    $booking_status = sanitize_text_field($_POST['booking_status'] ?? 'pending');
+
+    // If CPT
+    if (get_post_type($id) === 'service_booking') {
+        wp_update_post(['ID' => $id, 'post_title' => $customer_name . ' - Booking', 'post_content' => $message]);
+        update_post_meta($id, '_customer_name', $customer_name);
+        update_post_meta($id, '_customer_email', $customer_email);
+        update_post_meta($id, '_customer_phone', $customer_phone);
+        update_post_meta($id, '_service_id', $service_id);
+        update_post_meta($id, '_staff_id', $staff_id);
+        update_post_meta($id, '_preferred_date', $preferred_date);
+        update_post_meta($id, '_preferred_time', $preferred_time);
+        update_post_meta($id, '_booking_status', $booking_status);
+
+        wp_send_json_success(['message' => 'Booking updated', 'id' => $id]);
+    }
+
+    // Legacy table update
+    global $wpdb;
+    $booking_table = $wpdb->prefix . 'service_bookings';
+    $updated = $wpdb->update($booking_table, [
+        'service_id' => $service_id,
+        'staff_id' => $staff_id,
+        'customer_name' => $customer_name,
+        'customer_email' => $customer_email,
+        'customer_phone' => $customer_phone,
+        'preferred_date' => $preferred_date,
+        'preferred_time' => $preferred_time,
+        'booking_status' => $booking_status,
+        'notes' => $message
+    ], ['id' => $id]);
+
+    if ($updated !== false) {
+        wp_send_json_success(['message' => 'Booking updated (legacy)']);
+    }
+
+    wp_send_json_error(['message' => 'Failed to update booking']);
+}
+add_action('wp_ajax_elite_cuts_update_booking', 'elite_cuts_update_booking_ajax');
 
 // Add shortcode for the frontend booking management
 function elite_cuts_manage_bookings_shortcode() {
