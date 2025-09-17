@@ -273,3 +273,18 @@ input[type="date"], input[type="time"], select { height: calc(2 * 0.875rem + 1re
 .ubf-v3-container .payment-option input[type="radio"]:checked + .payment-label .payment-icon i{color:#fff}
 .ubf-v3-container .payment-details h4{margin:0 0 4px 0;font-size:1rem;color:var(--ubf-primary-navy)}
 .ubf-v3-container .payment-details p{margin:0;color:#667585;font-size:0.9rem}
+
+/* ============================
+    Staff Grid (Legacy + V3)
+    ============================ */
+.staff-grid, .ubf-staff-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:10px}
+@media(min-width:640px){.staff-grid, .ubf-staff-grid{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:900px){.staff-grid, .ubf-staff-grid{grid-template-columns:repeat(4,1fr)}}
+.staff-grid-empty{padding:10px 12px;border:1px dashed #e3e8ee;border-radius:8px;color:#667585;background:#fafbfc}
+.staff-card{border:1px solid #e6eaef;border-radius:10px;padding:10px;background:#fff;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;transition:box-shadow .2s ease,border-color .2s ease,transform .1s ease}
+.staff-card:hover{border-color:var(--accent);box-shadow:0 6px 18px rgba(100,196,147,0.08);transform:translateY(-1px)}
+.staff-card.selected{border-color:var(--accent);box-shadow:inset 0 0 0 2px rgba(100,196,147,0.4)}
+.staff-avatar{width:72px;height:72px;border-radius:50%;overflow:hidden;background:#f1f3f5;display:flex;align-items:center;justify-content:center}
+.staff-avatar img{width:100%;height:100%;object-fit:cover}
+.staff-initials{width:72px;height:72px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700}
+.staff-name{font-weight:600;color:#0C1930;text-align:center;font-size:0.95rem}

@@ -10,6 +10,8 @@ jQuery(document).ready(function($) {
     let currentPage = 1;
     const perPage = 10;
     let totalPages = 1;
+    let lastFocusedBeforeModal = null;
+    let trapHandlerBound = false;
 
     // Initialize
     initStaffManagement();
@@ -233,11 +235,21 @@ jQuery(document).ready(function($) {
 
         $modal.css('display', 'flex');
         $('body').css('overflow', 'hidden'); // Prevent background scrolling
+
+        // Accessibility: set focus trap inside modal and focus first input
+        lastFocusedBeforeModal = document.activeElement;
+        const $focusables = $modal.find('a, button, input, select, textarea, [tabindex]:not([tabindex="-1"])').filter(':visible:enabled');
+        if ($focusables.length) { $focusables.first().focus(); }
+        enableFocusTrap($modal);
     }
 
     function closeStaffModal() {
         $('#staff-modal').css('display', 'none');
         $('body').css('overflow', ''); // Restore scrolling
+        disableFocusTrap();
+        if (lastFocusedBeforeModal && typeof lastFocusedBeforeModal.focus === 'function') {
+            try { lastFocusedBeforeModal.focus(); } catch(e) {}
+        }
     }
 
     // Save (Add/Update)
@@ -534,17 +546,72 @@ jQuery(document).ready(function($) {
             }
         });
 
+        // Close confirm modal when clicking on its backdrop
+        $(document).on('click', '#confirm-modal', function(e){
+            if (e.target === this) {
+                closeConfirmModal();
+            }
+        });
+
+        // Close on Escape (staff modal or confirm modal)
+        $(document).on('keydown', function(e){
+            if (e.key === 'Escape' || e.keyCode === 27) {
+                const $confirm = $('#confirm-modal');
+                if ($confirm.is(':visible')) { closeConfirmModal(); return; }
+                const $staff = $('#staff-modal');
+                if ($staff.is(':visible')) { closeStaffModal(); }
+            }
+        });
+
         $('#apply-staff-filters').on('click', function() { currentPage = 1; loadStaffList(); });
         $('#reset-staff-filters').on('click', function() {
             $('#staff-search, #filter-role, #filter-status').val('');
             currentPage = 1; loadStaffList();
         });
-        $('#staff-search').on('keyup', function(e) { if (e.key === 'Enter') { currentPage = 1; loadStaffList(); } });
+        // Auto-apply on role/status change
+        $('#filter-role, #filter-status').on('change', function(){ currentPage = 1; loadStaffList(); });
+        // Debounced live search
+        let searchDebounce;
+        $('#staff-search').on('input', function(){
+            clearTimeout(searchDebounce);
+            searchDebounce = setTimeout(function(){ currentPage = 1; loadStaffList(); }, 400);
+        }).on('keyup', function(e){ if (e.key === 'Enter') { currentPage = 1; loadStaffList(); } });
 
         $('.first-page').on('click', function(e) { e.preventDefault(); if (currentPage > 1) { currentPage = 1; loadStaffList(); } });
         $('.prev-page').on('click', function(e) { e.preventDefault(); if (currentPage > 1) { currentPage--; loadStaffList(); } });
         $('.next-page').on('click', function(e) { e.preventDefault(); if (currentPage < totalPages) { currentPage++; loadStaffList(); } });
         $('.last-page').on('click', function(e) { e.preventDefault(); if (currentPage < totalPages) { currentPage = totalPages; loadStaffList(); } });
+    }
+
+    // Simple focus trap within the staff modal
+    function enableFocusTrap($modal){
+        if (trapHandlerBound) return;
+        trapHandlerBound = true;
+        $(document).on('keydown.focusTrap', function(e){
+            if (e.key !== 'Tab') return;
+            const $visibleModal = $('#staff-modal:visible');
+            if (!$visibleModal.length) return;
+            const $focusables = $visibleModal.find('a, button, input, select, textarea, [tabindex]:not([tabindex="-1"])').filter(':visible:enabled');
+            if (!$focusables.length) return;
+            const first = $focusables[0];
+            const last = $focusables[$focusables.length - 1];
+            if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+            else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        });
+    }
+
+    function disableFocusTrap(){
+        if (!trapHandlerBound) return;
+        trapHandlerBound = false;
+        $(document).off('keydown.focusTrap');
+    }
+
+    function closeConfirmModal(){
+        const $confirm = $('#confirm-modal');
+        if ($confirm.length && $confirm.is(':visible')){
+            $confirm.hide();
+            $('body').css('overflow','');
+        }
     }
 
     // Validation helper functions

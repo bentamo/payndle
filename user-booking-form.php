@@ -37,6 +37,10 @@ class UserBookingForm {
         add_action('wp_ajax_nopriv_get_selected_service_info', [$this, 'get_selected_service_info_ajax']);
         add_action('wp_ajax_test_booking_system', [$this, 'test_booking_system']);
         add_action('wp_ajax_nopriv_test_booking_system', [$this, 'test_booking_system']);
+
+        // Staff lookup for selected service (used by booking forms)
+        add_action('wp_ajax_get_staff_for_service', [$this, 'get_staff_for_service']);
+        add_action('wp_ajax_nopriv_get_staff_for_service', [$this, 'get_staff_for_service']);
     }
     
     public function init() {
@@ -78,21 +82,23 @@ class UserBookingForm {
      * Enqueue frontend assets
      */
     public function enqueue_assets() {
+        $css_ver = @filemtime(plugin_dir_path(__FILE__) . 'assets/css/user_booking_form.css') ?: '1.0.1';
         wp_enqueue_style(
             'user-booking-form-css',
             plugin_dir_url(__FILE__) . 'assets/css/user_booking_form.css',
             [],
-            '1.0.0'
+            $css_ver
         );
 
     // Ensure Inter font is available for the booking form
     wp_enqueue_style('payndle-google-inter', 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap', [], null);
         
+        $js_ver = @filemtime(plugin_dir_path(__FILE__) . 'assets/js/user-booking-form.js') ?: '1.0.1';
         wp_enqueue_script(
             'user-booking-form-js',
             plugin_dir_url(__FILE__) . 'assets/js/user-booking-form.js',
             ['jquery'],
-            '1.0.0',
+            $js_ver,
             true
         );
         
@@ -172,10 +178,10 @@ class UserBookingForm {
                         </select>
 
                         <label for="ubf_staff_id" style="display:block;margin-top:8px;font-weight:600">Preferred Staff (optional)</label>
-                        <select id="ubf_staff_id" name="staff_id">
-                            <option value="">Any available staff</option>
-                            <?php echo $this->get_staff_options(); ?>
-                        </select>
+                        <input type="hidden" id="ubf_staff_id" name="staff_id" value="">
+                        <div id="ubf_staff_grid" class="ubf-staff-grid" aria-live="polite">
+                            <div class="staff-grid-empty">Select a service to choose staff</div>
+                        </div>
 
                         <?php else: ?>
                             <input type="hidden" name="service_id" value="">
@@ -467,66 +473,131 @@ class UserBookingForm {
      * Get staff options for dropdown
      */
     private function get_staff_options() {
-        global $wpdb;
-        
-        $staff_table = $wpdb->prefix . 'staff_members';
-        
-        // First check what columns exist in the table
-        $columns = $wpdb->get_results("SHOW COLUMNS FROM $staff_table");
-        $column_names = array_column($columns, 'Field');
-        
-        // Build query based on available columns
-        $select_fields = ['id', 'staff_name'];
-        
-        if (in_array('staff_position', $column_names)) {
-            $select_fields[] = 'staff_position';
+        // Keep initial dropdown minimal; JS will populate based on selected service
+        return '<option value="">Any available staff member</option>';
+    }
+
+    /**
+     * AJAX: Return staff assigned to a given service (by service post ID)
+     * Response: { success: true, staff: [ { id, name } ] }
+     */
+    public function get_staff_for_service() {
+        // Verify nonce
+        $nonce_ok = check_ajax_referer('user_booking_nonce', 'nonce', false);
+        if (!$nonce_ok) {
+            wp_send_json([ 'success' => false, 'message' => __('Security check failed', 'payndle') ]);
         }
-        if (in_array('staff_availability', $column_names)) {
-            $select_fields[] = 'staff_availability';
+
+        $service_id = isset($_POST['service_id']) ? absint($_POST['service_id']) : 0;
+        if (!$service_id) {
+            wp_send_json([ 'success' => false, 'message' => __('Invalid service', 'payndle') ]);
         }
-        
-        $where_clause = '';
-        if (in_array('staff_status', $column_names)) {
-            $where_clause = "WHERE staff_status = 'active'";
-        } elseif (in_array('is_active', $column_names)) {
-            $where_clause = "WHERE is_active = 1";
-        }
-        
-        $query = "SELECT " . implode(', ', $select_fields) . " 
-                  FROM $staff_table 
-                  $where_clause
-                  ORDER BY staff_name";
-        
-        $staff_members = $wpdb->get_results($query);
-        
-        $options = '<option value="">Any available staff member</option>';
-        
-        if ($staff_members) {
-            foreach ($staff_members as $staff) {
-                $position = isset($staff->staff_position) ? $staff->staff_position : 'Staff';
-                $availability_indicator = '';
-                
-                if (isset($staff->staff_availability)) {
-                    if ($staff->staff_availability === 'Available') {
-                        $availability_indicator = ' ✅';
-                    } elseif ($staff->staff_availability === 'Busy') {
-                        $availability_indicator = ' ⏳';
-                    } else {
-                        $availability_indicator = ' ❌';
+
+        $staff = array();
+
+        // Primary source: assigned_staff on the service post (synced during admin/shortcode save)
+        $assigned = get_post_meta($service_id, 'assigned_staff', true);
+        if (is_array($assigned) && !empty($assigned)) {
+            $assigned_ids = array_map('absint', array_values($assigned));
+            $assigned_ids = array_filter($assigned_ids);
+            if (!empty($assigned_ids)) {
+                $args_assigned = array(
+                    'post_type' => 'staff',
+                    'post_status' => 'publish',
+                    'posts_per_page' => -1,
+                    'orderby' => 'title',
+                    'order' => 'ASC',
+                    'post__in' => $assigned_ids,
+                    'fields' => 'ids'
+                );
+                $q1 = new WP_Query($args_assigned);
+                if ($q1->have_posts()) {
+                    foreach ($q1->posts as $pid) {
+                        $avatar = '';
+                        $avatar_id = get_post_meta($pid, 'staff_avatar_id', true);
+                        if ($avatar_id) {
+                            $img = wp_get_attachment_image_src($avatar_id, 'thumbnail');
+                            if ($img) { $avatar = $img[0]; }
+                        }
+                        if (!$avatar) {
+                            $meta_url = get_post_meta($pid, 'staff_avatar', true);
+                            if (!empty($meta_url)) { $avatar = esc_url_raw($meta_url); }
+                        }
+                        if (!$avatar && has_post_thumbnail($pid)) {
+                            $img = wp_get_attachment_image_src(get_post_thumbnail_id($pid), 'thumbnail');
+                            if ($img) { $avatar = $img[0]; }
+                        }
+                        $staff[] = array('id' => $pid, 'name' => get_the_title($pid), 'avatar' => $avatar);
                     }
                 }
-                
-                $options .= sprintf(
-                    '<option value="%d">%s - %s%s</option>',
-                    esc_attr($staff->id),
-                    esc_html($staff->staff_name),
-                    esc_html($position),
-                    $availability_indicator
-                );
             }
         }
-        
-        return $options;
+
+        // Fallback: query by staff_services meta and legacy staff_role mapping
+        if (empty($staff)) {
+            $meta_query = array();
+            // Do NOT strictly require active status—include all to avoid hiding older records
+            // If you prefer only active, uncomment below:
+            // $meta_query[] = array('key' => 'staff_status', 'value' => 'active', 'compare' => '=');
+
+            $service_or = array(
+                'relation' => 'OR',
+                array(
+                    'key' => 'staff_services',
+                    'value' => '"' . $service_id . '"',
+                    'compare' => 'LIKE'
+                ),
+                array(
+                    'key' => 'staff_services',
+                    'value' => 'i:' . $service_id . ';',
+                    'compare' => 'LIKE'
+                )
+            );
+            $s_post = get_post($service_id);
+            if ($s_post && !empty($s_post->post_title)) {
+                $service_or[] = array(
+                    'key' => 'staff_role',
+                    'value' => $s_post->post_title,
+                    'compare' => '='
+                );
+            }
+            $meta_query[] = $service_or;
+
+            $args = array(
+                'post_type' => 'staff',
+                'post_status' => 'publish',
+                'posts_per_page' => -1,
+                'orderby' => 'title',
+                'order' => 'ASC',
+                'meta_query' => $meta_query,
+                'fields' => 'ids'
+            );
+            $q = new WP_Query($args);
+            if ($q->have_posts()) {
+                foreach ($q->posts as $pid) {
+                    $avatar = '';
+                    $avatar_id = get_post_meta($pid, 'staff_avatar_id', true);
+                    if ($avatar_id) {
+                        $img = wp_get_attachment_image_src($avatar_id, 'thumbnail');
+                        if ($img) { $avatar = $img[0]; }
+                    }
+                    if (!$avatar) {
+                        $meta_url = get_post_meta($pid, 'staff_avatar', true);
+                        if (!empty($meta_url)) { $avatar = esc_url_raw($meta_url); }
+                    }
+                    if (!$avatar && has_post_thumbnail($pid)) {
+                        $img = wp_get_attachment_image_src(get_post_thumbnail_id($pid), 'thumbnail');
+                        if ($img) { $avatar = $img[0]; }
+                    }
+                    $staff[] = array('id' => $pid, 'name' => get_the_title($pid), 'avatar' => $avatar);
+                }
+            }
+        }
+
+        wp_send_json(array(
+            'success' => true,
+            'staff' => $staff
+        ));
     }
     
     /**
@@ -591,13 +662,9 @@ class UserBookingForm {
                             <i class="fas fa-user-tie"></i>
                             Preferred Staff Member
                         </h3>
-                        <div class="staff-selector">
-                            <select id="staff_id" name="staff_id">
-                                <?php echo $this->get_staff_options(); ?>
-                            </select>
-                            <div class="select-icon">
-                                <i class="fas fa-chevron-down"></i>
-                            </div>
+                        <input type="hidden" id="staff_id" name="staff_id" value="">
+                        <div id="staff-grid" class="staff-grid" aria-live="polite">
+                            <div class="staff-grid-empty">Select a service to choose staff</div>
                         </div>
                         <div class="staff-note">
                             <i class="fas fa-info-circle"></i>

@@ -25,6 +25,11 @@
             this.initValidation();
             this.setMinDate();
             this.initPaymentMethods();
+            // Populate staff if a service is preselected
+            const initialService = this.serviceSelect.val();
+            if (initialService) {
+                this.populateStaffForService(initialService);
+            }
         }
 
         bindEvents() {
@@ -97,9 +102,75 @@
             
             if (serviceId) {
                 this.loadServiceInfo(serviceId);
+                this.populateStaffForService(serviceId);
             } else {
                 this.serviceInfo.hide();
+                this.clearStaffOptions();
             }
+        }
+
+        populateStaffForService(serviceId) {
+            const $grid = $('#staff-grid');
+            const $hidden = $('#staff_id');
+            if (!$grid.length || !$hidden.length) {
+                console.warn('[Booking] Staff grid or hidden input not found. grid:', $grid.length, ' hidden:', $hidden.length);
+                return;
+            }
+            console.log('[Booking] Loading staff grid for service', serviceId);
+            // Show loading state
+            $grid.html('<div class="staff-grid-empty">Loading staff...</div>');
+            $.ajax({
+                url: userBookingAjax.ajaxurl,
+                method: 'POST',
+                data: {
+                    action: 'get_staff_for_service',
+                    nonce: userBookingAjax.nonce,
+                    service_id: serviceId
+                },
+                success: function(resp){
+                    if (resp && resp.success && Array.isArray(resp.staff) && resp.staff.length) {
+                        const cards = resp.staff.map(function(s){
+                            const safeName = String(s.name||'').replace(/</g,'&lt;');
+                            const initials = (safeName.trim().split(/\s+/).map(function(p){ return p.charAt(0); }).join('').substring(0,2).toUpperCase()) || '?';
+                            const avatar = s.avatar ? '<img src="'+ s.avatar +'" alt="'+ safeName +'" />' : '<div class="staff-initials">'+ initials +'</div>';
+                            return '<div class="staff-card" tabindex="0" role="button" aria-pressed="false" data-id="'+ s.id +'">'+
+                                   '  <div class="staff-avatar">'+ avatar +'</div>'+ 
+                                   '  <div class="staff-name">'+ safeName +'</div>'+ 
+                                   '</div>';
+                        });
+                        $grid.html(cards.join(''));
+                        // bind click/select
+                        $grid.off('click.staff').on('click.staff', '.staff-card', function(){
+                            const $card = $(this);
+                            if ($card.hasClass('selected')){
+                                $hidden.val('');
+                                $card.removeClass('selected').attr('aria-pressed','false');
+                            } else {
+                                const id = $card.data('id');
+                                $hidden.val(id);
+                                $card.addClass('selected').attr('aria-pressed','true').siblings().removeClass('selected').attr('aria-pressed','false');
+                            }
+                        });
+                        $grid.off('keydown.staff').on('keydown.staff', '.staff-card', function(e){
+                            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $(this).trigger('click'); }
+                        });
+                    } else {
+                        $hidden.val('');
+                        $grid.html('<div class="staff-grid-empty">No staff available</div>');
+                    }
+                },
+                error: function(){
+                    $hidden.val('');
+                    $grid.html('<div class="staff-grid-empty">Failed to load staff</div>');
+                }
+            });
+        }
+
+        clearStaffOptions(){
+            const $grid = $('#staff-grid');
+            const $hidden = $('#staff_id');
+            if ($grid.length){ $grid.html('<div class="staff-grid-empty">Select a service to choose staff</div>'); }
+            if ($hidden.length){ $hidden.val(''); }
         }
 
         loadServiceInfo(serviceId) {
@@ -345,6 +416,8 @@
             formData.append('preferred_date', this.form.find('#preferred_date').val() || '');
             formData.append('preferred_time', this.form.find('#preferred_time').val() || '');
             formData.append('message', this.form.find('#booking_message').val() || '');
+            // Preferred staff (optional)
+            formData.append('staff_id', this.form.find('#staff_id').val() || '');
             
             // Payment method
             const paymentMethod = this.form.find('input[name="payment_method"]:checked').val();
@@ -626,6 +699,58 @@
 
         // update progress on load
         this.updateProgress();
+
+        // Populate v3 staff when service changes or on init if preselected (grid UI)
+        const $service = this.form.find('#ubf_service_id');
+        const $hiddenStaff = this.form.find('#ubf_staff_id');
+        const $grid = this.form.find('#ubf_staff_grid');
+        function populateV3(serviceId){
+            if (!$grid.length || !$hiddenStaff.length) {
+                console.warn('[Booking v3] Staff grid or hidden input not found. grid:', $grid.length, ' hidden:', $hiddenStaff.length);
+                return;
+            }
+            console.log('[Booking v3] Loading staff grid for service', serviceId);
+            $grid.html('<div class="staff-grid-empty">Loading staff...</div>');
+            $.ajax({
+                url: userBookingAjax.ajaxurl,
+                method: 'POST',
+                data: { action: 'get_staff_for_service', nonce: userBookingAjax.nonce, service_id: serviceId },
+                success: function(resp){
+                    if (resp && resp.success && Array.isArray(resp.staff) && resp.staff.length){
+                        const cards = resp.staff.map(function(s){
+                            const safeName = String(s.name||'').replace(/</g,'&lt;');
+                            const initials = (safeName.trim().split(/\s+/).map(function(p){ return p.charAt(0); }).join('').substring(0,2).toUpperCase()) || '?';
+                            const avatar = s.avatar ? '<img src="'+ s.avatar +'" alt="'+ safeName +'" />' : '<div class="staff-initials">'+ initials +'</div>';
+                            return '<div class="staff-card" tabindex="0" role="button" aria-pressed="false" data-id="'+ s.id +'">'+
+                                   '  <div class="staff-avatar">'+ avatar +'</div>'+ 
+                                   '  <div class="staff-name">'+ safeName +'</div>'+ 
+                                   '</div>';
+                        });
+                        $grid.html(cards.join(''));
+                        $grid.off('click.staff').on('click.staff', '.staff-card', function(){
+                            const $card = $(this);
+                            if ($card.hasClass('selected')){
+                                $hiddenStaff.val('');
+                                $card.removeClass('selected').attr('aria-pressed','false');
+                            } else {
+                                const id = $card.data('id');
+                                $hiddenStaff.val(id);
+                                $card.addClass('selected').attr('aria-pressed','true').siblings().removeClass('selected').attr('aria-pressed','false');
+                            }
+                        });
+                        $grid.off('keydown.staff').on('keydown.staff', '.staff-card', function(e){
+                            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $(this).trigger('click'); }
+                        });
+                    } else {
+                        $hiddenStaff.val('');
+                        $grid.html('<div class="staff-grid-empty">No staff available</div>');
+                    }
+                },
+                error: function(){ $hiddenStaff.val(''); $grid.html('<div class="staff-grid-empty">Failed to load staff</div>'); }
+            });
+        }
+        $service.on('change', function(){ const v = $(this).val(); if (v){ populateV3(v); } else { $hiddenStaff.val(''); $grid.html('<div class="staff-grid-empty">Select a service to choose staff</div>'); } });
+        if ($service.val()) { populateV3($service.val()); } else { $grid.html('<div class="staff-grid-empty">Select a service to choose staff</div>'); }
     }
 
     UBFv3.prototype.showStep = function(step){
