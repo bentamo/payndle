@@ -1088,13 +1088,15 @@ function elite_cuts_manage_bookings_page() {
             background: var(--bg-primary);
             border-radius: 12px;
             width: 90%;
-            max-width: 900px;
+            max-width: 750px;
             max-height: 90vh;
             overflow-y: auto;
+            overflow-x: hidden;
             box-shadow: 0 20px 60px rgba(12, 25, 48, 0.2);
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             transform: scale(0.9) translateY(30px);
             transition: all 0.3s ease;
+            margin: 0 auto;
         }
 
         .manager-booking-overlay.active .manager-booking-container {
@@ -1104,7 +1106,7 @@ function elite_cuts_manage_bookings_page() {
         /* Header */
         .manager-booking-header {
             position: relative;
-            padding: 2rem 2.5rem 1.5rem;
+            padding: 1.25rem 1.75rem 1rem;
             border-bottom: 1px solid var(--border-color);
             display: flex;
             justify-content: space-between;
@@ -1114,13 +1116,13 @@ function elite_cuts_manage_bookings_page() {
         .manager-booking-header::before {
             content: '';
             position: absolute;
-            top: 12px;
+            top: 8px;
             left: 50%;
             transform: translateX(-50%);
-            width: 60px;
-            height: 4px;
+            width: 50px;
+            height: 3px;
             background: var(--accent);
-            border-radius: 4px;
+            border-radius: 3px;
         }
 
         .header-content {
@@ -1129,42 +1131,42 @@ function elite_cuts_manage_bookings_page() {
         }
 
         .booking-title {
-            font-size: 1.75rem;
+            font-size: 1.5rem;
             font-weight: 700;
-            margin: 0 0 0.5rem 0;
+            margin: 0 0 0.375rem 0;
             color: var(--text-primary);
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 0.75rem;
+            gap: 0.6rem;
         }
 
         .booking-title i {
-            width: 44px;
-            height: 44px;
+            width: 38px;
+            height: 38px;
             background: var(--accent);
             color: white;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.1rem;
+            font-size: 1rem;
         }
 
         .booking-subtitle {
             color: var(--text-secondary);
             margin: 0;
-            font-size: 1rem;
+            font-size: 0.9rem;
         }
 
         .close-overlay {
             position: absolute;
-            top: 1.5rem;
-            right: 1.5rem;
+            top: 1.25rem;
+            right: 1.25rem;
             background: none;
             border: none;
-            width: 40px;
-            height: 40px;
+            width: 32px;
+            height: 32px;
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -1172,7 +1174,7 @@ function elite_cuts_manage_bookings_page() {
             color: var(--text-secondary);
             cursor: pointer;
             transition: all 0.2s ease;
-            font-size: 1.1rem;
+            font-size: 1rem;
         }
 
         .close-overlay:hover {
@@ -1182,18 +1184,21 @@ function elite_cuts_manage_bookings_page() {
 
         /* Form wrapper */
         .manager-booking-form-wrapper {
-            padding: 2rem 2.5rem;
+            padding: 1.25rem 1.75rem 1.75rem;
+            box-sizing: border-box;
+            width: 100%;
         }
 
         /* Stepper */
         .manager-stepper {
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
         }
 
         .steps {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 1rem;
+            margin-bottom: 0.75rem;
+            position: relative;
         }
 
         .step {
@@ -1207,9 +1212,9 @@ function elite_cuts_manage_bookings_page() {
         .step:not(:last-child)::after {
             content: '';
             position: absolute;
-            top: 20px;
-            left: calc(50% + 20px);
-            right: calc(-50% + 20px);
+            top: 17px;
+            left: calc(50% + 17px);
+            right: calc(-50% + 17px);
             height: 2px;
             background: #e6eaef;
             z-index: 1;
@@ -1220,8 +1225,8 @@ function elite_cuts_manage_bookings_page() {
         }
 
         .step .num {
-            width: 40px;
-            height: 40px;
+            width: 34px;
+            height: 34px;
             border-radius: 50%;
             background: #e6eaef;
             color: #667585;
@@ -1229,6 +1234,7 @@ function elite_cuts_manage_bookings_page() {
             align-items: center;
             justify-content: center;
             font-weight: 600;
+            font-size: 0.9rem;
             z-index: 2;
             position: relative;
             transition: all 0.3s ease;
@@ -1240,10 +1246,11 @@ function elite_cuts_manage_bookings_page() {
         }
 
         .step .label {
-            font-size: 0.85rem;
-            margin-top: 0.5rem;
+            font-size: 0.8rem;
+            margin-top: 0.375rem;
             color: #667585;
             text-align: center;
+            font-weight: 500;
         }
 
         .step.active .label {
@@ -1280,36 +1287,42 @@ function elite_cuts_manage_bookings_page() {
         }
 
         .section-title {
-            font-size: 1.25rem;
+            font-size: 1.125rem;
             font-weight: 600;
             color: var(--text-primary);
-            margin: 0 0 1.5rem 0;
+            margin: 0 0 1.25rem 0;
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 0.6rem;
         }
 
         .section-title i {
             color: var(--accent);
-            font-size: 1.1rem;
+            font-size: 1rem;
         }
 
         /* Form layout */
         .form-grid {
             display: grid;
             grid-template-columns: 1fr;
-            gap: 1.5rem;
-            margin-bottom: 2rem;
+            gap: 1.125rem;
+            margin-bottom: 1.25rem;
+            width: 100%;
+            box-sizing: border-box;
         }
 
-        @media (min-width: 768px) {
+        @media (min-width: 600px) {
             .form-grid {
                 grid-template-columns: repeat(2, 1fr);
+                gap: 1.25rem;
             }
         }
 
         .form-group {
             position: relative;
+            width: 100%;
+            box-sizing: border-box;
+            margin-bottom: 0;
         }
 
         .form-group.full-width {
@@ -1320,8 +1333,8 @@ function elite_cuts_manage_bookings_page() {
             display: block;
             font-weight: 500;
             color: var(--text-primary);
-            margin-bottom: 0.5rem;
-            font-size: 0.95rem;
+            margin-bottom: 0.375rem;
+            font-size: 0.875rem;
         }
 
         .required {
@@ -1332,30 +1345,37 @@ function elite_cuts_manage_bookings_page() {
         /* Input styling */
         .input-wrapper {
             position: relative;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .input-icon {
             position: absolute;
-            left: 0.75rem;
+            left: 1.5rem;
             top: 50%;
             transform: translateY(-50%);
             color: var(--accent);
-            font-size: 1rem;
+            font-size: 0.875rem;
             z-index: 2;
+            width: 18px;
+            text-align: center;
+            pointer-events: none;
         }
 
         .manager-booking-form input,
         .manager-booking-form select,
         .manager-booking-form textarea {
             width: 100%;
-            padding: 0.875rem 1rem 0.875rem 2.75rem;
+            padding: 0.6875rem 0.75rem 0.6875rem 4.5rem;
             border: 2px solid var(--border-color);
             border-radius: var(--radius);
-            font-size: 0.95rem;
+            font-size: 0.875rem;
             font-family: 'Inter', sans-serif;
             transition: all 0.3s ease;
             background: var(--bg-primary);
             color: var(--text-primary);
+            box-sizing: border-box;
+            max-width: 100%;
         }
 
         .manager-booking-form input:focus,
@@ -1371,6 +1391,8 @@ function elite_cuts_manage_bookings_page() {
         .service-selector,
         .staff-selector {
             position: relative;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .service-selector select,
@@ -1378,7 +1400,21 @@ function elite_cuts_manage_bookings_page() {
             appearance: none;
             -webkit-appearance: none;
             -moz-appearance: none;
-            padding-right: 2.75rem;
+            padding: 0.6875rem 3rem 0.6875rem 4.5rem;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .select-icon {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            width: 18px;
+            text-align: center;
         }
 
         .select-icon {
@@ -1397,45 +1433,47 @@ function elite_cuts_manage_bookings_page() {
         }
 
         .textarea-wrapper .input-icon {
-            top: 1rem;
+            top: 0.875rem;
             transform: none;
-            width: 24px;
-            height: 24px;
+            width: 20px;
+            height: 20px;
             background: var(--accent);
             color: white;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.8rem;
+            font-size: 0.7rem;
+            left: 1.5rem;
         }
 
         .textarea-wrapper textarea {
-            padding-left: 3.5rem;
-            padding-top: 1rem;
-            min-height: 100px;
+            padding-left: 4.5rem;
+            padding-top: 0.875rem;
+            min-height: 80px;
             resize: vertical;
         }
 
         /* Service info */
         .selected-service-info {
-            margin-top: 1rem;
-            padding: 1rem;
+            margin-top: 0.75rem;
+            padding: 0.875rem;
             background: var(--bg-tertiary);
             border: 1px solid var(--border-color);
             border-radius: var(--radius);
         }
 
         .selected-service-info h4 {
-            margin: 0 0 0.5rem 0;
+            margin: 0 0 0.375rem 0;
             color: var(--text-primary);
             font-weight: 600;
+            font-size: 0.9rem;
         }
 
         .selected-service-info p {
-            margin: 0.25rem 0;
+            margin: 0.1875rem 0;
             color: var(--text-secondary);
-            font-size: 0.9rem;
+            font-size: 0.8rem;
         }
 
         .service-price {
@@ -1447,12 +1485,12 @@ function elite_cuts_manage_bookings_page() {
         .booking-summary {
             background: var(--bg-tertiary);
             border-radius: var(--radius);
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
+            padding: 1.125rem;
+            margin-bottom: 1.125rem;
         }
 
         .summary-section {
-            margin-bottom: 1rem;
+            margin-bottom: 0.75rem;
         }
 
         .summary-section:last-child {
@@ -1460,42 +1498,42 @@ function elite_cuts_manage_bookings_page() {
         }
 
         .summary-section h4 {
-            margin: 0 0 0.5rem 0;
+            margin: 0 0 0.375rem 0;
             color: var(--text-primary);
             font-weight: 600;
-            font-size: 0.95rem;
+            font-size: 0.875rem;
         }
 
         .summary-section p {
-            margin: 0.25rem 0;
+            margin: 0.1875rem 0;
             color: var(--text-secondary);
-            font-size: 0.9rem;
+            font-size: 0.8rem;
         }
 
         /* Step navigation */
         .step-nav {
             display: flex;
             justify-content: flex-end;
-            gap: 1rem;
-            margin-top: 2rem;
-            padding-top: 1.5rem;
+            gap: 0.875rem;
+            margin-top: 1.5rem;
+            padding-top: 1.125rem;
             border-top: 1px solid var(--border-color);
         }
 
         .btn-prev,
         .btn-next,
         .btn-submit {
-            padding: 0.875rem 1.5rem;
+            padding: 0.75rem 1.25rem;
             border: none;
             border-radius: var(--radius);
             font-family: 'Inter', sans-serif;
-            font-size: 0.95rem;
+            font-size: 0.875rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
             display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.375rem;
         }
 
         .btn-prev {
@@ -1674,6 +1712,454 @@ function elite_cuts_manage_bookings_page() {
             .btn-submit {
                 width: 100%;
                 justify-content: center;
+            }
+        }
+
+        /* ========================================
+           Staff Grid and Enhanced UI Styles
+           ======================================== */
+
+        /* Staff Grid Styles */
+        .staff-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 0.875rem;
+            margin-top: 0.75rem;
+            padding: 0.875rem;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius);
+            border: 1px solid var(--border-color);
+            min-height: 100px;
+        }
+
+        .staff-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0.75rem 0.5rem;
+            background: var(--bg-primary);
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            min-height: 85px;
+            position: relative;
+        }
+
+        .staff-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(100, 196, 147, 0.15);
+        }
+
+        .staff-card.selected {
+            border-color: var(--accent);
+            background: rgba(100, 196, 147, 0.08);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(100, 196, 147, 0.2);
+        }
+
+        .staff-card.selected::after {
+            content: '✓';
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            width: 16px;
+            height: 16px;
+            background: var(--accent);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .staff-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-bottom: 0.375rem;
+            object-fit: cover;
+            border: 2px solid var(--border-color);
+        }
+
+        .staff-initials {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--accent);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.875rem;
+            margin-bottom: 0.375rem;
+        }
+
+        .staff-name {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            line-height: 1.2;
+            word-wrap: break-word;
+            text-align: center;
+        }
+
+        .staff-grid-empty {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 1.5rem 0.875rem;
+            color: var(--text-secondary);
+            font-style: italic;
+            background: var(--bg-primary);
+            border: 2px dashed var(--border-color);
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 60px;
+            font-size: 0.85rem;
+        }
+
+        /* Service Selector Improvements */
+        .service-selector {
+            position: relative;
+            margin-bottom: 1rem;
+        }
+
+        .service-selector select {
+            width: 100%;
+            padding: 0.875rem 2.75rem 0.875rem 2.75rem;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius);
+            font-size: 0.95rem;
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            appearance: none;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+        }
+
+        .service-selector select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 4px rgba(100, 196, 147, 0.12);
+        }
+
+        .service-selector .input-icon {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--accent);
+            font-size: 1rem;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .service-selector .select-icon {
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* Selected Service Info Improvements */
+        .selected-service-info {
+            display: none;
+            margin-top: 1rem;
+            padding: 1.25rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            border-left: 4px solid var(--accent);
+        }
+
+        .selected-service-info.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .selected-service-info h4 {
+            margin: 0 0 0.75rem 0;
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .selected-service-info h4 i {
+            color: var(--accent);
+        }
+
+        .selected-service-info .service-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 0.75rem;
+        }
+
+        .selected-service-info .service-detail {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .selected-service-info .service-detail i {
+            color: var(--accent);
+            width: 16px;
+            text-align: center;
+        }
+
+        .selected-service-info .service-price {
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        /* Better input alignment and spacing */
+        .manager-booking-form input,
+        .manager-booking-form select,
+        .manager-booking-form textarea {
+            width: 100%;
+            padding: 0.6875rem 0.75rem 0.6875rem 4.5rem;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius);
+            font-size: 0.875rem;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.3s ease;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            box-sizing: border-box;
+            max-width: 100%;
+        }
+
+        .manager-booking-form input:focus,
+        .manager-booking-form select:focus,
+        .manager-booking-form textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 4px rgba(100, 196, 147, 0.12);
+            transform: translateY(-1px);
+        }
+
+        /* Input wrapper improvements */
+        .input-wrapper {
+            position: relative;
+            width: 100%;
+            display: block;
+            box-sizing: border-box;
+        }
+
+        .input-wrapper .input-icon {
+            position: absolute;
+            left: 1.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--accent);
+            font-size: 0.875rem;
+            z-index: 2;
+            pointer-events: none;
+            width: 16px;
+            text-align: center;
+        }
+
+        /* Form group spacing improvements */
+        .form-group {
+            position: relative;
+            margin-bottom: 1rem;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 0.375rem;
+            font-size: 0.875rem;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        /* Responsive improvements for staff grid */
+        @media (max-width: 768px) {
+            .manager-booking-container {
+                width: 95%;
+                max-width: 480px;
+                margin: 0.75rem auto;
+            }
+
+            .manager-booking-header {
+                padding: 1rem 1.25rem 0.75rem;
+            }
+
+            .manager-booking-form-wrapper {
+                padding: 1rem 1.25rem 1.25rem;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+                gap: 0.875rem;
+            }
+
+            .staff-grid {
+                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+                gap: 0.625rem;
+                padding: 0.625rem;
+            }
+
+            .staff-card {
+                padding: 0.625rem 0.375rem;
+                min-height: 75px;
+            }
+
+            .staff-avatar,
+            .staff-initials {
+                width: 32px;
+                height: 32px;
+                font-size: 0.75rem;
+                margin-bottom: 0.25rem;
+            }
+
+            .staff-name {
+                font-size: 0.7rem;
+            }
+
+            .booking-title {
+                font-size: 1.25rem;
+            }
+
+            .booking-title i {
+                width: 32px;
+                height: 32px;
+                font-size: 0.875rem;
+            }
+
+            .section-title {
+                font-size: 1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .manager-booking-container {
+                width: 95%;
+                max-width: 360px;
+                margin: 0.5rem auto;
+            }
+
+            .manager-booking-header {
+                padding: 0.875rem 1rem 0.625rem;
+            }
+
+            .manager-booking-form-wrapper {
+                padding: 0.875rem 1rem 1.125rem;
+            }
+
+            .staff-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.5rem;
+                padding: 0.5rem;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+            }
+
+            .step-nav {
+                flex-direction: column-reverse;
+                gap: 0.625rem;
+            }
+
+            .btn-prev,
+            .btn-next,
+            .btn-submit {
+                width: 100%;
+                justify-content: center;
+                padding: 0.625rem 1rem;
+                font-size: 0.8rem;
+            }
+
+            .booking-title {
+                font-size: 1.125rem;
+                flex-direction: column;
+                gap: 0.375rem;
+            }
+
+            .manager-booking-form input,
+            .manager-booking-form select,
+            .manager-booking-form textarea {
+                padding: 0.5625rem 0.625rem 0.5625rem 3.5rem;
+                font-size: 0.8rem;
+            }
+
+            .input-icon {
+                font-size: 0.75rem;
+                left: 1rem;
+                width: 14px;
+            }
+
+            .select-icon {
+                font-size: 0.7rem;
+                right: 0.625rem;
+                width: 14px;
+            }
+
+            .textarea-wrapper .input-icon {
+                width: 18px;
+                height: 18px;
+                font-size: 0.65rem;
+                left: 1rem;
+            }
+
+            .textarea-wrapper textarea {
+                padding-left: 3.5rem;
+                min-height: 70px;
+            }
+        }
+
+        /* Override: remove all form icons and reset input padding */
+        .manager-booking-form .input-icon,
+        .manager-booking-form .select-icon,
+        .manager-booking-form .textarea-wrapper .input-icon,
+        .manager-booking-form i.input-icon {
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        .manager-booking-form input,
+        .manager-booking-form select,
+        .manager-booking-form textarea {
+            padding-left: 0.75rem !important;
+        }
+
+        /* Mobile override */
+        @media (max-width: 767px) {
+            .manager-booking-form input,
+            .manager-booking-form select,
+            .manager-booking-form textarea {
+                padding-left: 0.75rem !important;
             }
         }
     </style>
