@@ -253,7 +253,6 @@ function elite_cuts_manage_bookings_page() {
                             </td>
                         </tr>
                     <?php endif; ?>
-                    </tr>
                 </tbody>
             </table>
         </div>
@@ -607,6 +606,7 @@ function elite_cuts_manage_bookings_page() {
             overflow: hidden;
             box-shadow: var(--shadow);
             border: 1px solid var(--border-color);
+            overflow-x: auto;
         }
 
         .elite-cuts-table {
@@ -614,17 +614,18 @@ function elite_cuts_manage_bookings_page() {
             border-collapse: collapse;
             color: var(--text-primary);
             table-layout: fixed;
+            min-width: 800px;
         }
 
         /* Column widths for 8 columns: ID, Customer, Service, Staff, Contact, Date & Time, Status, Actions */
         .elite-cuts-table th:nth-child(1) { width: 8%; }   /* ID */
         .elite-cuts-table th:nth-child(2) { width: 15%; }  /* Customer */
-        .elite-cuts-table th:nth-child(3) { width: 15%; }  /* Service */
+        .elite-cuts-table th:nth-child(3) { width: 13%; }  /* Service */
         .elite-cuts-table th:nth-child(4) { width: 12%; }  /* Staff */
-        .elite-cuts-table th:nth-child(5) { width: 18%; }  /* Contact */
-        .elite-cuts-table th:nth-child(6) { width: 15%; }  /* Date & Time */
+        .elite-cuts-table th:nth-child(5) { width: 16%; }  /* Contact */
+        .elite-cuts-table th:nth-child(6) { width: 14%; }  /* Date & Time */
         .elite-cuts-table th:nth-child(7) { width: 10%; }  /* Status */
-        .elite-cuts-table th:nth-child(8) { width: 7%; }   /* Actions */
+        .elite-cuts-table th:nth-child(8) { width: 12%; }  /* Actions */
 
         .elite-cuts-table th {
             background: var(--bg-tertiary);
@@ -638,10 +639,37 @@ function elite_cuts_manage_bookings_page() {
             border-bottom: 1px solid var(--border-color);
         }
 
+        /* Center the Actions header only */
+        .elite-cuts-table th:nth-child(8) {
+            text-align: center;
+        }
+
         .elite-cuts-table td {
             padding: 1rem 1.25rem;
             border-bottom: 1px solid var(--border-color);
             vertical-align: middle;
+            height: 113.16px;
+        }
+
+        /* Actions column - maintain table cell behavior */
+        .elite-cuts-table td.actions {
+            text-align: center;
+            vertical-align: middle;
+            /* Remove line-height, let table determine natural height */
+        }
+
+        /* Container for buttons - positioned to center without affecting cell height */
+        .elite-cuts-table td.actions {
+            display: table-cell; /* Ensure proper table cell behavior */
+        }
+
+        .elite-cuts-table td.actions .elite-button {
+            display: inline-block;
+            margin: 0 0.2rem;
+            min-width: auto;
+            padding: 0.4rem 0.6rem;
+            font-size: 0.75rem;
+            height: auto;
         }
 
         .elite-cuts-table tbody tr:last-child td {
@@ -761,6 +789,22 @@ function elite_cuts_manage_bookings_page() {
             background: var(--bg-tertiary);
             color: var(--text-primary);
             border-color: var(--text-secondary);
+        }
+
+        /* Small button variant for actions */
+        .elite-button.small {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+            min-width: 60px;
+            text-transform: none;
+            letter-spacing: 0.2px;
+            border-radius: 4px;
+        }
+
+        .elite-button.small:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(100, 196, 147, 0.15);
         }
 
         /* Loading State */
