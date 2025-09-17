@@ -655,7 +655,6 @@ function elite_cuts_manage_bookings_page() {
         .elite-cuts-table td.actions {
             text-align: center;
             vertical-align: middle;
-            position: relative;
             /* Remove line-height, let table determine natural height */
         }
 
@@ -670,12 +669,7 @@ function elite_cuts_manage_bookings_page() {
             min-width: auto;
             padding: 0.4rem 0.6rem;
             font-size: 0.75rem;
-            vertical-align: middle;
             height: auto;
-            max-height: 32px;
-            position: relative;
-            top: 50%;
-            transform: translateY(-50%);
         }
 
         .elite-cuts-table tbody tr:last-child td {
