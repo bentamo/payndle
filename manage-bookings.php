@@ -258,67 +258,233 @@ function elite_cuts_manage_bookings_page() {
         </div>
     </div>
 
-    <!-- Add/Edit Booking Modal -->
-    <div id="booking-modal" class="elite-modal" style="display: none;">
-        <div class="elite-modal-content">
-            <div class="elite-modal-header">
-                <h3>Add New Booking</h3>
-                <span class="elite-close">&times;</span>
+    <!-- Manager Booking Form Overlay -->
+    <div id="manager-booking-overlay" class="manager-booking-overlay">
+        <div class="manager-booking-backdrop"></div>
+        <div class="manager-booking-container">
+            <div class="manager-booking-header">
+                <div class="header-content">
+                    <h1 class="booking-title">
+                        <i class="fas fa-calendar-plus"></i>
+                        New Booking
+                    </h1>
+                    <p class="booking-subtitle">Create a new appointment for the barbershop</p>
+                </div>
+                <button class="close-overlay" id="close-booking-overlay">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
-            <div class="elite-modal-body">
-                <form id="booking-form">
+
+            <div class="manager-booking-form-wrapper">
+                <div class="manager-stepper">
+                    <div class="steps">
+                        <div class="step active" data-step="1">
+                            <div class="num">1</div>
+                            <div class="label">Customer</div>
+                        </div>
+                        <div class="step" data-step="2">
+                            <div class="num">2</div>
+                            <div class="label">Service</div>
+                        </div>
+                        <div class="step" data-step="3">
+                            <div class="num">3</div>
+                            <div class="label">Schedule</div>
+                        </div>
+                        <div class="step" data-step="4">
+                            <div class="num">4</div>
+                            <div class="label">Confirm</div>
+                        </div>
+                    </div>
+                    <div class="progress">
+                        <div class="progress-fill" style="width: 25%"></div>
+                    </div>
+                </div>
+
+                <form id="manager-booking-form" class="manager-booking-form">
+                    <?php wp_nonce_field('manager_booking_nonce', 'booking_nonce'); ?>
                     <input type="hidden" id="booking-id" value="">
-                    
-                    <div class="form-group">
-                        <label for="customer">Customer</label>
-                        <select id="customer" class="elite-select" required>
-                            <option value="">Select Customer</option>
-                            <!-- Populated via AJAX -->
-                        </select>
-                    </div>
 
-                    <div class="form-group">
-                        <label for="service">Service</label>
-                        <select id="service" class="elite-select" required>
-                            <option value="">Select Service</option>
-                            <!-- Populated via AJAX -->
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="barber">Barber</label>
-                        <select id="barber" class="elite-select" required>
-                            <option value="">Select Barber</option>
-                            <!-- Populated via AJAX -->
-                        </select>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="booking-date">Date</label>
-                            <input type="date" id="booking-date" class="elite-input" required>
+                    <!-- Step 1: Customer Information -->
+                    <div class="form-step active" data-step="1">
+                        <h3 class="section-title">
+                            <i class="fas fa-user"></i>
+                            Customer Information
+                        </h3>
+                        
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="customer-name">Customer Name <span class="required">*</span></label>
+                                <div class="input-wrapper">
+                                    <i class="input-icon fas fa-user"></i>
+                                    <input type="text" id="customer-name" name="customer_name" placeholder="Full name" required>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="customer-email">Email Address <span class="required">*</span></label>
+                                <div class="input-wrapper">
+                                    <i class="input-icon fas fa-envelope"></i>
+                                    <input type="email" id="customer-email" name="customer_email" placeholder="Email address" required>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="customer-phone">Phone Number</label>
+                                <div class="input-wrapper">
+                                    <i class="input-icon fas fa-phone"></i>
+                                    <input type="tel" id="customer-phone" name="customer_phone" placeholder="Phone number">
+                                </div>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label for="booking-time">Time</label>
-                            <input type="time" id="booking-time" class="elite-input" required>
+                        
+                        <div class="step-nav">
+                            <button type="button" class="btn-next">Next Step</button>
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label for="status">Status</label>
-                        <select id="status" class="elite-select" required>
-                            <option value="pending">Pending</option>
-                            <option value="confirmed">Confirmed</option>
-                            <option value="completed">Completed</option>
-                            <option value="cancelled">Cancelled</option>
-                        </select>
+                    <!-- Step 2: Service Selection -->
+                    <div class="form-step" data-step="2">
+                        <h3 class="section-title">
+                            <i class="fas fa-cut"></i>
+                            Select Service & Staff
+                        </h3>
+                        
+                        <div class="form-group">
+                            <label for="service-select">Service <span class="required">*</span></label>
+                            <div class="service-selector">
+                                <i class="input-icon fas fa-cut"></i>
+                                <select id="service-select" name="service_id" required>
+                                    <option value="">Choose a service</option>
+                                    <?php echo elite_cuts_get_services_options(); ?>
+                                </select>
+                                <i class="select-icon fas fa-chevron-down"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="selected-service-info" id="selected-service-info" style="display: none;">
+                            <h4>Service Details</h4>
+                            <p class="service-description"></p>
+                            <p class="service-duration">Duration: <span></span></p>
+                            <p class="service-price">Price: <span></span></p>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="staff-select">Preferred Staff</label>
+                            <input type="hidden" id="staff-select" name="staff_id" value="">
+                            <div id="staff-grid" class="staff-grid" aria-live="polite">
+                                <div class="staff-grid-empty">Select a service to choose staff</div>
+                            </div>
+                        </div>
+                        
+                        <div class="step-nav">
+                            <button type="button" class="btn-prev">Previous</button>
+                            <button type="button" class="btn-next">Next Step</button>
+                        </div>
                     </div>
 
-                    <div class="form-actions">
-                        <button type="button" class="elite-button secondary" id="cancel-booking">Cancel</button>
-                        <button type="submit" class="elite-button primary">Save Booking</button>
+                    <!-- Step 3: Schedule -->
+                    <div class="form-step" data-step="3">
+                        <h3 class="section-title">
+                            <i class="fas fa-calendar-alt"></i>
+                            Schedule Appointment
+                        </h3>
+                        
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="booking-date">Appointment Date <span class="required">*</span></label>
+                                <div class="input-wrapper">
+                                    <i class="input-icon fas fa-calendar-alt"></i>
+                                    <input type="date" id="booking-date" name="preferred_date" min="<?php echo date('Y-m-d'); ?>" required>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="booking-time">Appointment Time <span class="required">*</span></label>
+                                <div class="input-wrapper">
+                                    <i class="input-icon fas fa-clock"></i>
+                                    <input type="time" id="booking-time" name="preferred_time" required>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group full-width">
+                            <label for="booking-notes">Additional Notes</label>
+                            <div class="textarea-wrapper">
+                                <i class="input-icon fas fa-comment-alt"></i>
+                                <textarea id="booking-notes" name="booking_notes" placeholder="Any special requests or notes..."></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="step-nav">
+                            <button type="button" class="btn-prev">Previous</button>
+                            <button type="button" class="btn-next">Next Step</button>
+                        </div>
+                    </div>
+
+                    <!-- Step 4: Confirmation -->
+                    <div class="form-step" data-step="4">
+                        <h3 class="section-title">
+                            <i class="fas fa-check-circle"></i>
+                            Confirm Booking
+                        </h3>
+                        
+                        <div class="booking-summary">
+                            <div class="summary-section">
+                                <h4>Customer</h4>
+                                <p id="summary-customer"></p>
+                                <p id="summary-contact"></p>
+                            </div>
+                            
+                            <div class="summary-section">
+                                <h4>Service</h4>
+                                <p id="summary-service"></p>
+                                <p id="summary-staff"></p>
+                            </div>
+                            
+                            <div class="summary-section">
+                                <h4>Appointment</h4>
+                                <p id="summary-datetime"></p>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="booking-status">Initial Status</label>
+                            <div class="service-selector">
+                                <i class="input-icon fas fa-flag"></i>
+                                <select id="booking-status" name="booking_status">
+                                    <option value="pending">Pending</option>
+                                    <option value="confirmed">Confirmed</option>
+                                    <option value="completed">Completed</option>
+                                    <option value="cancelled">Cancelled</option>
+                                </select>
+                                <i class="select-icon fas fa-chevron-down"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="step-nav">
+                            <button type="button" class="btn-prev">Previous</button>
+                            <button type="submit" class="btn-submit">Create Booking</button>
+                        </div>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Message -->
+    <div id="manager-booking-success" class="manager-booking-success">
+        <div class="manager-booking-backdrop"></div>
+        <div class="success-container">
+            <div class="success-box">
+                <div class="success-icon">
+                    <i class="fas fa-check"></i>
+                </div>
+                <h3 class="success-title">Booking Created Successfully</h3>
+                <p class="success-message">The appointment has been added to the system.</p>
+                <div class="success-actions">
+                    <button class="btn-primary" id="view-booking">View Booking</button>
+                    <button class="btn-secondary" id="create-another">Create Another</button>
+                </div>
             </div>
         </div>
     </div>
@@ -878,6 +1044,638 @@ function elite_cuts_manage_bookings_page() {
                 justify-content: center;
             }
         }
+
+        /* ========================================
+           Manager Booking Overlay Styles
+           ======================================== */
+
+        /* Overlay backdrop and container */
+        .manager-booking-overlay,
+        .manager-booking-success {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .manager-booking-overlay.active,
+        .manager-booking-success.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .manager-booking-backdrop {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(12, 25, 48, 0.75);
+            backdrop-filter: blur(4px);
+        }
+
+        /* Main container */
+        .manager-booking-container {
+            position: relative;
+            background: var(--bg-primary);
+            border-radius: 12px;
+            width: 90%;
+            max-width: 900px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(12, 25, 48, 0.2);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            transform: scale(0.9) translateY(30px);
+            transition: all 0.3s ease;
+        }
+
+        .manager-booking-overlay.active .manager-booking-container {
+            transform: scale(1) translateY(0);
+        }
+
+        /* Header */
+        .manager-booking-header {
+            position: relative;
+            padding: 2rem 2.5rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .manager-booking-header::before {
+            content: '';
+            position: absolute;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 4px;
+            background: var(--accent);
+            border-radius: 4px;
+        }
+
+        .header-content {
+            text-align: center;
+            width: 100%;
+        }
+
+        .booking-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin: 0 0 0.5rem 0;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+        }
+
+        .booking-title i {
+            width: 44px;
+            height: 44px;
+            background: var(--accent);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+        }
+
+        .booking-subtitle {
+            color: var(--text-secondary);
+            margin: 0;
+            font-size: 1rem;
+        }
+
+        .close-overlay {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+            background: none;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 1.1rem;
+        }
+
+        .close-overlay:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        /* Form wrapper */
+        .manager-booking-form-wrapper {
+            padding: 2rem 2.5rem;
+        }
+
+        /* Stepper */
+        .manager-stepper {
+            margin-bottom: 2rem;
+        }
+
+        .steps {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            position: relative;
+        }
+
+        .step:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: calc(50% + 20px);
+            right: calc(-50% + 20px);
+            height: 2px;
+            background: #e6eaef;
+            z-index: 1;
+        }
+
+        .step.active:not(:last-child)::after {
+            background: var(--accent);
+        }
+
+        .step .num {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #e6eaef;
+            color: #667585;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            z-index: 2;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .step.active .num {
+            background: var(--accent);
+            color: white;
+        }
+
+        .step .label {
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+            color: #667585;
+            text-align: center;
+        }
+
+        .step.active .label {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .progress {
+            height: 4px;
+            background: #e6eaef;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), #4fb88a);
+            transition: width 0.3s ease;
+        }
+
+        /* Form steps */
+        .form-step {
+            display: none;
+        }
+
+        .form-step.active {
+            display: block;
+            animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0 0 1.5rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .section-title i {
+            color: var(--accent);
+            font-size: 1.1rem;
+        }
+
+        /* Form layout */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        @media (min-width: 768px) {
+            .form-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .form-group {
+            position: relative;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .required {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        /* Input styling */
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--accent);
+            font-size: 1rem;
+            z-index: 2;
+        }
+
+        .manager-booking-form input,
+        .manager-booking-form select,
+        .manager-booking-form textarea {
+            width: 100%;
+            padding: 0.875rem 1rem 0.875rem 2.75rem;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius);
+            font-size: 0.95rem;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.3s ease;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        .manager-booking-form input:focus,
+        .manager-booking-form select:focus,
+        .manager-booking-form textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 4px rgba(100, 196, 147, 0.12);
+            transform: translateY(-1px);
+        }
+
+        /* Select styling */
+        .service-selector,
+        .staff-selector {
+            position: relative;
+        }
+
+        .service-selector select,
+        .staff-selector select {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            padding-right: 2.75rem;
+        }
+
+        .select-icon {
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* Textarea styling */
+        .textarea-wrapper {
+            position: relative;
+        }
+
+        .textarea-wrapper .input-icon {
+            top: 1rem;
+            transform: none;
+            width: 24px;
+            height: 24px;
+            background: var(--accent);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+        }
+
+        .textarea-wrapper textarea {
+            padding-left: 3.5rem;
+            padding-top: 1rem;
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        /* Service info */
+        .selected-service-info {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+        }
+
+        .selected-service-info h4 {
+            margin: 0 0 0.5rem 0;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .selected-service-info p {
+            margin: 0.25rem 0;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .service-price {
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        /* Booking summary */
+        .booking-summary {
+            background: var(--bg-tertiary);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .summary-section {
+            margin-bottom: 1rem;
+        }
+
+        .summary-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .summary-section h4 {
+            margin: 0 0 0.5rem 0;
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .summary-section p {
+            margin: 0.25rem 0;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* Step navigation */
+        .step-nav {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .btn-prev,
+        .btn-next,
+        .btn-submit {
+            padding: 0.875rem 1.5rem;
+            border: none;
+            border-radius: var(--radius);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-prev {
+            background: var(--text-primary);
+            color: white;
+        }
+
+        .btn-prev:hover {
+            background: #0a1726;
+            transform: translateY(-1px);
+        }
+
+        .btn-next,
+        .btn-submit {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-next:hover,
+        .btn-submit:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(100, 196, 147, 0.3);
+        }
+
+        /* Success overlay */
+        .success-container {
+            position: relative;
+            background: var(--bg-primary);
+            border-radius: 12px;
+            padding: 3rem 2rem;
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+            transform: scale(0.9);
+            transition: all 0.3s ease;
+        }
+
+        .manager-booking-success.active .success-container {
+            transform: scale(1);
+        }
+
+        .success-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            background: var(--accent);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .success-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0 0 0.75rem 0;
+        }
+
+        .success-message {
+            color: var(--text-secondary);
+            margin: 0 0 2rem 0;
+            line-height: 1.5;
+        }
+
+        .success-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        .btn-primary,
+        .btn-secondary {
+            padding: 0.875rem 1.5rem;
+            border: none;
+            border-radius: var(--radius);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: var(--text-primary);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #0a1726;
+            transform: translateY(-1px);
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .manager-booking-container {
+                width: 95%;
+                max-height: 95vh;
+            }
+
+            .manager-booking-header,
+            .manager-booking-form-wrapper {
+                padding: 1.5rem;
+            }
+
+            .booking-title {
+                font-size: 1.5rem;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .steps {
+                flex-wrap: wrap;
+                gap: 0.5rem;
+            }
+
+            .step {
+                flex: 0 0 calc(50% - 0.25rem);
+            }
+
+            .step:nth-child(odd):not(:last-child)::after {
+                display: none;
+            }
+
+            .success-actions {
+                flex-direction: column;
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .manager-booking-header,
+            .manager-booking-form-wrapper {
+                padding: 1rem;
+            }
+
+            .booking-title {
+                font-size: 1.25rem;
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .booking-title i {
+                width: 36px;
+                height: 36px;
+                font-size: 1rem;
+            }
+
+            .step-nav {
+                flex-direction: column;
+            }
+
+            .btn-prev,
+            .btn-next,
+            .btn-submit {
+                width: 100%;
+                justify-content: center;
+            }
+        }
     </style>
 
     <script>
@@ -1004,227 +1802,390 @@ function elite_cuts_manage_bookings_page() {
                 alert('Delete booking #' + bookingId + ' - functionality to be implemented');
             }
         });
+
+        // ========================================
+        // Manager Booking Overlay Functionality
+        // ========================================
+
+        let currentStep = 1;
+        const totalSteps = 4;
         
-        console.log('Manage Bookings ready with ' + allBookings.length + ' bookings loaded');
-    });
-        // Initialize the date pickers
-        const today = new Date();
-        $('#date-from').val(today.toISOString().split('T')[0]);
-        
-        const nextWeek = new Date();
-        nextWeek.setDate(today.getDate() + 7);
-        $('#date-to').val(nextWeek.toISOString().split('T')[0]);
-
-        // Modal functionality
-        const modal = document.getElementById('booking-modal');
-        const addBtn = document.getElementById('add-booking-btn');
-        const closeBtn = document.getElementsByClassName('elite-close')[0];
-        const cancelBtn = document.getElementById('cancel-booking');
-
-        // Open modal for new booking
-        addBtn.onclick = function() {
-            document.querySelector('#booking-form h3').textContent = 'Add New Booking';
-            document.getElementById('booking-form').reset();
-            modal.style.display = 'flex';
-        }
-
-        // Close modal
-        function closeModal() {
-            modal.style.display = 'none';
-        }
-
-        closeBtn.onclick = closeModal;
-        cancelBtn.onclick = closeModal;
-
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            if (event.target == modal) {
-                closeModal();
-            }
-        }
-
-        // Form submission
-        $('#booking-form').on('submit', function(e) {
-            e.preventDefault();
-            // Add form submission logic here
-            alert('Booking saved successfully!');
-            closeModal();
+        // Open overlay
+        $('#add-booking-btn').on('click', function() {
+            console.log('Opening manager booking overlay');
+            resetForm();
+            showOverlay();
         });
 
-        // Load bookings with real database integration
-        function loadBookings() {
-            console.log('Loading real bookings from database...');
+        // Close overlay
+        $('#close-booking-overlay, .manager-booking-backdrop').on('click', function() {
+            hideOverlay();
+        });
+
+        // Step navigation
+        $('.btn-next').on('click', function() {
+            if (validateCurrentStep()) {
+                nextStep();
+            }
+        });
+
+        $('.btn-prev').on('click', function() {
+            prevStep();
+        });
+
+        // Form submission
+        $('#manager-booking-form').on('submit', function(e) {
+            e.preventDefault();
+            if (validateCurrentStep()) {
+                submitBooking();
+            }
+        });
+
+        // Service selection change
+        $('#service-select').on('change', function() {
+            const serviceId = $(this).val();
+            const $selected = $(this).find('option:selected');
             
-            const tbody = $('#bookings-list');
-            tbody.html('<tr class="loading-row"><td colspan="7"><div class="loading-spinner"></div><span>Loading bookings...</span></td></tr>');
+            if (serviceId) {
+                // Show service info
+                const price = $selected.data('price');
+                const duration = $selected.data('duration');
+                const description = $selected.data('description');
+                
+                $('#selected-service-info .service-description').text(description || 'No description available');
+                $('#selected-service-info .service-duration span').text(duration || 'Not specified');
+                $('#selected-service-info .service-price span').text(price ? '₱' + parseFloat(price).toFixed(2) : 'Price varies');
+                $('#selected-service-info').show();
+                
+                // Load staff for this service
+                loadStaffForService(serviceId);
+            } else {
+                hideServiceInfo();
+                clearStaffGrid();
+            }
+        });
+
+        // Functions
+        function showOverlay() {
+            $('#manager-booking-overlay').addClass('active');
+            $('body').css('overflow', 'hidden');
+            updateSummary();
+        }
+
+        function hideOverlay() {
+            $('#manager-booking-overlay').removeClass('active');
+            $('body').css('overflow', '');
+            setTimeout(() => {
+                resetForm();
+            }, 300);
+        }
+
+        function resetForm() {
+            currentStep = 1;
+            $('#manager-booking-form')[0].reset();
+            updateStepDisplay();
+            updateProgress();
+            hideServiceInfo();
+            clearStaffGrid();
+        }
+
+        function nextStep() {
+            if (currentStep < totalSteps) {
+                currentStep++;
+                updateStepDisplay();
+                updateProgress();
+                
+                if (currentStep === 4) {
+                    updateSummary();
+                }
+            }
+        }
+
+        function prevStep() {
+            if (currentStep > 1) {
+                currentStep--;
+                updateStepDisplay();
+                updateProgress();
+            }
+        }
+
+        function updateStepDisplay() {
+            // Hide all steps
+            $('.form-step').removeClass('active');
+            $('.step').removeClass('active');
             
-            // Check if AJAX variables are available
-            if (typeof eliteManageBookings === 'undefined') {
-                console.error('eliteManageBookings is undefined - AJAX variables not loaded');
-                tbody.html('<tr><td colspan="7" class="no-bookings">Error: AJAX configuration missing. Please refresh the page.</td></tr>');
-                return;
+            // Show current step
+            $(`.form-step[data-step="${currentStep}"]`).addClass('active');
+            $(`.step[data-step="${currentStep}"]`).addClass('active');
+            
+            // Update completed steps
+            for (let i = 1; i < currentStep; i++) {
+                $(`.step[data-step="${i}"]`).addClass('active');
+            }
+        }
+
+        function updateProgress() {
+            const progress = (currentStep / totalSteps) * 100;
+            $('.progress-fill').css('width', progress + '%');
+        }
+
+        function validateCurrentStep() {
+            let isValid = true;
+            const currentStepEl = $(`.form-step[data-step="${currentStep}"]`);
+            
+            // Clear previous errors
+            currentStepEl.find('.error').removeClass('error');
+            currentStepEl.find('.error-message').remove();
+            
+            // Validate required fields in current step
+            currentStepEl.find('input[required], select[required]').each(function() {
+                if (!$(this).val().trim()) {
+                    $(this).addClass('error');
+                    if ($(this).next('.error-message').length === 0) {
+                        $(this).after('<div class="error-message" style="color: #f44336; font-size: 0.85rem; margin-top: 0.25rem;">This field is required</div>');
+                    }
+                    isValid = false;
+                }
+            });
+            
+            // Additional validation for email
+            const email = currentStepEl.find('input[type="email"]');
+            if (email.length && email.val()) {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(email.val())) {
+                    email.addClass('error');
+                    if (email.next('.error-message').length === 0) {
+                        email.after('<div class="error-message" style="color: #f44336; font-size: 0.85rem; margin-top: 0.25rem;">Please enter a valid email address</div>');
+                    }
+                    isValid = false;
+                }
             }
             
-            console.log('AJAX Config:', eliteManageBookings);
-            
-            // Get filter values
-            const filters = {
-                action: 'get_manage_bookings',
-                date_from: $('#filter-from').val(),
-                date_to: $('#filter-to').val(),
-                status: $('#filter-status').val(),
-                search: $('#booking-search').val(),
-                security: eliteManageBookings.nonce
+            return isValid;
+        }
+
+        function loadServiceInfo(serviceId) {
+            // Mock service data - replace with actual AJAX call
+            const mockServices = {
+                '1': {
+                    name: 'Classic Haircut',
+                    description: 'Professional haircut with styling',
+                    duration: '30 minutes',
+                    price: '$25'
+                },
+                '2': {
+                    name: 'Beard Trim',
+                    description: 'Precision beard trimming and shaping',
+                    duration: '20 minutes',
+                    price: '$15'
+                }
             };
             
-            console.log('AJAX data:', filters);
-            console.log('AJAX URL:', eliteManageBookings.ajaxUrl);
+            const service = mockServices[serviceId];
+            if (service) {
+                $('#selected-service-info .service-description').text(service.description);
+                $('#selected-service-info .service-duration span').text(service.duration);
+                $('#selected-service-info .service-price span').text(service.price);
+                $('#selected-service-info').show();
+            }
+        }
+
+        function hideServiceInfo() {
+            $('#selected-service-info').hide();
+        }
+
+        function loadStaffForService(serviceId) {
+            console.log('Loading staff for service:', serviceId);
+            const $staffGrid = $('#staff-grid');
+            $staffGrid.html('<div class="staff-grid-empty">Loading staff...</div>');
             
             $.ajax({
-                url: eliteManageBookings.ajaxUrl,
+                url: '<?php echo admin_url('admin-ajax.php'); ?>',
                 type: 'POST',
-                data: filters,
-                timeout: 30000, // 30 second timeout
+                data: {
+                    action: 'elite_cuts_get_staff_for_service',
+                    service_id: serviceId,
+                    nonce: '<?php echo wp_create_nonce('manage_bookings_nonce'); ?>'
+                },
                 success: function(response) {
-                    console.log('AJAX Success:', response);
-                    if (response.success) {
-                        displayBookings(response.data);
+                    console.log('Staff AJAX response:', response);
+                    
+                    if (response.success && response.data.staff && response.data.staff.length > 0) {
+                        console.log('Staff data:', response.data.staff);
+                        renderStaffGrid(response.data.staff);
                     } else {
-                        console.log('AJAX Error:', response);
-                        tbody.html('<tr><td colspan="7" class="no-bookings">Error: ' + (response.data || 'Unknown error') + '</td></tr>');
+                        console.log('No staff found or failed response');
+                        console.log('Response data:', response.data);
+                        $staffGrid.html('<div class="staff-grid-empty">No staff available for this service</div>');
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.log('AJAX Network Error:', {xhr: xhr, status: status, error: error});
-                    console.log('Response Text:', xhr.responseText);
-                    tbody.html('<tr><td colspan="7" class="no-bookings">Network error: ' + error + ' (Status: ' + status + ')</td></tr>');
+                    console.error('AJAX error loading staff:', error);
+                    console.error('XHR:', xhr);
+                    $staffGrid.html('<div class="staff-grid-empty">Error loading staff</div>');
                 }
             });
         }
-        
-        function displayBookings(bookings) {
-            console.log('Displaying bookings:', bookings);
+
+        function renderStaffGrid(staff) {
+            const $staffGrid = $('#staff-grid');
+            $staffGrid.empty();
             
-            const tbody = $('#bookings-list');
-            tbody.empty();
-
-            if (!bookings || bookings.length === 0) {
-                tbody.append('<tr><td colspan="7" class="no-bookings">No bookings found</td></tr>');
-                return;
-            }
-
-            bookings.forEach(booking => {
-                const serviceName = booking.service_name || 'Service ID: ' + booking.service_id || 'Unknown Service';
-                const barberName = booking.barber_name || 'Not assigned';
-                const customerPhone = booking.customer_phone ? '<br><small>' + booking.customer_phone + '</small>' : '';
+            // Add "Any staff" option
+            const anyStaffCard = $(`
+                <div class="staff-card" data-staff-id="">
+                    <div class="staff-avatar">
+                        <div class="staff-initials">ANY</div>
+                    </div>
+                    <div class="staff-name">Any Available Staff</div>
+                </div>
+            `);
+            $staffGrid.append(anyStaffCard);
+            
+            // Add staff cards
+            staff.forEach(function(member) {
+                const initials = member.name.split(' ').map(n => n[0]).join('').substr(0, 2).toUpperCase();
+                const avatarHtml = member.avatar ? 
+                    `<img src="${member.avatar}" alt="${member.name}">` : 
+                    `<div class="staff-initials">${initials}</div>`;
                 
-                const row = `
-                    <tr>
-                        <td>#${booking.id}</td>
-                        <td>
-                            ${booking.customer_name || 'Unknown'}
-                            <br><small>${booking.customer_email || 'No email'}</small>
-                            ${customerPhone}
-                        </td>
-                        <td>${serviceName}</td>
-                        <td>${barberName}</td>
-                        <td>${formatDateTime(booking.preferred_date + ' ' + booking.preferred_time)}</td>
-                        <td><span class="status-badge status-${booking.booking_status}">${booking.booking_status}</span></td>
-                        <td class="actions">
-                            <button class="elite-button small edit-booking" data-id="${booking.id}">
-                                <i class="fas fa-edit"></i> Edit
-                            </button>
-                            <button class="elite-button small delete-booking" data-id="${booking.id}">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `;
-                tbody.append(row);
+                const staffCard = $(`
+                    <div class="staff-card" data-staff-id="${member.id}">
+                        <div class="staff-avatar">${avatarHtml}</div>
+                        <div class="staff-name">${member.name}</div>
+                    </div>
+                `);
+                $staffGrid.append(staffCard);
             });
-
-            // Add event listeners for edit/delete buttons
-            $('.edit-booking').on('click', function() {
-                const bookingId = $(this).data('id');
-                // In a real implementation, load the booking data and populate the form
-                document.querySelector('#booking-form h3').textContent = 'Edit Booking';
-                // Populate form with booking data
-                modal.style.display = 'flex';
+            
+            // Add click handlers
+            $('.staff-card').on('click', function() {
+                $('.staff-card').removeClass('selected');
+                $(this).addClass('selected');
+                $('#staff-select').val($(this).data('staff-id'));
             });
+            
+            // Select "Any staff" by default
+            anyStaffCard.addClass('selected');
+            $('#staff-select').val('');
+        }
 
-            $('.delete-booking').on('click', function() {
-                if (confirm('Are you sure you want to delete this booking?')) {
-                    const bookingId = $(this).data('id');
-                    // In a real implementation, make an AJAX call to delete the booking
-                    alert(`Booking #${bookingId} deleted`);
-                    // Reload bookings
-                    loadBookings();
+        function clearStaffGrid() {
+            $('#staff-grid').html('<div class="staff-grid-empty">Select a service to choose staff</div>');
+            $('#staff-select').val('');
+        }
+
+        function hideServiceInfo() {
+            $('#selected-service-info').hide();
+        }
+
+        function updateSummary() {
+            // Customer info
+            const customerName = $('#customer-name').val();
+            const customerEmail = $('#customer-email').val();
+            const customerPhone = $('#customer-phone').val();
+            
+            $('#summary-customer').text(customerName || 'Not specified');
+            $('#summary-contact').text(`${customerEmail || 'No email'}${customerPhone ? ' • ' + customerPhone : ''}`);
+            
+            // Service info
+            const serviceName = $('#service-select option:selected').text();
+            const selectedStaffCard = $('.staff-card.selected');
+            const staffName = selectedStaffCard.length ? selectedStaffCard.find('.staff-name').text() : 'Any available staff';
+            
+            $('#summary-service').text(serviceName || 'No service selected');
+            $('#summary-staff').text(staffName);
+            
+            // Date/time info
+            const date = $('#booking-date').val();
+            const time = $('#booking-time').val();
+            
+            if (date && time) {
+                const formattedDate = new Date(date).toLocaleDateString();
+                $('#summary-datetime').text(`${formattedDate} at ${time}`);
+            } else {
+                $('#summary-datetime').text('Date and time not set');
+            }
+        }
+
+        function submitBooking() {
+            console.log('Submitting booking...');
+            
+            // Show loading state
+            $('.btn-submit').text('Creating...').prop('disabled', true);
+            
+            // Collect form data
+            const formData = {
+                customer_name: $('#customer-name').val(),
+                customer_email: $('#customer-email').val(),
+                customer_phone: $('#customer-phone').val(),
+                service_id: $('#service-select').val(),
+                staff_id: $('#staff-select').val(),
+                preferred_date: $('#booking-date').val(),
+                preferred_time: $('#booking-time').val(),
+                booking_notes: $('#booking-notes').val(),
+                booking_status: $('#booking-status').val(),
+                nonce: $('input[name="booking_nonce"]').val()
+            };
+            
+            // Mock submission - replace with actual AJAX call
+            setTimeout(() => {
+                console.log('Booking created:', formData);
+                
+                // Reset button
+                $('.btn-submit').text('Create Booking').prop('disabled', false);
+                
+                // Hide main overlay and show success
+                hideOverlay();
+                showSuccessMessage();
+                
+                // Optionally reload the page or update the bookings table
+                // location.reload();
+            }, 1500);
+        }
+
+        function showSuccessMessage() {
+            $('#manager-booking-success').addClass('active');
+            $('body').css('overflow', 'hidden');
+        }
+
+        function hideSuccessMessage() {
+            $('#manager-booking-success').removeClass('active');
+            $('body').css('overflow', '');
+        }
+
+        // Success overlay handlers
+        $('#view-booking').on('click', function() {
+            hideSuccessMessage();
+            // Optionally scroll to the new booking in the table
+        });
+
+        $('#create-another').on('click', function() {
+            hideSuccessMessage();
+            setTimeout(() => {
+                resetForm();
+                showOverlay();
+            }, 300);
+        });
+
+        // Close success overlay on backdrop click
+        $('.manager-booking-success .manager-booking-backdrop').on('click', function() {
+            hideSuccessMessage();
+        });
+
+        // Escape key to close overlays
+        $(document).on('keydown', function(e) {
+            if (e.key === 'Escape') {
+                if ($('#manager-booking-overlay').hasClass('active')) {
+                    hideOverlay();
+                } else if ($('#manager-booking-success').hasClass('active')) {
+                    hideSuccessMessage();
                 }
-            });
-        }
-
-        // Helper function to format date and time
-        function formatDateTime(datetime) {
-            const [date, time] = datetime.split(' ');
-            const [year, month, day] = date.split('-');
-            return `${month}/${day}/${year} ${formatTime(time)}`;
-        }
-
-        // Helper function to format time (24h to 12h)
-        function formatTime(time) {
-            const [hours, minutes] = time.split(':');
-            const h = parseInt(hours);
-            const ampm = h >= 12 ? 'PM' : 'AM';
-            const hh = h % 12 || 12;
-            return `${hh}:${minutes} ${ampm}`;
-        }
-
-        // Filter event handlers
-        $('#apply-filters').on('click', function() {
-            console.log('Apply filters clicked');
-            loadBookings();
-        });
-        
-        $('#reset-filters').on('click', function() {
-            console.log('Reset filters clicked');
-            $('#filter-from').val('');
-            $('#filter-to').val('');
-            $('#filter-status').val('');
-            $('#booking-search').val('');
-            loadBookings();
-        });
-        
-        // Search on enter key
-        $('#booking-search').on('keypress', function(e) {
-            if (e.which === 13) {
-                console.log('Search enter pressed');
-                loadBookings();
             }
         });
         
-        // Test AJAX connection button (for debugging)
-        if (console && console.log) {
-            console.log('Adding test AJAX button for debugging');
-            $('<button>Test AJAX</button>').click(function() {
-                console.log('Testing AJAX connection...');
-                $.ajax({
-                    url: eliteManageBookings.ajaxUrl,
-                    type: 'POST',
-                    data: {
-                        action: 'get_manage_bookings',
-                        security: eliteManageBookings.nonce
-                    },
-                    success: function(response) {
-                        console.log('Test AJAX Success:', response);
-                        alert('AJAX working! Found ' + (response.data ? response.data.length : 0) + ' bookings');
-                    },
-                    error: function(xhr, status, error) {
-                        console.log('Test AJAX Error:', xhr, status, error);
-                        alert('AJAX Error: ' + error);
-                    }
-                });
-            }).appendTo('.elite-cuts-header');
-        }
+        console.log('Manage Bookings ready with ' + allBookings.length + ' bookings loaded');
+    });
 
     </script>
     <?php
@@ -1267,6 +2228,276 @@ function elite_cuts_admin_enqueue_scripts($hook) {
     ));
 }
 add_action('admin_enqueue_scripts', 'elite_cuts_admin_enqueue_scripts');
+
+// ========================================
+// Manager Booking Data Functions
+// ========================================
+
+/**
+ * Get services options for the booking form
+ */
+function elite_cuts_get_services_options($selected_id = '') {
+    // Get services from the 'service' custom post type
+    $args = [
+        'post_type' => 'service',
+        'posts_per_page' => -1,
+        'post_status' => 'publish',
+        'orderby' => 'title',
+        'order' => 'ASC'
+    ];
+
+    $services = get_posts($args);
+    $options = '';
+
+    foreach ($services as $service) {
+        $sid = $service->ID;
+        $selected = ($selected_id == $sid) ? 'selected' : '';
+
+        // Try to read meta fields
+        $price = get_post_meta($sid, '_service_price', true);
+        $duration = get_post_meta($sid, '_service_duration', true);
+        $description = get_post_meta($sid, '_service_description', true);
+
+        // Fall back to alternate meta keys
+        if ($price === '') $price = get_post_meta($sid, 'service_price', true);
+        if ($duration === '') $duration = get_post_meta($sid, 'service_duration', true);
+        if ($description === '') $description = $service->post_content;
+
+        $price_label = $price ? '₱' . number_format(floatval($price), 2) : 'Price varies';
+
+        $options .= sprintf(
+            '<option value="%d" data-price="%s" data-duration="%s" data-description="%s" %s>%s - %s</option>',
+            $sid,
+            esc_attr($price),
+            esc_attr($duration),
+            esc_attr($description),
+            $selected,
+            esc_html($service->post_title),
+            esc_html($price_label)
+        );
+    }
+
+    return $options;
+}
+
+/**
+ * AJAX handler to get service information
+ */
+function elite_cuts_get_service_info() {
+    check_ajax_referer('manage_bookings_nonce', 'nonce');
+    
+    $service_id = intval($_POST['service_id']);
+    if (!$service_id) {
+        wp_send_json_error('Invalid service ID');
+    }
+
+    $service = get_post($service_id);
+    if (!$service || $service->post_type !== 'service') {
+        wp_send_json_error('Service not found');
+    }
+
+    $price = get_post_meta($service_id, '_service_price', true);
+    $duration = get_post_meta($service_id, '_service_duration', true);
+    $description = get_post_meta($service_id, '_service_description', true);
+
+    // Fall back to alternate meta keys
+    if ($price === '') $price = get_post_meta($service_id, 'service_price', true);
+    if ($duration === '') $duration = get_post_meta($service_id, 'service_duration', true);
+    if ($description === '') $description = $service->post_content;
+
+    $price_label = $price ? '₱' . number_format(floatval($price), 2) : 'Price varies';
+
+    wp_send_json_success([
+        'name' => $service->post_title,
+        'description' => $description,
+        'duration' => $duration,
+        'price' => $price_label
+    ]);
+}
+add_action('wp_ajax_get_service_info', 'elite_cuts_get_service_info');
+
+/**
+ * AJAX handler to get staff for a service
+ */
+function elite_cuts_get_staff_for_service() {
+    check_ajax_referer('manage_bookings_nonce', 'nonce');
+    
+    // Debug: Log that the function was called
+    error_log("AJAX function elite_cuts_get_staff_for_service called");
+    error_log("POST data: " . print_r($_POST, true));
+    
+    $service_id = isset($_POST['service_id']) ? absint($_POST['service_id']) : 0;
+    if (!$service_id) {
+        error_log("No service ID provided");
+        wp_send_json_error('Invalid service');
+    }
+
+    $staff = array();
+    
+    // Debug: Log the service ID
+    error_log("Getting staff for service ID: " . $service_id);
+
+    // Primary source: assigned_staff on the service post
+    $assigned = get_post_meta($service_id, 'assigned_staff', true);
+    error_log("Assigned staff meta: " . print_r($assigned, true));
+    
+    if (is_array($assigned) && !empty($assigned)) {
+        $assigned_ids = array_map('absint', array_values($assigned));
+        $assigned_ids = array_filter($assigned_ids);
+        error_log("Assigned staff IDs: " . print_r($assigned_ids, true));
+        
+        if (!empty($assigned_ids)) {
+            $args_assigned = array(
+                'post_type' => 'staff',
+                'post_status' => 'publish',
+                'posts_per_page' => -1,
+                'orderby' => 'title',
+                'order' => 'ASC',
+                'post__in' => $assigned_ids,
+                'fields' => 'ids'
+            );
+            $q1 = new WP_Query($args_assigned);
+            error_log("Assigned staff query found: " . $q1->found_posts . " posts");
+            
+            if ($q1->have_posts()) {
+                foreach ($q1->posts as $pid) {
+                    $avatar = '';
+                    $avatar_id = get_post_meta($pid, 'staff_avatar_id', true);
+                    if ($avatar_id) {
+                        $img = wp_get_attachment_image_src($avatar_id, 'thumbnail');
+                        if ($img) { $avatar = $img[0]; }
+                    }
+                    if (!$avatar) {
+                        $meta_url = get_post_meta($pid, 'staff_avatar', true);
+                        if (!empty($meta_url)) { $avatar = esc_url_raw($meta_url); }
+                    }
+                    if (!$avatar && has_post_thumbnail($pid)) {
+                        $img = wp_get_attachment_image_src(get_post_thumbnail_id($pid), 'thumbnail');
+                        if ($img) { $avatar = $img[0]; }
+                    }
+                    $staff[] = array('id' => $pid, 'name' => get_the_title($pid), 'avatar' => $avatar);
+                }
+            }
+        }
+    }
+
+    // Fallback: query by staff_services meta and legacy staff_role mapping
+    if (empty($staff)) {
+        error_log("No assigned staff found, trying fallback methods");
+        
+        $meta_query = array();
+        
+        $service_or = array(
+            'relation' => 'OR',
+            array(
+                'key' => 'staff_services',
+                'value' => '"' . $service_id . '"',
+                'compare' => 'LIKE'
+            ),
+            array(
+                'key' => 'staff_services',
+                'value' => 'i:' . $service_id . ';',
+                'compare' => 'LIKE'
+            )
+        );
+        
+        $s_post = get_post($service_id);
+        if ($s_post && !empty($s_post->post_title)) {
+            $service_or[] = array(
+                'key' => 'staff_role',
+                'value' => $s_post->post_title,
+                'compare' => '='
+            );
+            error_log("Added staff_role query for: " . $s_post->post_title);
+        }
+        $meta_query[] = $service_or;
+
+        $args = array(
+            'post_type' => 'staff',
+            'post_status' => 'publish',
+            'posts_per_page' => -1,
+            'orderby' => 'title',
+            'order' => 'ASC',
+            'meta_query' => $meta_query,
+            'fields' => 'ids'
+        );
+        
+        error_log("Fallback query args: " . print_r($args, true));
+        
+        $q = new WP_Query($args);
+        error_log("Fallback query found: " . $q->found_posts . " posts");
+        
+        if ($q->have_posts()) {
+            foreach ($q->posts as $pid) {
+                $avatar = '';
+                $avatar_id = get_post_meta($pid, 'staff_avatar_id', true);
+                if ($avatar_id) {
+                    $img = wp_get_attachment_image_src($avatar_id, 'thumbnail');
+                    if ($img) { $avatar = $img[0]; }
+                }
+                if (!$avatar) {
+                    $meta_url = get_post_meta($pid, 'staff_avatar', true);
+                    if (!empty($meta_url)) { $avatar = esc_url_raw($meta_url); }
+                }
+                if (!$avatar && has_post_thumbnail($pid)) {
+                    $img = wp_get_attachment_image_src(get_post_thumbnail_id($pid), 'thumbnail');
+                    if ($img) { $avatar = $img[0]; }
+                }
+                $staff[] = array('id' => $pid, 'name' => get_the_title($pid), 'avatar' => $avatar);
+            }
+        }
+    }
+    
+    // Additional fallback: get ALL staff if no specific assignments found
+    if (empty($staff)) {
+        error_log("No staff found with meta queries, getting all staff");
+        
+        $all_staff_args = array(
+            'post_type' => 'staff',
+            'post_status' => 'publish',
+            'posts_per_page' => -1,
+            'orderby' => 'title',
+            'order' => 'ASC',
+            'fields' => 'ids'
+        );
+        
+        $all_staff_query = new WP_Query($all_staff_args);
+        error_log("All staff query found: " . $all_staff_query->found_posts . " posts");
+        
+        if ($all_staff_query->have_posts()) {
+            foreach ($all_staff_query->posts as $pid) {
+                $avatar = '';
+                $avatar_id = get_post_meta($pid, 'staff_avatar_id', true);
+                if ($avatar_id) {
+                    $img = wp_get_attachment_image_src($avatar_id, 'thumbnail');
+                    if ($img) { $avatar = $img[0]; }
+                }
+                if (!$avatar) {
+                    $meta_url = get_post_meta($pid, 'staff_avatar', true);
+                    if (!empty($meta_url)) { $avatar = esc_url_raw($meta_url); }
+                }
+                if (!$avatar && has_post_thumbnail($pid)) {
+                    $img = wp_get_attachment_image_src(get_post_thumbnail_id($pid), 'thumbnail');
+                    if ($img) { $avatar = $img[0]; }
+                }
+                $staff[] = array('id' => $pid, 'name' => get_the_title($pid), 'avatar' => $avatar);
+            }
+        }
+    }
+
+    error_log("Final staff array: " . print_r($staff, true));
+
+    wp_send_json_success([
+        'staff' => $staff,
+        'debug' => [
+            'service_id' => $service_id,
+            'assigned_meta' => $assigned,
+            'staff_count' => count($staff)
+        ]
+    ]);
+}
+add_action('wp_ajax_elite_cuts_get_staff_for_service', 'elite_cuts_get_staff_for_service');
+add_action('wp_ajax_nopriv_elite_cuts_get_staff_for_service', 'elite_cuts_get_staff_for_service');
 
 // Add shortcode for the frontend booking management
 function elite_cuts_manage_bookings_shortcode() {
