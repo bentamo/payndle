@@ -61,6 +61,11 @@
             // Date/time validation
             $('#preferred_date').on('change', () => this.validateDate());
             $('#preferred_time').on('change', () => this.validateTime());
+            // When date/time changes, refresh staff grid for legacy form if a service is selected
+            $('#preferred_date, #preferred_time').on('change', () => {
+                const current = this.serviceSelect.val();
+                if (current) this.populateStaffForService(current);
+            });
         }
 
         initValidation() {
@@ -119,13 +124,19 @@
             console.log('[Booking] Loading staff grid for service', serviceId);
             // Show loading state
             $grid.html('<div class="staff-grid-empty">Loading staff...</div>');
+            // read selected preferred date/time from the legacy form if available
+            const prefDate = $('#preferred_date').val() || '';
+            const prefTime = $('#preferred_time').val() || '';
+
             $.ajax({
                 url: userBookingAjax.ajaxurl,
                 method: 'POST',
                 data: {
                     action: 'get_staff_for_service',
                     nonce: userBookingAjax.nonce,
-                    service_id: serviceId
+                    service_id: serviceId,
+                    preferred_date: prefDate,
+                    preferred_time: prefTime
                 },
                 success: function(resp){
                     if (resp && resp.success && Array.isArray(resp.staff) && resp.staff.length) {
@@ -165,6 +176,8 @@
                 }
             });
         }
+
+        
 
         clearStaffOptions(){
             const $grid = $('#staff-grid');
@@ -288,11 +301,11 @@
             if (time) {
                 const [hours, minutes] = time.split(':').map(Number);
                 const totalMinutes = hours * 60 + minutes;
-                const openTime = 8 * 60; // 8:00 AM
-                const closeTime = 18 * 60; // 6:00 PM
-                
+                const openTime = 9 * 60; // 9:00 AM
+                const closeTime = 19 * 60; // 7:00 PM
+
                 if (totalMinutes < openTime || totalMinutes > closeTime) {
-                    this.showFieldError(formGroup, errorDiv, 'Please select a time between 8:00 AM and 6:00 PM');
+                    this.showFieldError(formGroup, errorDiv, 'Please select a time between 9:00 AM and 7:00 PM');
                     return false;
                 }
             }
@@ -454,16 +467,54 @@
             
             // Show specific field errors
             Object.keys(errors).forEach(fieldName => {
+                const msg = errors[fieldName];
                 const field = this.form.find(`[name="${fieldName}"]`);
                 if (field.length) {
                     const formGroup = field.closest('.form-group');
                     const errorDiv = formGroup.find('.form-error');
-                    this.showFieldError(formGroup, errorDiv, errors[fieldName]);
+                    this.showFieldError(formGroup, errorDiv, msg);
                 } else {
                     // General error
-                    this.showMessage(errors[fieldName], 'error');
+                    // Special-case overlap/conflict messages so we show schedule/staff hints
+                    if (typeof msg === 'string' && /overlap|not available|conflict/i.test(msg)) {
+                        // Highlight schedule area if present
+                        const scheduleErr = this.form.find('.ubf-schedule-error');
+                        if (scheduleErr.length) {
+                            scheduleErr.text(msg).show();
+                            // Jump to schedule step in v3
+                            if (this.form.hasClass('ubf-v3-form')) {
+                                try { const ubf = this.form.data('ubf-instance'); if (ubf) ubf.showStep(3); } catch(e) {}
+                            }
+                        }
+
+                        // For legacy form, highlight preferred_time and staff
+                        const prefTime = this.form.find('#preferred_time');
+                        const staffHidden = this.form.find('#staff_id');
+                        if (prefTime.length) { prefTime.closest('.form-group').addClass('error'); prefTime.closest('.form-group').find('.form-error').text(msg).addClass('show'); }
+                        if (staffHidden.length) {
+                            // try to highlight visible staff card
+                            const sid = staffHidden.val();
+                            if (sid) {
+                                const card = this.form.find('#staff-grid').find('.staff-card[data-id="'+sid+'"]');
+                                if (card.length) { card.addClass('error-selected'); }
+                            }
+                        }
+
+                        this.showMessage(msg, 'error');
+                    } else {
+                        this.showMessage(errors[fieldName], 'error');
+                    }
                 }
             });
+        }
+
+        // Highlight a specific field by selector with a temporary animation
+        highlightField(selector) {
+            const $el = this.form.find(selector);
+            if (!$el.length) return;
+            const $group = $el.closest('.form-group');
+            $group.addClass('error');
+            setTimeout(() => { $group.removeClass('error'); }, 3500);
         }
 
         showLoader(show) {
@@ -644,6 +695,12 @@
         .form-group.error {
             animation: shake 0.5s ease-in-out;
         }
+        .staff-card.error-selected {
+            outline: 2px solid rgba(231,76,60,0.9);
+            box-shadow: 0 6px 18px rgba(231,76,60,0.08);
+            transform: translateY(-2px);
+        }
+        .ubf-schedule-error { display: none; color: #c43d3d; margin-bottom: 8px; }
         </style>
     `;
     
@@ -658,6 +715,8 @@
         this.current = 1;
         this.total = this.form.find('.ubf-form-step').length;
         this.init();
+        // expose instance on form for external handlers
+        try { this.form.data('ubf-instance', this); } catch(e) {}
     }
 
     UBFv3.prototype.init = function(){
@@ -711,10 +770,13 @@
             }
             $grid.html('<div class="staff-grid-empty">Loading staff...</div>');
             const ajaxSettings = window.userBookingAjax || window.userBookingV3 || {};
+            // try to read v3 preferred date/time fields if present
+            const prefDate = $('#ubf_preferred_date').val() || $('#preferred_date').val() || '';
+            const prefTime = $('#ubf_preferred_time').val() || $('#preferred_time').val() || '';
             $.ajax({
                 url: ajaxSettings.ajaxurl || '',
                 method: 'POST',
-                data: { action: 'get_staff_for_service', nonce: ajaxSettings.nonce || '', service_id: serviceId },
+                data: { action: 'get_staff_for_service', nonce: ajaxSettings.nonce || '', service_id: serviceId, preferred_date: prefDate, preferred_time: prefTime },
                 success: function(resp){
                     if (resp && resp.success && Array.isArray(resp.staff) && resp.staff.length){
                         const cards = resp.staff.map(function(s){
@@ -760,6 +822,15 @@
             // if select already has value, populate
             if ($select.val()){ populateBlock($block, $select.val()); }
         }
+
+        // Refresh all blocks when v3 date/time changes
+        $('#ubf_preferred_date, #ubf_preferred_time').on('change', function(){
+            $blocksContainer.find('.ubf-service-block').each(function(){
+                const $b = $(this);
+                const s = $b.find('.ubf-service-select').val();
+                if (s) populateBlock($b, s);
+            });
+        });
 
         // initialize existing blocks
         if ($blocksContainer.length){
@@ -822,8 +893,8 @@
         }
 
         // business hours from attributes (default 08:00 - 18:00)
-        const businessStart = $date.attr('data-business-start') || '08:00';
-        const businessEnd = $date.attr('data-business-end') || '18:00';
+    const businessStart = $date.attr('data-business-start') || '09:00';
+    const businessEnd = $date.attr('data-business-end') || '19:00';
 
         // parse dates
         const selectedDate = new Date(dateVal + 'T' + timeVal);
@@ -930,11 +1001,35 @@
                         }
                     });
                 } else {
-                    alert(resp && resp.message ? resp.message : userBookingV3.messages.error);
+                    // If server returned field errors, display them inline
+                    if (resp && resp.errors) {
+                        self.handleErrors(resp.errors);
+                        self.showMessage(resp.message || 'Please correct the highlighted fields', 'error');
+                    } else if (resp && resp.message && /overlap|not available|conflict/i.test(resp.message)) {
+                        // server signaled an overlap/conflict; surface in schedule area and highlight staff/time
+                        const scheduleErr = self.form.find('.ubf-schedule-error');
+                        if (scheduleErr.length) scheduleErr.text(resp.message).show();
+
+                        // highlight each service block staff input if present
+                        self.form.find('.ubf-service-block').each(function(){
+                            const $block = $(this);
+                            const sid = $block.find('.ubf-staff-input').val();
+                            if (sid) {
+                                $block.find('.ubf-staff-grid .staff-card[data-id="'+sid+'"]').addClass('error-selected');
+                            }
+                        });
+
+                        // move to schedule step
+                        try { self.showStep(3); } catch(e) {}
+                        self.showMessage(resp.message, 'error');
+                    } else {
+                        // general error
+                        self.showMessage(resp && resp.message ? resp.message : userBookingV3.messages.error, 'error');
+                    }
                 }
             },
             error: function(){
-                alert(userBookingV3.messages.error);
+                self.showMessage(userBookingV3.messages.error, 'error');
             }
         });
     }
