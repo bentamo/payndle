@@ -2528,6 +2528,18 @@ function elite_cuts_manage_bookings_page() {
             console.log('Opening manager booking overlay (delegated)');
             resetForm();
             showOverlay();
+            
+            // EMERGENCY DEBUG: Force overlay visible if CSS is broken
+            setTimeout(function() {
+                if (!$('#manager-booking-overlay').hasClass('active')) {
+                    console.warn('Overlay not active, forcing visibility');
+                    $('#manager-booking-overlay').css({
+                        'opacity': '1',
+                        'visibility': 'visible',
+                        'display': 'flex'
+                    });
+                }
+            }, 100);
         });
 
         // Close overlay (delegated)
@@ -2687,6 +2699,20 @@ function elite_cuts_manage_bookings_page() {
             $('#manager-booking-overlay').addClass('active');
             $('body').css('overflow', 'hidden');
             updateSummary();
+            
+            // EMERGENCY DEBUG: Force overlay visible with inline styles
+            $('#manager-booking-overlay').css({
+                'opacity': '1 !important',
+                'visibility': 'visible !important',
+                'display': 'flex !important',
+                'position': 'fixed',
+                'top': '0',
+                'left': '0',
+                'width': '100%',
+                'height': '100%',
+                'z-index': '10000'
+            });
+            console.log('Overlay forced visible with inline styles');
         }
 
         function hideOverlay() {
