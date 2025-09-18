@@ -1,38 +1,140 @@
 jQuery(document).ready(function($) {
     // Localized script data
     const bookingData = window.assignedBookingsData || {};
+    let currentStatusFilter = 'all';
     
-    // Toggle action dropdown
-    $(document).on('click', '.action-dropdown-toggle', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
+    // Initialize status filters
+    function initStatusFilters() {
+        const $container = $('.assigned-bookings-container');
+        if ($container.find('.status-filters').length === 0) {
+            const filtersHtml = `
+                <div class="status-filters">
+                    <button class="status-filter-btn active" data-status="all">All Bookings</button>
+                    <button class="status-filter-btn" data-status="pending">Pending</button>
+                    <button class="status-filter-btn" data-status="confirmed">Confirmed</button>
+                    <button class="status-filter-btn" data-status="completed">Completed</button>
+                    <button class="status-filter-btn" data-status="cancelled">Cancelled</button>
+                </div>
+            `;
+            $container.prepend(filtersHtml);
+        }
+    }
+    
+    // Handle status filter click
+    $(document).on('click', '.status-filter-btn', function() {
+        const status = $(this).data('status');
+        currentStatusFilter = status;
         
-        const $dropdown = $(this).closest('.action-dropdown');
-        const isVisible = $dropdown.attr('data-visible') === 'true';
+        // Update active state
+        $('.status-filter-btn').removeClass('active');
+        $(this).addClass('active');
         
-        // Close all other dropdowns
-        $('.action-dropdown').attr('data-visible', 'false');
-        
-        // Toggle current dropdown
-        if (!isVisible) {
-            $dropdown.attr('data-visible', 'true');
+        // Show/hide rows based on status
+        if (status === 'all') {
+            $('tr[data-status-category]').show();
+        } else if (status === 'pending') {
+            // For pending tab, only show rows with status 'pending' regardless of payment status
+            $('tr[data-status-category]').hide();
+            $('tr[data-status="pending"]').show();
+        } else {
+            $('tr[data-status-category]').hide();
+            
+            // Map the selected tab to the appropriate status categories
+            const statusMapping = {
+                'upcoming': ['upcoming'],
+                'completed': ['completed'],
+                'cancelled': ['cancelled']
+            };
+            
+            // Show rows that match any of the mapped status categories
+            const categoriesToShow = statusMapping[status] || [status];
+            categoriesToShow.forEach(cat => {
+                $(`tr[data-status-category="${cat}"]`).show();
+            });
+            
+            // For backward compatibility, also show by direct status match
+            $(`tr[data-status="${status}"]`).show();
         }
     });
     
-    // Close dropdown when clicking outside
-    $(document).on('click', function(e) {
-        if (!$(e.target).closest('.action-dropdown').length) {
-            $('.action-dropdown').attr('data-visible', 'false');
+    // Handle status change
+    $(document).on('change', '.status-select', function() {
+        const $select = $(this);
+        const bookingId = $select.data('booking-id');
+        const newStatus = $select.val();
+        const $row = $select.closest('tr');
+        const $savingIndicator = $select.siblings('.status-saving');
+        
+        // Debug log
+        console.log('Status change initiated:', { bookingId, newStatus, row: $row.length });
+        
+        // Show saving indicator
+        $savingIndicator.show().text('Saving...');
+        
+        // Get the latest nonce from the table or the localized script data
+        const nonce = $('#assigned-bookings-table').data('nonce') || (window.assignedBookingsData ? window.assignedBookingsData.nonce : '');
+        
+        if (!nonce) {
+            console.error('Security nonce is missing');
+            $savingIndicator.text('Error: Missing security token').fadeOut(3000);
+            return;
         }
+        
+        // Update the global nonce in case it was refreshed
+        if (bookingData) {
+            bookingData.nonce = nonce;
+        }
+        
+        console.log('Status change - Booking ID:', bookingId, 'New Status:', newStatus, 'Nonce:', nonce);
+        
+        // Update the status
+        updateBookingStatus(bookingId, newStatus, function(success) {
+            $savingIndicator.hide();
+            
+            if (success) {
+                // Update the status badge
+                const $statusBadge = $row.find('.status-badge');
+                $statusBadge.removeClass('status-pending status-confirmed status-completed status-cancelled')
+                           .addClass('status-' + newStatus)
+                           .text(newStatus.charAt(0).toUpperCase() + newStatus.slice(1));
+                
+                // Update the row's status attributes
+                $row.attr('data-status', newStatus)
+                    .attr('data-status-category', newStatus)
+                    .removeClass('status-pending status-confirmed status-completed status-cancelled')
+                    .addClass('status-' + newStatus);
+                
+                // If we're filtering, update the display
+                if (currentStatusFilter !== 'all' && currentStatusFilter !== newStatus) {
+                    $row.hide();
+                }
+            } else {
+                // Revert the select to the original value
+                const originalStatus = $row.attr('data-status');
+                $select.val(originalStatus);
+                // The error message is shown by the updateBookingStatus function
+            }
+        });
     });
     
     // Handle action item clicks
     $(document).on('click', '.action-item', function(e) {
         e.preventDefault();
+        e.stopPropagation();
+        
         const $item = $(this);
         const action = $item.hasClass('view-details') ? 'view' : 
-                      $item.hasClass('complete-booking') ? 'complete' : 'cancel';
-        const bookingId = $item.data('id');
+                      $item.hasClass('complete-booking') ? 'complete' : 
+                      $item.hasClass('start-booking') ? 'start' : 'cancel';
+                      
+        const $row = $item.closest('tr');
+        const bookingId = $row.data('booking-id') || $item.data('id') || $row.find('[data-booking-id]').data('booking-id');
+        
+        if (!bookingId) {
+            console.error('Could not determine booking ID');
+            showNotice('error', 'Error: Could not identify the booking.');
+            return;
+        }
         
         // Close dropdown
         $item.closest('.action-dropdown').attr('data-visible', 'false');
@@ -41,11 +143,15 @@ jQuery(document).ready(function($) {
         if (action === 'view') {
             showBookingDetails(bookingId);
         } else if (action === 'complete') {
-            if (confirm('Are you sure you want to mark this booking as completed?')) {
+            if (confirm(bookingData.i18n?.confirm_complete || 'Are you sure you want to mark this booking as complete?')) {
                 updateBookingStatus(bookingId, 'completed');
             }
+        } else if (action === 'start') {
+            if (confirm(bookingData.i18n?.confirm_start || 'Mark this booking as in progress?')) {
+                updateBookingStatus(bookingId, 'in_progress');
+            }
         } else if (action === 'cancel') {
-            if (confirm('Are you sure you want to cancel this booking? This action cannot be undone.')) {
+            if (confirm(bookingData.i18n?.confirm_cancel || 'Are you sure you want to cancel this booking?')) {
                 updateBookingStatus(bookingId, 'cancelled');
             }
         }
@@ -79,6 +185,9 @@ jQuery(document).ready(function($) {
             closeModal();
         }
     });
+    
+    // Initialize filters when document is ready
+    initStatusFilters();
     
     // Show booking details in modal
     function showBookingDetails(bookingId) {
@@ -132,74 +241,227 @@ jQuery(document).ready(function($) {
     }
     
     // Update booking status via AJAX
-    function updateBookingStatus(bookingId, status) {
-        const $row = $(`[data-action-id="${bookingId}"]`).closest('tr');
-        const $statusCell = $row.find('.status-badge');
-        const $actionsCell = $row.find('.actions');
-        const $actionButton = $(`[data-id="${bookingId}"]`);
+    function updateBookingStatus(bookingId, status, callback) {
+        // Convert bookingId to integer to ensure it's a valid number
+        bookingId = parseInt(bookingId, 10);
         
-        // Store original state for potential rollback
-        const originalHtml = $row.html();
-        const originalStatus = $statusCell.text().trim();
-        const originalClass = $statusCell.attr('class');
+        if (isNaN(bookingId) || bookingId <= 0) {
+            console.error('Invalid booking ID:', bookingId);
+            showNotice('error', 'Invalid booking ID. Please refresh the page and try again.');
+            if (typeof callback === 'function') callback(false);
+            return;
+        }
+        
+        // Debug: Log all booking rows for inspection
+        console.log('All booking rows:', $('tr[data-booking-id]').map(function() {
+            return $(this).attr('data-booking-id');
+        }).get());
+        
+        // Find the row using different possible selectors
+        let $row = $(`tr[data-booking-id="${bookingId}"]`);
+        
+        // If not found, try other possible selectors
+        if ($row.length === 0) {
+            $row = $(`tr[data-id="${bookingId}"]`);
+        }
+        if ($row.length === 0) {
+            $row = $(`[data-booking-id="${bookingId}"]`).closest('tr');
+        }
+        if ($row.length === 0) {
+            $row = $(`[data-id="${bookingId}"]`).closest('tr');
+        }
+        
+        if ($row.length === 0) {
+            console.error('Could not find booking row for ID:', bookingId);
+            console.error('Available booking IDs on page:', 
+                $('tr[data-booking-id]').map(function() { 
+                    return $(this).data('booking-id'); 
+                }).get().join(', ')
+            );
+            
+            // Try to find any element with the booking ID
+            const $anyElement = $(`[data-booking-id*="${bookingId}"],[data-id*="${bookingId}"]`);
+            if ($anyElement.length) {
+                console.log('Found element with similar ID:', $anyElement);
+                $row = $anyElement.closest('tr');
+                if ($row.length) {
+                    console.log('Using closest row:', $row);
+                }
+            }
+            
+            if ($row.length === 0) {
+                showNotice('error', 'Could not find the booking in the current view. Please refresh the page and try again.');
+                if (typeof callback === 'function') callback(false);
+                return;
+            }
+        }
+        
+        const $statusCell = $row.find('.status-badge');
+        const $statusSelect = $row.find('.status-select');
+        const originalStatus = $row.attr('data-status');
         
         // Show loading state
-        $actionButton.prop('disabled', true).html('<span class="spinner is-active"></span>');
-        $statusCell.html('<span class="spinner is-active"></span>');
+        $statusSelect.prop('disabled', true);
+        if ($statusCell.length) {
+            $statusCell.html('<span class="dashicons dashicons-update-alt spin"></span>');
+        }
+        
+        // Show saving indicator
+        $statusSelect.siblings('.status-saving').show();
+        
+        // Get the nonce from the localized script data
+        const nonce = window.assignedBookingsData?.nonce || '';
+        
+        if (!nonce) {
+            console.error('Security nonce is missing');
+            showNotice('error', 'Security error: Missing nonce. Please refresh the page and try again.');
+            $statusSelect.prop('disabled', false);
+            $statusSelect.siblings('.status-saving').hide();
+            if (typeof callback === 'function') callback(false);
+            return;
+        }
+        
+        console.log('Sending AJAX request with data:', {
+            action: 'update_booking_status',
+            booking_id: bookingId,
+            status: status,
+            nonce: nonce
+        });
+        
+        // Prepare the request data with proper data types
+        const requestData = {
+            action: 'update_booking_status',
+            booking_id: bookingId,  // Already converted to number
+            status: String(status).toLowerCase(), // Ensure status is lowercase string
+            nonce: String(nonce)    // Ensure nonce is string
+        };
+        
+        // Debug logging
+        console.log('Sending AJAX request to:', bookingData.ajax_url || ajaxurl);
+        console.log('Request data:', JSON.stringify(requestData, null, 2));
+        console.log('Booking row data:', {
+            'data-booking-id': $row.attr('data-booking-id'),
+            'data-id': $row.attr('data-id'),
+            'data-status': $row.attr('data-status')
+        });
         
         // Make AJAX request
         $.ajax({
             url: bookingData.ajax_url || ajaxurl,
             type: 'POST',
-            data: {
-                action: 'update_booking_status',
-                booking_id: bookingId,
-                status: status,
-                nonce: bookingData.nonce
-            },
+            data: requestData,
             dataType: 'json',
-            success: function(response) {
-                if (response.success && response.data && response.data.booking) {
-                    const booking = response.data.booking;
+            success: function(response, textStatus, jqXHR) {
+                console.group('AJAX Response');
+                console.log('Status:', textStatus);
+                console.log('Response:', response);
+                console.log('jqXHR:', jqXHR);
+                console.groupEnd();
+                
+                // Re-enable the select and hide saving indicator
+                $statusSelect.prop('disabled', false);
+                $savingIndicator.hide();
+                
+                if (response && response.success) {
+                    console.log('Update successful, updating UI...');
+                    let statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
                     
-                    // Update status badge
-                    $statusCell.removeClass()
-                        .addClass('status-badge')
-                        .addClass('status-' + booking.status_slug)
-                        .text(booking.status);
-                    
-                    // Update payment status if needed
-                    if (booking.payment_status) {
-                        $row.find('.payment-status')
-                            .removeClass('payment-paid payment-pending')
-                            .addClass('payment-' + booking.payment_status.toLowerCase())
-                            .text(booking.payment_status);
+                    // Update the status cell
+                    if ($statusCell.length) {
+                        $statusCell.removeClass('status-pending status-confirmed status-completed status-cancelled')
+                                  .addClass('status-badge status-' + status)
+                                  .text(statusLabel);
                     }
+                    
+                    // Map status to category
+                    const statusToCategory = {
+                        'completed': 'completed',
+                        'cancelled': 'cancelled',
+                        'confirmed': 'upcoming',
+                        'pending': 'upcoming'
+                    };
+                    
+                    const statusCategory = statusToCategory[status] || 'upcoming';
+                    
+                    // Update the row's data attributes
+                    $row.attr('data-status', status)
+                        .attr('data-status-category', statusCategory)
+                        .removeClass('status-pending status-confirmed status-completed status-cancelled')
+                        .addClass('status-' + status);
+                    
+                    // Update the select to show the new status
+                    $statusSelect.val(status);
                     
                     // Show success message
-                    showNotice('success', `Booking #${bookingId} has been ${status} successfully.`);
+                    const successMsg = response.data && response.data.message || 'Booking status updated successfully!';
+                    console.log('Success:', successMsg);
+                    showNotice('success', successMsg);
                     
-                    // If status is completed or cancelled, remove action buttons
-                    if (status === 'completed' || status === 'cancelled') {
-                        $row.find('.action-dropdown').remove();
-                        $actionsCell.html('<em>No actions available</em>');
-                    }
+                    // Call the callback with success
+                    if (typeof callback === 'function') callback(true);
                 } else {
-                    // Revert UI on error
-                    $statusCell.text(originalStatus).attr('class', originalClass);
-                    const errorMsg = response.data && response.data.message ? 
-                        response.data.message : 'An error occurred. Please try again.';
+                    console.error('Update failed:', response);
+                    
+                    // Revert to original status in the UI
+                    $statusSelect.val(originalStatus);
+                    
+                    // Show error message
+                    let errorMsg = 'Failed to update booking status. Please try again.';
+                    let debugInfo = '';
+                    
+                    if (response) {
+                        if (response.data && response.data.message) {
+                            errorMsg = response.data.message;
+                        } else if (response.message) {
+                            errorMsg = response.message;
+                        }
+                        
+                        if (response.data && response.data.debug) {
+                            debugInfo = response.data.debug;
+                            console.error('Debug info:', debugInfo);
+                        }
+                    }
+                    
+                    console.error('Error details:', { errorMsg, response });
                     showNotice('error', errorMsg);
+                    
+                    // Call the callback with failure
+                    if (typeof callback === 'function') callback(false);
                 }
             },
             error: function(xhr, status, error) {
-                // Revert UI on error
-                $statusCell.text(originalStatus).attr('class', originalClass);
-                showNotice('error', 'Failed to update booking status. Please try again.');
-                console.error('AJAX Error:', error);
+                console.error('AJAX Error:', error, xhr.responseText);
+                
+                // Revert to original status in the UI
+                $statusSelect.val(originalStatus);
+                
+                // Call the callback with failure
+                if (typeof callback === 'function') callback(false);
+                
+                // Try to parse the response for a better error message
+                let errorMsg = 'An error occurred while updating the booking status. Please try again.';
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    if (response && response.data && response.data.message) {
+                        errorMsg = response.data.message;
+                    } else if (response && response.message) {
+                        errorMsg = response.message;
+                    }
+                } catch (e) {
+                    console.error('Error parsing error response:', e);
+                }
+                
+                showNotice('error', errorMsg);
             },
             complete: function() {
-                $actionButton.prop('disabled', false);
+                // Re-enable the status select and hide saving indicator
+                $statusSelect.prop('disabled', false);
+                $statusSelect.siblings('.status-saving').hide();
+                
+                // If we're filtering, update the display
+                if (currentStatusFilter !== 'all' && currentStatusFilter !== status) {
+                    $row.hide();
+                }
             }
         });
     }
