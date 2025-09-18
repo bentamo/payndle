@@ -905,24 +905,6 @@
 .assigned-bookings-table td:last-child {
     width: 120px; /* Actions */
     position: sticky;
-    right: 0;
-    background: white;
-    box-shadow: -2px 0 5px rgba(0,0,0,0.05);
-}
-
-/* Status Badges */
-.status-badge {
-    display: inline-block;
-    padding: 6px 14px;
-    border-radius: 8px;
-    font-size: 12px;
-    font-weight: 500; /* Medium */
-    text-transform: capitalize;
-    font-family: 'Inter', sans-serif;
-    letter-spacing: 0.3px;
-}
-
-.status-pending {
     background-color: #FFF8E6;
     color: #E6A000;
 }
@@ -1307,19 +1289,159 @@
     }
 }
 
-/* Action Dropdown */
-.action-dropdown {
-    position: relative;
-    display: inline-flex;
+/* Action Buttons */
+.assigned-bookings-table .actions {
+    display: flex;
+    gap: 8px;
     justify-content: flex-end;
-    width: 100%;
+    padding: 8px 16px;
 }
 
-.action-dropdown-toggle {
-    background: #64C493; /* Brand green */
-    border: 1px solid #55B583; /* Slightly darker green for border */
+.assigned-bookings-table .button-small {
+    padding: 4px 8px;
+    line-height: 1;
+    min-width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.assigned-bookings-table .button-small .dashicons {
+    margin: 0;
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+}
+
+.assigned-bookings-table .button-danger {
+    background: #dc3545;
+    border-color: #dc3545;
+    color: white;
+}
+
+.assigned-bookings-table .button-danger:hover {
+    background: #c82333;
+    border-color: #bd2130;
+}
+
+.assigned-bookings-table .view-details {
+    background: #6c757d;
+    border-color: #6c757d;
+    color: white;
+}
+
+.assigned-bookings-table .view-details:hover {
+    background: #5a6268;
+    border-color: #545b62;
+}
+
+/* Status badges */
+.status-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: capitalize;
+}
+
+.status-badge .dashicons {
+    margin-right: 4px;
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+}
+
+/* Status select dropdown */
+.status-actions {
+    min-width: 140px;
+    text-align: right;
+}
+
+.status-select {
+    width: 100%;
+    max-width: 150px;
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+    background-color: #fff;
     cursor: pointer;
-    padding: 6px 10px;
+    transition: all 0.2s ease;
+    margin-left: auto;
+}
+
+.status-select:focus {
+    border-color: #2271b1;
+    box-shadow: 0 0 0 1px #2271b1;
+    outline: none;
+}
+
+.status-select:disabled {
+    background-color: #f5f5f5;
+    cursor: not-allowed;
+}
+
+.status-saving {
+    display: inline-block;
+    margin-left: 8px;
+    color: #666;
+    font-size: 12px;
+    font-style: italic;
+}
+
+/* Make status dropdown full width on mobile */
+@media (max-width: 782px) {
+    .status-actions {
+        width: 100%;
+        text-align: left;
+    }
+    
+    .status-select {
+        max-width: 100%;
+    }
+    
+    .assigned-bookings-table td.status-actions {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .status-saving {
+        margin-left: 0;
+        width: 100%;
+        text-align: center;
+    }
+}
+
+.status-pending {
+    background-color: #FEF3C7;
+    color: #92400E;
+}
+
+.status-confirmed {
+    background-color: #DBEAFE;
+    color: #1E40AF;
+}
+
+.status-in_progress {
+    background-color: #E0F2FE;
+    color: #0369A1;
+}
+
+.status-completed {
+    background-color: #D1FAE5;
+    color: #065F46;
+}
+
+.status-cancelled {
+    background-color: #FEE2E2;
+    color: #991B1B;
+}
+
+.button {
     border-radius: 4px;
     transition: all 0.2s ease;
     color: #FFFFFF; /* White text */

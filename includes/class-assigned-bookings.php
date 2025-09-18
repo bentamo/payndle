@@ -22,58 +22,210 @@ class Assigned_Bookings {
      * Handle AJAX request to update booking status
      */
     public function ajax_update_booking_status() {
+        // Enable error logging
+        error_log('=== Starting ajax_update_booking_status ===');
+        error_log('POST data: ' . print_r($_POST, true));
+        
         // Verify nonce for security
-        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'update_booking_status')) {
-            wp_send_json_error('Invalid nonce');
-            return;
+        if (!isset($_POST['nonce'])) {
+            $error = 'Security check failed: Nonce not provided';
+            error_log('Error: ' . $error);
+            wp_send_json_error(array('message' => $error));
+            wp_die();
+        }
+        
+        if (!wp_verify_nonce($_POST['nonce'], 'update_booking_status')) {
+            $error = 'Security check failed: Invalid nonce';
+            error_log('Error: ' . $error . '. Received: ' . $_POST['nonce']);
+            wp_send_json_error(array('message' => $error));
+            wp_die();
         }
         
         // Check if user has permission
         if (!current_user_can('edit_posts')) {
-            wp_send_json_error('Insufficient permissions');
-            return;
+            $current_user = wp_get_current_user();
+            $error = 'You do not have permission to update booking status';
+            error_log('Error: ' . $error . '. User ID: ' . $current_user->ID . ', Roles: ' . implode(', ', $current_user->roles));
+            wp_send_json_error(array('message' => $error));
+            wp_die();
         }
         
         // Get and validate input
         $booking_id = isset($_POST['booking_id']) ? intval($_POST['booking_id']) : 0;
-        $status = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : '';
+        $status = isset($_POST['status']) ? strtolower(sanitize_text_field($_POST['status'])) : '';
         
-        if (!$booking_id || !$status) {
-            wp_send_json_error('Missing required parameters');
-            return;
+        error_log('Processing update - Booking ID: ' . $booking_id . ', Status: ' . $status);
+        
+        // Validate booking ID
+        if (!$booking_id || $booking_id <= 0) {
+            $error = 'Invalid booking ID: ' . $booking_id;
+            error_log('Error: ' . $error);
+            wp_send_json_error(array(
+                'message' => 'Invalid booking. Please refresh the page and try again.',
+                'debug' => $error
+            ));
+            wp_die();
         }
         
         // Validate status
-        $valid_statuses = array('completed', 'cancelled');
-        if (!in_array($status, $valid_statuses)) {
-            wp_send_json_error('Invalid status');
-            return;
+        $valid_statuses = array('pending', 'confirmed', 'completed', 'cancelled');
+        if (empty($status) || !in_array($status, $valid_statuses)) {
+            $error = 'Invalid status: ' . $status . '. Must be one of: ' . implode(', ', $valid_statuses);
+            error_log('Error: ' . $error);
+            wp_send_json_error(array(
+                'message' => 'Invalid status. Please select a valid status.',
+                'debug' => $error
+            ));
+            wp_die();
         }
         
-        // Update the post status
-        $result = wp_update_post(array(
-            'ID' => $booking_id,
-            'post_status' => $status
+        // Check if booking exists and is of the correct post type
+        global $wpdb;
+        $booking = $wpdb->get_row($wpdb->prepare(
+            "SELECT ID, post_type, post_status FROM {$wpdb->posts} WHERE ID = %d",
+            $booking_id
         ));
-        
-        if (is_wp_error($result)) {
-            wp_send_json_error($result->get_error_message());
-            return;
-        }
-        
-        // Get updated booking data
-        $booking = $this->get_single_booking_data($booking_id);
         
         if (!$booking) {
-            wp_send_json_error('Failed to retrieve updated booking data');
-            return;
+            $error = 'Booking not found in database. ID: ' . $booking_id;
+            error_log('Error: ' . $error);
+            wp_send_json_error(array(
+                'message' => 'Booking not found. It may have been deleted.',
+                'debug' => $error
+            ));
+            wp_die();
         }
         
-        // Send success response
+        // Verify post type if needed (uncomment and modify if you have a specific post type)
+        /*
+        if ($booking->post_type !== 'your_booking_post_type') {
+            $error = 'Invalid post type for booking. Expected: your_booking_post_type, Got: ' . $booking->post_type;
+            error_log('Error: ' . $error);
+            wp_send_json_error(array(
+                'message' => 'Invalid booking type.',
+                'debug' => $error
+            ));
+            wp_die();
+        }
+        */
+        
+        error_log('Found booking - ID: ' . $booking->ID . ', Type: ' . $booking->post_type . ', Status: ' . $booking->post_status);
+        
+        error_log('Booking found - Post Type: ' . $booking->post_type . ', Status: ' . $booking->post_status);
+        
+        // Get current meta for debugging
+        $meta = get_post_meta($booking_id);
+        error_log('Current booking meta: ' . print_r($meta, true));
+        
+        // Check if the status is actually changing
+        $current_status = get_post_meta($booking_id, '_booking_status', true);
+        if ($current_status === $status) {
+            error_log('Status is already set to: ' . $status);
+            wp_send_json_success(array(
+                'message' => 'Status is already set to ' . ucfirst($status),
+                'booking' => $this->get_single_booking_data($booking_id)
+            ));
+            wp_die();
+        }
+        
+        // Map status to WordPress post status
+        $status_mapping = array(
+            'pending' => 'pending',
+            'confirmed' => 'publish',  // 'publish' is the default status for confirmed bookings
+            'completed' => 'completed',
+            'cancelled' => 'cancelled'
+        );
+        
+        if (!array_key_exists($status, $status_mapping)) {
+            wp_send_json_error(array('message' => 'Invalid status'));
+            wp_die();
+        }
+        
+        $wp_status = $status_mapping[$status];
+        
+        // Prepare post data for update
+        $post_data = array(
+            'ID' => $booking_id,
+            'post_status' => $wp_status,
+            'post_modified' => current_time('mysql'),
+            'post_modified_gmt' => current_time('mysql', 1)
+        );
+        
+        // Start transaction if supported
+        $wpdb->query('START TRANSACTION');
+        
+        try {
+            // Update post status
+            remove_action('save_post_service_booking', array($this, 'save_booking_meta'), 10, 3);
+            $post_updated = wp_update_post($post_data, true);
+            add_action('save_post_service_booking', array($this, 'save_booking_meta'), 10, 3);
+            
+            if (is_wp_error($post_updated)) {
+                throw new Exception('Failed to update post status: ' . $post_updated->get_error_message());
+            }
+            
+            // Update booking status in meta
+            $meta_updated = update_post_meta($booking_id, '_booking_status', $status);
+            
+            if ($meta_updated === false) {
+                throw new Exception('Failed to update booking status in post meta');
+            }
+            
+            // Add status change log
+            $status_log = get_post_meta($booking_id, '_status_change_log', true);
+            if (!is_array($status_log)) {
+                $status_log = array();
+            }
+            
+            $status_log[] = array(
+                'status' => $status,
+                'timestamp' => current_time('mysql'),
+                'user_id' => get_current_user_id()
+            );
+            
+            update_post_meta($booking_id, '_status_change_log', $status_log);
+            
+            // Commit the transaction
+            $wpdb->query('COMMIT');
+            
+            error_log('Successfully updated booking status to: ' . $status);
+            
+        } catch (Exception $e) {
+            // Rollback on error
+            $wpdb->query('ROLLBACK');
+            error_log('Error updating booking status: ' . $e->getMessage());
+            
+            wp_send_json_error(array(
+                'message' => 'Failed to update booking status. Please try again.',
+                'debug' => $e->getMessage()
+            ));
+            wp_die();
+        }
+        
+        if (is_wp_error($post_updated)) {
+            wp_send_json_error(array('message' => $post_updated->get_error_message()));
+            wp_die();
+        }
+        
+        // Clear any caches that might be storing this data
+        clean_post_cache($booking_id);
+        
+        // Get updated booking data
+        $booking_data = $this->get_single_booking_data($booking_id);
+        
+        if (!$booking_data) {
+            wp_send_json_error(array('message' => 'Failed to retrieve updated booking data'));
+            wp_die();
+        }
+        
+        // Log the update for debugging
+        error_log('Booking ' . $booking_id . ' status updated to ' . $status . ' (WP Status: ' . $wp_status . ')');
+        
         wp_send_json_success(array(
             'message' => 'Booking status updated successfully',
-            'booking' => $booking
+            'booking' => $booking_data
         ));
+        wp_die();
     }
     
     /**
@@ -117,15 +269,29 @@ class Assigned_Bookings {
             $staff_name = get_the_title($staff_id);
         }
         
-        // Status labels
+        // Status labels and their categories
         $status_labels = array(
-            'publish' => 'Confirmed',
+            'publish' => 'Ongoing',
             'pending' => 'Pending',
             'cancelled' => 'Cancelled',
             'completed' => 'Completed',
             'refunded' => 'Refunded',
             'failed' => 'Failed'
         );
+        
+        // Determine status category based on status, not payment
+        $status_category = 'upcoming'; // Default category
+        
+        // Map statuses to categories
+        $status_mapping = [
+            'completed' => 'completed',
+            'cancelled' => 'cancelled',
+            'confirmed' => 'upcoming',
+            'pending' => 'upcoming', // Treat pending as upcoming for display purposes
+        ];
+        
+        // Get the category from mapping or use default
+        $status_category = $status_mapping[strtolower($status)] ?? 'upcoming';
         
         return array(
             'booking_id' => $booking_id,
@@ -187,6 +353,10 @@ class Assigned_Bookings {
             true
         );
 
+        // Get the current user's capabilities for debugging
+        $current_user = wp_get_current_user();
+        $user_can_edit = current_user_can('edit_posts');
+        
         // Localize script with AJAX URL and nonce
         wp_localize_script(
             'assigned-bookings-script',
@@ -194,6 +364,8 @@ class Assigned_Bookings {
             array(
                 'ajax_url' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('update_booking_status'),
+                'user_can_edit' => $user_can_edit,
+                'user_roles' => !empty($current_user->roles) ? $current_user->roles : array(),
                 'i18n' => array(
                     'confirm_complete' => __('Are you sure you want to mark this booking as completed?', 'payndle'),
                     'confirm_cancel' => __('Are you sure you want to cancel this booking? This action cannot be undone.', 'payndle'),
@@ -202,55 +374,302 @@ class Assigned_Bookings {
                 )
             )
         );
+        
+        // Add debug information to the page
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            wp_add_inline_script('assigned-bookings-script', 
+                'console.log("Assigned Bookings Debug - User Can Edit: ' . ($user_can_edit ? 'Yes' : 'No') . '");' .
+                'console.log("Assigned Bookings Debug - User Roles: ' . (!empty($current_user->roles) ? implode(', ', $current_user->roles) : 'None') . '");'
+            );
+        }
 
-        // Add inline styles for notices
+        // Add inline styles for notices and status badges
         $custom_css = "
+            /* Base Typography */
+            .assigned-bookings-container {
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, sans-serif;
+                color: #0C1930;
+                line-height: 1.5;
+            }
+            
+            .assigned-bookings-container h2 {
+                font-family: 'Inter', sans-serif;
+                font-weight: 700;
+                color: #0C1930;
+                margin-bottom: 20px;
+            }
+            
+            /* Status filter buttons */
+            .status-filters {
+                margin-bottom: 24px;
+                display: flex;
+                gap: 8px;
+                flex-wrap: wrap;
+            }
+            .status-filter-btn {
+                padding: 8px 16px;
+                border: 1px solid #E5E7EB;
+                background: #FFFFFF;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: 500;
+                font-family: 'Inter', sans-serif;
+                color: #0C1930;
+                transition: all 0.2s ease;
+            }
+            .status-filter-btn.active {
+                background: #0C1930;
+                color: #FFFFFF;
+                border-color: #0C1930;
+            }
+            .status-filter-btn:hover:not(.active) {
+                background: #F9FAFB;
+                border-color: #D1D5DB;
+            }
+            
+            /* Tables */
+            .assigned-bookings-table {
+                width: 100%;
+                border-collapse: collapse;
+                background: #FFFFFF;
+                border-radius: 8px;
+                overflow: hidden;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            }
+            
+            .assigned-bookings-table th {
+                background: #F9FAFB;
+                color: #4B5563;
+                font-weight: 600;
+                text-align: left;
+                padding: 12px 16px;
+                font-size: 13px;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                border-bottom: 1px solid #E5E7EB;
+            }
+            
+            .assigned-bookings-table td {
+                padding: 16px;
+                border-bottom: 1px solid #E5E7EB;
+                font-size: 14px;
+                vertical-align: middle;
+            }
+            
+            .assigned-bookings-table tr:last-child td {
+                border-bottom: none;
+            }
+            
+            .assigned-bookings-table tr:hover {
+                background: #F9FAFB;
+            }
+            
+            /* Action Buttons & Dropdowns */
+            .action-dropdown {
+                position: relative;
+                display: inline-block;
+            }
+            
+            .action-dropdown-toggle {
+                background: #FFFFFF;
+                border: 1px solid #E5E7EB;
+                border-radius: 8px;
+                width: 36px;
+                height: 36px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                padding: 0;
+            }
+            
+            .action-dropdown-toggle:hover {
+                background: #F9FAFB;
+                border-color: #D1D5DB;
+            }
+            
+            .action-dropdown-toggle .dashicons {
+                color: #4B5563;
+                width: 20px;
+                height: 20px;
+                font-size: 20px;
+            }
+            
+            .action-dropdown-menu {
+                position: absolute;
+                right: 0;
+                top: calc(100% + 4px);
+                background: #FFFFFF;
+                border: 1px solid #E5E7EB;
+                border-radius: 8px;
+                min-width: 200px;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+                z-index: 1000;
+                display: none;
+                padding: 8px 0;
+                overflow: hidden;
+                animation: fadeIn 0.15s ease-out;
+            }
+            
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(-8px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+            
+            .action-item {
+                display: flex;
+                align-items: center;
+                width: 100%;
+                text-align: left;
+                padding: 10px 16px;
+                background: none;
+                border: none;
+                cursor: pointer;
+                font-size: 14px;
+                color: #0C1930;
+                font-family: 'Inter', sans-serif;
+                transition: all 0.15s ease;
+                margin: 0;
+                line-height: 1.5;
+            }
+            
+            .action-item:hover {
+                background: #F9FAFB;
+                color: #64C493;
+            }
+            
+            .action-item.complete-booking:hover {
+                color: #065F46;
+            }
+            
+            .action-item.cancel-booking:hover {
+                color: #B91C1C;
+            }
+            
+            .action-item .dashicons {
+                margin-right: 10px;
+                font-size: 16px;
+                width: 16px;
+                height: 16px;
+                flex-shrink: 0;
+            }
+            
+            /* Status badges */
             .booking-notice {
                 margin: 15px 0;
                 position: relative;
+                border-radius: 8px;
+                overflow: hidden;
             }
             .notice-dismiss {
                 text-decoration: none;
             }
+            /* Status badges */
             .status-badge {
-                display: inline-block;
-                padding: 4px 8px;
-                border-radius: 3px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                padding: 4px 12px;
+                border-radius: 16px;
                 font-size: 12px;
                 font-weight: 500;
                 text-transform: capitalize;
+                white-space: nowrap;
+                font-family: 'Inter', sans-serif;
+                letter-spacing: 0.02em;
+                min-width: 80px;
+                text-align: center;
+                transition: all 0.2s ease;
             }
+            
+            /* Status change button */
+            .change-status-btn {
+                background: #64C493;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                padding: 6px 12px;
+                font-size: 13px;
+                font-weight: 500;
+                font-family: 'Inter', sans-serif;
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.2s ease;
+                line-height: 1.5;
+            }
+            
+            .change-status-btn:hover {
+                background: #4FB07D;
+                transform: translateY(-1px);
+            }
+            
+            .change-status-btn .dashicons {
+                margin-right: 6px;
+                font-size: 16px;
+                width: 16px;
+                height: 16px;
+            }
+            
+            /* Status category colors */
             .status-pending {
-                background-color: #f0ad4e;
-                color: #fff;
+                background-color: #FEF3C7;
+                color: #92400E;
+                border: 1px solid #FDE68A;
             }
+            
+            .status-ongoing {
+                background-color: #E0F2FE;
+                color: #075985;
+                border: 1px solid #BAE6FD;
+            }
+            
             .status-completed {
-                background-color: #5cb85c;
-                color: #fff;
+                background-color: #D1FAE5;
+                color: #065F46;
+                border: 1px solid #A7F3D0;
             }
+            
             .status-cancelled {
-                background-color: #d9534f;
-                color: #fff;
+                background-color: #FEE2E2;
+                color: #B91C1C;
+                border: 1px solid #FECACA;
+                text-decoration: line-through;
             }
-            .status-confirmed {
-                background-color: #5bc0de;
-                color: #fff;
+            
+            .status-failed,
+            .status-refunded {
+                background-color: #F3F4F6;
+                color: #4B5563;
+                border: 1px solid #E5E7EB;
             }
+            /* Payment status */
             .payment-status {
-                display: inline-block;
-                padding: 3px 6px;
-                border-radius: 3px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                padding: 3px 10px;
+                border-radius: 12px;
                 font-size: 11px;
                 font-weight: 500;
                 text-transform: capitalize;
+                font-family: 'Inter', sans-serif;
+                min-width: 60px;
             }
+            
             .payment-paid {
-                background-color: #5cb85c;
-                color: #fff;
+                background-color: #D1FAE5;
+                color: #065F46;
+                border: 1px solid #A7F3D0;
             }
+            
             .payment-pending {
-                background-color: #f0ad4e;
-                color: #fff;
+                background-color: #FEF3C7;
+                color: #92400E;
+                border: 1px solid #FDE68A;
             }
         ";
         
@@ -324,11 +743,22 @@ class Assigned_Bookings {
                     'failed' => 'Failed'
                 );
                 
+                // Determine status category based on status
+                $status_category = 'upcoming'; // Default category
+                if ($status === 'completed') {
+                    $status_category = 'completed';
+                } elseif ($status === 'pending') {
+                    $status_category = 'pending'; // Keep pending as its own category
+                } elseif (in_array($status, ['cancelled', 'refunded', 'failed'])) {
+                    $status_category = 'cancelled';
+                }
+                
                 // Format the booking data
                 $formatted_bookings[] = array(
                     'booking_id' => $post_id,
                     'status' => $status_labels[$status] ?? ucfirst($status),
                     'status_slug' => $status,
+                    'status_category' => $status_category,
                     'booking_date' => $booking_date ?: get_the_date('Y-m-d', $post_id),
                     'booking_time' => $booking_time ?: 'N/A',
                     'customer_name' => $customer_name,
@@ -361,7 +791,11 @@ class Assigned_Bookings {
         <div class="assigned-bookings-container">
             <h2>Assigned Bookings</h2>
 
-            <?php if (empty($bookings)) : ?>
+            <?php 
+            // Create a fresh nonce for this request
+            $nonce = wp_create_nonce('update_booking_status');
+            
+            if (empty($bookings)) : ?>
                 <div class="empty-state">
                     <span class="dashicons dashicons-calendar-alt"></span>
                     <h3>No Bookings Found</h3>
@@ -371,7 +805,10 @@ class Assigned_Bookings {
                         Refresh Page
                     </a>
                 </div>
-            <?php else : ?>
+            <?php else : 
+                // Output the nonce as a data attribute on the table
+                ?>
+                <div id="assigned-bookings-table" data-nonce="<?php echo esc_attr($nonce); ?>">
                 <div class="table-responsive">
                     <table class="assigned-bookings-table">
                         <thead>
@@ -386,14 +823,18 @@ class Assigned_Bookings {
                                 <th>Amount</th>
                                 <th>Payment</th>
                                 <th>Status</th>
-                                <th>Actions</th>
+                                <th>Change Status</th>
                             </tr>
                         </thead>
                         <tbody>
                         <?php foreach ($bookings as $booking) : 
                             $status_class = strtolower($booking['status'] ?? 'pending');
+                            $status_category = $booking['status_category'] ?? 'pending';
                         ?>
-                            <tr class="status-<?php echo esc_attr($status_class); ?>">
+                            <tr class="status-<?php echo esc_attr($status_class); ?>" 
+                                data-booking-id="<?php echo esc_attr($booking['booking_id']); ?>"
+                                data-status="<?php echo esc_attr($status_class); ?>"
+                                data-status-category="<?php echo esc_attr($status_category); ?>">
                                 <td data-label="ID">#<?php echo esc_html($booking['booking_id']); ?></td>
                                 <td data-label="Customer">
                                     <strong><?php echo esc_html($booking['customer_name']); ?></strong>
@@ -424,28 +865,14 @@ class Assigned_Bookings {
                                         <?php echo esc_html($booking['status']); ?>
                                     </span>
                                 </td>
-                                <td class="actions">
-                                    <div class="action-dropdown">
-                                        <button class="action-dropdown-toggle" aria-expanded="false" aria-haspopup="true" aria-label="Actions">
-                                            <span class="dashicons dashicons-ellipsis"></span>
-                                        </button>
-                                        <div class="action-dropdown-menu" role="menu">
-                                            <button class="action-item view-details" data-id="<?php echo esc_attr($booking['booking_id']); ?>">
-                                                <span class="dashicons dashicons-visibility"></span>
-                                                <span>View Details</span>
-                                            </button>
-                                            <?php if ($status === 'pending' || $status === 'confirmed') : ?>
-                                                <button class="action-item complete-booking" data-id="<?php echo esc_attr($booking['booking_id']); ?>">
-                                                    <span class="dashicons dashicons-yes-alt"></span>
-                                                    <span>Mark Complete</span>
-                                                </button>
-                                                <button class="action-item cancel-booking" data-id="<?php echo esc_attr($booking['booking_id']); ?>">
-                                                    <span class="dashicons dashicons-no-alt"></span>
-                                                    <span>Cancel Booking</span>
-                                                </button>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
+                                <td class="status-actions" data-label="Change Status">
+                                    <select class="status-select" data-booking-id="<?php echo esc_attr($booking['booking_id']); ?>">
+                                        <option value="pending" <?php selected($status_class, 'pending'); ?>>Pending</option>
+                                        <option value="confirmed" <?php selected($status_class, 'confirmed'); ?>>Confirmed</option>
+                                        <option value="completed" <?php selected($status_class, 'completed'); ?>>Completed</option>
+                                        <option value="cancelled" <?php selected($status_class, 'cancelled'); ?>>Cancelled</option>
+                                    </select>
+                                    <span class="status-saving" style="display: none;">Saving...</span>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
