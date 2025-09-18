@@ -1048,6 +1048,7 @@ class UserBookingForm {
         // Sanitize and validate input
         $service_id = intval($_POST['service_id']);
         $staff_id = !empty($_POST['staff_id']) ? intval($_POST['staff_id']) : null;
+    error_log('submit_user_booking_v3 received staff_id: ' . print_r($_POST['staff_id'] ?? '(null)', true));
         $customer_name = sanitize_text_field($_POST['customer_name']);
         $customer_email = sanitize_email($_POST['customer_email']);
         $customer_phone = sanitize_text_field($_POST['customer_phone'] ?? '');

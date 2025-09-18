@@ -39,7 +39,8 @@ jQuery(document).ready(function($) {
     }
     
     function updateButton() {
-        var $button = $('.btn-next');
+        // Find the step action button whether it's currently marked as .btn-next or already .btn-submit
+        var $button = $('.btn-next, .btn-submit');
         var $btnGroup = $button.closest('.form-actions');
         // Ensure previous button exists
         if ($btnGroup.find('.btn-prev').length === 0) {
@@ -55,8 +56,12 @@ jQuery(document).ready(function($) {
 
         if (currentStep >= totalSteps) {
             $button.text('Complete Setup').removeClass('btn-next').addClass('btn-submit');
+            // make it a true submit button so Enter key and form submission will trigger
+            $button.prop('type', 'submit');
         } else {
             $button.text('Next Step').removeClass('btn-submit').addClass('btn-next');
+            // regular button behavior for intermediate steps
+            $button.prop('type', 'button');
         }
     }
     
@@ -207,6 +212,17 @@ jQuery(document).ready(function($) {
         console.log('Submit button clicked!');
         
         // Validate final step
+        validateCurrentStep().done(function(isValid) {
+            if (isValid) {
+                submitForm();
+            }
+        });
+    });
+
+    // Ensure that any form submit (e.g. pressing Enter) also triggers validation + submit flow
+    $(document).on('submit', '#business-setup-form', function(e) {
+        e.preventDefault();
+        console.log('Business setup form submit intercepted');
         validateCurrentStep().done(function(isValid) {
             if (isValid) {
                 submitForm();

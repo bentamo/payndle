@@ -376,10 +376,10 @@ class BusinessSetup {
         
         ob_start();
         ?>
-        <div class="business-setup-container">
-            <div class="business-setup-header">
-                <h1 class="setup-title">Business Setup</h1>
-                <p class="setup-subtitle">Let's create your business profile step by step</p>
+        <div class="business-setup-container ubf-v3-container">
+            <div class="business-setup-header ubf-v3-header">
+                <h1 class="setup-title ubf-v3-title">Business Setup</h1>
+                <p class="setup-subtitle ubf-v3-sub">Let's create your business profile step by step</p>
             </div>
             
             <!-- Progress Indicator -->
@@ -403,11 +403,11 @@ class BusinessSetup {
                 </div>
             </div>
             
-            <form id="business-setup-form" class="business-setup-form">
+            <form id="business-setup-form" class="business-setup-form ubf-v3-form">
                 <?php wp_nonce_field('business_setup_nonce', 'business_setup_nonce'); ?>
                 
                 <!-- Step 1: Business Information -->
-                <div class="form-step active" data-step="1">
+                <div class="form-step ubf-form-step active" data-step="1">
                     <div class="step-header">
                         <h2>Business Information</h2>
                         <p>Tell us about your business and what services you provide</p>
@@ -446,7 +446,7 @@ class BusinessSetup {
                 </div>
                 
                 <!-- Step 2: Contact Information -->
-                <div class="form-step" data-step="2">
+                <div class="form-step ubf-form-step" data-step="2">
                     <div class="step-header">
                         <h2>Contact Information</h2>
                         <p>How can customers reach you?</p>

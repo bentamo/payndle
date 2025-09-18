@@ -711,10 +711,12 @@
             }
             console.log('[Booking v3] Loading staff grid for service', serviceId);
             $grid.html('<div class="staff-grid-empty">Loading staff...</div>');
+            // Support both frontend (userBookingAjax) and admin/localized (userBookingV3)
+            const ajaxSettings = window.userBookingAjax || window.userBookingV3 || {};
             $.ajax({
-                url: userBookingAjax.ajaxurl,
+                url: ajaxSettings.ajaxurl || '',
                 method: 'POST',
-                data: { action: 'get_staff_for_service', nonce: userBookingAjax.nonce, service_id: serviceId },
+                data: { action: 'get_staff_for_service', nonce: ajaxSettings.nonce || '', service_id: serviceId },
                 success: function(resp){
                     if (resp && resp.success && Array.isArray(resp.staff) && resp.staff.length){
                         const cards = resp.staff.map(function(s){
@@ -906,9 +908,30 @@
         });
     }
 
-    // Initialize v3 form if present
+    // Initialize v3 form(s) if present
+    // Support multiple admin forms that use the UBF v3 markup by initializing
+    // a UBFv3 instance for each `.ubf-v3-form`. Fall back to the legacy
+    // `#user-booking-form-v3` selector for backward compatibility.
     $(function(){
-        if ($('#user-booking-form-v3').length){
+        // Initialize UBF v3 forms but skip any that are rendered inside the
+        // admin/manager overlay (they use their own submit/update handlers).
+        const $v3Forms = $('.ubf-v3-form');
+        if ($v3Forms.length){
+            $v3Forms.each(function(){
+                try {
+                    // skip manager/admin overlay forms to avoid duplicate submit handlers
+                    if ($(this).closest('.manager-booking-container').length) {
+                        console.log('[UBFv3] Skipping init for manager/admin overlay form to avoid conflicts');
+                        return; // continue to next form
+                    }
+                    new UBFv3(this);
+                } catch (e){ console.error('Failed to init UBFv3 on element', this, e); }
+            });
+            return;
+        }
+
+        // Backwards-compatible single-form init (skip admin overlay similarly)
+        if ($('#user-booking-form-v3').length && !$('#user-booking-form-v3').closest('.manager-booking-container').length){
             new UBFv3('#user-booking-form-v3');
         }
     });
