@@ -172,19 +172,28 @@ class UserBookingForm {
                     <div class="ubf-form-step" data-step="1">
                         <h3 class="section-title">Select Service</h3>
                         <?php if ($atts['show_service_selector'] === 'true'): ?>
-                        <select id="ubf_service_id" name="service_id" required>
-                            <option value="">Choose a service</option>
-                            <?php echo $this->get_services_options(); ?>
-                        </select>
+                        <div class="ubf-service-blocks">
+                            <div class="ubf-service-block">
+                                <select id="ubf_service_id" class="ubf-service-select" name="service_id[]" required>
+                                    <option value="">Choose a service</option>
+                                    <?php echo $this->get_services_options(); ?>
+                                </select>
 
-                        <label for="ubf_staff_id" style="display:block;margin-top:8px;font-weight:600">Preferred Staff (optional)</label>
-                        <input type="hidden" id="ubf_staff_id" name="staff_id" value="">
-                        <div id="ubf_staff_grid" class="ubf-staff-grid" aria-live="polite">
-                            <div class="staff-grid-empty">Select a service to choose staff</div>
+                                <label style="display:block;margin-top:8px;font-weight:600">Preferred Staff (optional)</label>
+                                <input type="hidden" class="ubf-staff-input" name="staff_id[]" value="">
+                                <div class="ubf-staff-grid" aria-live="polite">
+                                    <div class="staff-grid-empty">Select a service to choose staff</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+                            <button type="button" class="ubf-add-service">Add another service</button>
+                            <small style="color:#556;">You can add multiple services and choose staff for each.</small>
                         </div>
 
                         <?php else: ?>
-                            <input type="hidden" name="service_id" value="">
+                            <input type="hidden" name="service_id[]" value="">
                         <?php endif; ?>
                         <div class="ubf-step-nav"><button type="button" class="ubf-next">Next</button></div>
                     </div>
@@ -1432,7 +1441,15 @@ class UserBookingForm {
     public function submit_user_booking_v3() {
         check_ajax_referer('user_booking_nonce', 'nonce'); // Use same nonce as original for compatibility
 
-        $service_id = intval($_POST['service_id'] ?? 0);
+        // Accept multiple services (service_id[] and staff_id[])
+        $service_input = $_POST['service_id'] ?? array();
+        if (!is_array($service_input)) { $service_input = array($service_input); }
+        $staff_input = $_POST['staff_id'] ?? array();
+        if (!is_array($staff_input)) { $staff_input = array($staff_input); }
+
+        $service_ids = array_map('absint', $service_input);
+        $staff_ids = array_map('absint', $staff_input);
+
         $customer_name = sanitize_text_field($_POST['customer_name'] ?? '');
         $customer_email = sanitize_email($_POST['customer_email'] ?? '');
         $customer_phone = sanitize_text_field($_POST['customer_phone'] ?? '');
@@ -1440,34 +1457,55 @@ class UserBookingForm {
         $preferred_time = sanitize_text_field($_POST['preferred_time'] ?? '');
         $message = sanitize_textarea_field($_POST['message'] ?? '');
         $payment_method = sanitize_text_field($_POST['payment_method'] ?? 'cash');
-        $staff_id = !empty($_POST['staff_id']) ? intval($_POST['staff_id']) : null;
 
-        if (empty($customer_name) || empty($customer_email) || $service_id <= 0) {
+        // Basic validation: name, email and at least one valid service
+        $has_valid_service = false;
+        foreach ($service_ids as $sid) { if ($sid > 0) { $has_valid_service = true; break; } }
+
+        if (empty($customer_name) || empty($customer_email) || !$has_valid_service) {
             wp_send_json(['success' => false, 'message' => 'Missing required fields']);
         }
 
-        $post_id = wp_insert_post([
-            'post_type' => 'service_booking',
-            'post_title' => $customer_name . ' - Booking',
-            'post_status' => 'pending',
-            'post_content' => $message
-        ]);
+        $created = array();
 
-        if (is_wp_error($post_id)) {
-            wp_send_json(['success' => false, 'message' => 'Failed to create booking']);
+        foreach ($service_ids as $index => $service_id) {
+            $service_id = absint($service_id);
+            if ($service_id <= 0) continue;
+
+            $staff_id = isset($staff_ids[$index]) && $staff_ids[$index] ? intval($staff_ids[$index]) : null;
+
+            $post_id = wp_insert_post([
+                'post_type' => 'service_booking',
+                'post_title' => $customer_name . ' - Booking',
+                'post_status' => 'pending',
+                'post_content' => $message
+            ]);
+
+            if (is_wp_error($post_id) || !$post_id) {
+                // skip failed inserts but continue with others
+                continue;
+            }
+
+            // Save meta for this booking
+            update_post_meta($post_id, '_service_id', $service_id);
+            update_post_meta($post_id, '_customer_name', $customer_name);
+            update_post_meta($post_id, '_customer_email', $customer_email);
+            update_post_meta($post_id, '_customer_phone', $customer_phone);
+            update_post_meta($post_id, '_preferred_date', $preferred_date);
+            update_post_meta($post_id, '_preferred_time', $preferred_time);
+            update_post_meta($post_id, '_payment_method', $payment_method);
+            if ($staff_id) update_post_meta($post_id, '_staff_id', $staff_id);
+
+            $created[] = $post_id;
         }
 
-        // Save meta
-        update_post_meta($post_id, '_service_id', $service_id);
-        update_post_meta($post_id, '_customer_name', $customer_name);
-        update_post_meta($post_id, '_customer_email', $customer_email);
-        update_post_meta($post_id, '_customer_phone', $customer_phone);
-        update_post_meta($post_id, '_preferred_date', $preferred_date);
-        update_post_meta($post_id, '_preferred_time', $preferred_time);
-        update_post_meta($post_id, '_payment_method', $payment_method);
-        if ($staff_id) update_post_meta($post_id, '_staff_id', $staff_id);
+        if (empty($created)) {
+            wp_send_json(['success' => false, 'message' => 'Failed to create any bookings']);
+        }
 
-        wp_send_json(['success' => true, 'message' => 'Booking created', 'id' => $post_id]);
+        $response = ['success' => true, 'message' => 'Bookings created', 'bookings' => $created];
+        if (count($created) === 1) { $response['id'] = $created[0]; }
+        wp_send_json($response);
     }
 }
 

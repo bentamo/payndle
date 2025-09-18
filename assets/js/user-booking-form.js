@@ -700,18 +700,16 @@
         // update progress on load
         this.updateProgress();
 
-        // Populate v3 staff when service changes or on init if preselected (grid UI)
-        const $service = this.form.find('#ubf_service_id');
-        const $hiddenStaff = this.form.find('#ubf_staff_id');
-        const $grid = this.form.find('#ubf_staff_grid');
-        function populateV3(serviceId){
-            if (!$grid.length || !$hiddenStaff.length) {
-                console.warn('[Booking v3] Staff grid or hidden input not found. grid:', $grid.length, ' hidden:', $hiddenStaff.length);
+        // Support multiple service blocks: cloneable blocks with per-block staff grid
+        const $blocksContainer = this.form.closest('.ubf-v3-form-wrapper').find('.ubf-service-blocks');
+        function populateBlock($block, serviceId){
+            const $grid = $block.find('.ubf-staff-grid');
+            const $hidden = $block.find('.ubf-staff-input');
+            if (!$grid.length || !$hidden.length) {
+                console.warn('[Booking v3] Staff grid or hidden input not found for block.');
                 return;
             }
-            console.log('[Booking v3] Loading staff grid for service', serviceId);
             $grid.html('<div class="staff-grid-empty">Loading staff...</div>');
-            // Support both frontend (userBookingAjax) and admin/localized (userBookingV3)
             const ajaxSettings = window.userBookingAjax || window.userBookingV3 || {};
             $.ajax({
                 url: ajaxSettings.ajaxurl || '',
@@ -732,11 +730,11 @@
                         $grid.off('click.staff').on('click.staff', '.staff-card', function(){
                             const $card = $(this);
                             if ($card.hasClass('selected')){
-                                $hiddenStaff.val('');
+                                $hidden.val('');
                                 $card.removeClass('selected').attr('aria-pressed','false');
                             } else {
                                 const id = $card.data('id');
-                                $hiddenStaff.val(id);
+                                $hidden.val(id);
                                 $card.addClass('selected').attr('aria-pressed','true').siblings().removeClass('selected').attr('aria-pressed','false');
                             }
                         });
@@ -744,15 +742,48 @@
                             if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $(this).trigger('click'); }
                         });
                     } else {
-                        $hiddenStaff.val('');
+                        $hidden.val('');
                         $grid.html('<div class="staff-grid-empty">No staff available</div>');
                     }
                 },
-                error: function(){ $hiddenStaff.val(''); $grid.html('<div class="staff-grid-empty">Failed to load staff</div>'); }
+                error: function(){ $hidden.val(''); $grid.html('<div class="staff-grid-empty">Failed to load staff</div>'); }
             });
         }
-        $service.on('change', function(){ const v = $(this).val(); if (v){ populateV3(v); } else { $hiddenStaff.val(''); $grid.html('<div class="staff-grid-empty">Select a service to choose staff</div>'); } });
-        if ($service.val()) { populateV3($service.val()); } else { $grid.html('<div class="staff-grid-empty">Select a service to choose staff</div>'); }
+
+        // wire up change handlers for existing and future blocks
+        function wireBlock($block){
+            const $select = $block.find('.ubf-service-select');
+            $select.off('change.ubf').on('change.ubf', function(){
+                const v = $(this).val();
+                if (v){ populateBlock($block, v); } else { $block.find('.ubf-staff-input').val(''); $block.find('.ubf-staff-grid').html('<div class="staff-grid-empty">Select a service to choose staff</div>'); }
+            });
+            // if select already has value, populate
+            if ($select.val()){ populateBlock($block, $select.val()); }
+        }
+
+        // initialize existing blocks
+        if ($blocksContainer.length){
+            $blocksContainer.find('.ubf-service-block').each(function(){ wireBlock($(this)); });
+
+            // Add service button
+            const $addBtn = this.form.closest('.ubf-v3-form-wrapper').find('.ubf-add-service');
+            $addBtn.off('click.ubf').on('click.ubf', (e) => {
+                e.preventDefault();
+                const $first = $blocksContainer.find('.ubf-service-block').first();
+                const $clone = $first.clone();
+                // clear values in clone
+                $clone.find('select').val('');
+                $clone.find('.ubf-staff-input').val('');
+                $clone.find('.ubf-staff-grid').html('<div class="staff-grid-empty">Select a service to choose staff</div>');
+                // add a remove button
+                $clone.append('<div style="margin-top:8px;text-align:right"><button type="button" class="ubf-remove-service">Remove</button></div>');
+                $blocksContainer.append($clone);
+                wireBlock($clone);
+            });
+
+            // Remove handler using event delegation
+            $blocksContainer.on('click', '.ubf-remove-service', function(e){ e.preventDefault(); $(this).closest('.ubf-service-block').remove(); });
+        }
     }
 
     UBFv3.prototype.showStep = function(step){
