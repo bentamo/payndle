@@ -121,6 +121,39 @@ function elite_cuts_manage_bookings_page() {
             }
             wp_reset_postdata();
         }
+    // Post-process bookings to detect grouped bookings.
+    // NOTE: Bookings created together for multiple services are stored as separate
+    // service_booking posts. We mark these as 'grouped' when they share the same
+    // customer name and created date so the admin UI can indicate grouped bookings.
+        // Bookings that were created together for multiple services will often share the same
+        // customer name and have very similar created_at timestamps. We'll group by a
+        // composite key of customer_name + created_at date (date only) to mark grouped
+        // service bookings stored individually but created as part of the same grouped booking.
+        $grouped_map = [];
+        foreach ($bookings as $b) {
+            $date_only = '';
+            if (!empty($b->created_at)) {
+                $dt = strtotime($b->created_at);
+                if ($dt !== false) { $date_only = date('Y-m-d', $dt); }
+            }
+            $key = trim(strtolower($b->customer_name)) . '|' . $date_only;
+            if (!isset($grouped_map[$key])) { $grouped_map[$key] = []; }
+            $grouped_map[$key][] = $b->id;
+        }
+        // Attach a simple flag and group size to each booking object for rendering
+        foreach ($bookings as $b) {
+            $date_only = '';
+            if (!empty($b->created_at)) {
+                $dt = strtotime($b->created_at);
+                if ($dt !== false) { $date_only = date('Y-m-d', $dt); }
+            }
+            $key = trim(strtolower($b->customer_name)) . '|' . $date_only;
+            $group_ids = $grouped_map[$key] ?? [];
+            $b->group_size = count($group_ids);
+            // position in group (1-based) to help label like "Grouped booking (1 of 3)"
+            $b->group_index = ($b->group_size > 1) ? array_search($b->id, $group_ids) + 1 : 1;
+            $b->is_grouped = ($b->group_size > 1);
+        }
     
     ?>
     <div class="wrap elite-cuts-admin">
@@ -213,6 +246,11 @@ function elite_cuts_manage_bookings_page() {
                                     <span class="service-name">
                                         <?php echo esc_html($booking->service_name ?: 'Service ID: ' . $booking->service_id); ?>
                                     </span>
+                                    <?php if (!empty($booking->is_grouped) && $booking->is_grouped): ?>
+                                        <div class="grouped-booking-label" title="This booking is part of a grouped booking">
+                                            <small><em>Grouped booking (<?php echo intval($booking->group_index); ?> of <?php echo intval($booking->group_size); ?>)</em></small>
+                                        </div>
+                                    <?php endif; ?>
                                 </td>
                                 <td>
                                     <span class="staff-info">
