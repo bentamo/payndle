@@ -42,6 +42,10 @@ class UserBookingForm {
         add_action('wp_ajax_get_staff_for_service', [$this, 'get_staff_for_service']);
         add_action('wp_ajax_nopriv_get_staff_for_service', [$this, 'get_staff_for_service']);
 
+    // Availability check for per-service schedule (used by v3 schedule step)
+    add_action('wp_ajax_check_schedule_availability_v3', [$this, 'check_schedule_availability_v3']);
+    add_action('wp_ajax_nopriv_check_schedule_availability_v3', [$this, 'check_schedule_availability_v3']);
+
         // timetable shortcode moved out of booking form
     }
 
@@ -177,8 +181,9 @@ class UserBookingForm {
                         <h3 class="section-title">Select Service</h3>
                         <?php if ($atts['show_service_selector'] === 'true'): ?>
                         <div class="ubf-service-blocks">
-                            <div class="ubf-service-block">
-                                <select id="ubf_service_id" class="ubf-service-select" name="service_id[]" required>
+                                    <?php $min_date = date('Y-m-d'); ?>
+                                    <div class="ubf-service-block">
+                                            <select id="ubf_service_id" class="ubf-service-select" name="service_id[]" required>
                                     <option value="">Choose a service</option>
                                     <?php echo $this->get_services_options(); ?>
                                 </select>
@@ -188,6 +193,7 @@ class UserBookingForm {
                                 <div class="ubf-staff-grid" aria-live="polite">
                                     <div class="staff-grid-empty">Select a service to choose staff</div>
                                 </div>
+                                            <!-- schedule inputs are rendered in the Schedule step (step 3) per service -->
                             </div>
                         </div>
 
@@ -216,18 +222,19 @@ class UserBookingForm {
                     <div class="ubf-form-step" data-step="3" style="display:none;">
                         <h3 class="section-title">Preferred Schedule</h3>
                         <?php $min_date = date('Y-m-d'); ?>
-                        <input type="date" id="ubf_preferred_date" name="preferred_date" min="<?php echo esc_attr($min_date); ?>" data-business-start="09:00" data-business-end="19:00">
-                        <select id="ubf_preferred_time" name="preferred_time">
-                            <option value="">Preferred time (optional)</option>
-                            <?php
-                            // Generate hourly options from 09:00 to 19:00
-                            for ($h = 9; $h <= 19; $h++) {
-                                $value = sprintf('%02d:00', $h);
-                                $display = date('g:i A', strtotime($value));
-                                echo '<option value="' . esc_attr($value) . '">' . esc_html($display) . '</option>';
-                            }
-                            ?>
-                        </select>
+                        <!-- Backwards-compatible global schedule (kept but hidden visually when per-service schedules exist) -->
+                        <div class="ubf-global-schedule" style="display:none">
+                            <input type="date" id="ubf_preferred_date" name="preferred_date" min="<?php echo esc_attr($min_date); ?>" data-business-start="09:00" data-business-end="19:00">
+                            <select id="ubf_preferred_time" name="preferred_time">
+                                <option value="">Preferred time (optional)</option>
+                                <?php for ($h = 9; $h <= 19; $h++) { $value = sprintf('%02d:00', $h); $display = date('g:i A', strtotime($value)); echo '<option value="' . esc_attr($value) . '">' . esc_html($display) . '</option>'; } ?>
+                            </select>
+                        </div>
+
+                        <!-- Per-service schedule list: rows will be rendered here by JS based on selected services/assigned staff -->
+                        <div id="ubf-per-service-schedule">
+                            <div class="ubf-schedule-placeholder">Select and configure services in step 1 to set schedules per service.</div>
+                        </div>
                         <div class="ubf-field-error ubf-schedule-error" style="display:none;color:#c43d3d;margin-bottom:8px"></div>
                         <textarea id="ubf_message" name="message" placeholder="Additional message"></textarea>
                         <div class="ubf-step-nav">
@@ -737,7 +744,8 @@ class UserBookingForm {
             // Query posts of type service_booking that have matching meta
             $booking_args = array(
                 'post_type' => 'service_booking',
-                'post_status' => 'publish',
+                // consider any status so pending/unpublished bookings still block the slot
+                'post_status' => 'any',
                 'posts_per_page' => -1,
                 'meta_query' => array(
                     array('key' => '_preferred_date', 'value' => $pref_date, 'compare' => '='),
@@ -1227,8 +1235,16 @@ class UserBookingForm {
         $customer_name = sanitize_text_field($_POST['customer_name']);
         $customer_email = sanitize_email($_POST['customer_email']);
         $customer_phone = sanitize_text_field($_POST['customer_phone'] ?? '');
-        $preferred_date = sanitize_text_field($_POST['preferred_date'] ?? '');
-        $preferred_time = sanitize_text_field($_POST['preferred_time'] ?? '');
+    // Support per-block schedules: preferred_date[] and preferred_time[]
+    $preferred_date_input = $_POST['preferred_date'] ?? array();
+    $preferred_time_input = $_POST['preferred_time'] ?? array();
+
+    if (!is_array($preferred_date_input)) { $preferred_date_input = array($preferred_date_input); }
+    if (!is_array($preferred_time_input)) { $preferred_time_input = array($preferred_time_input); }
+
+    // sanitize arrays
+    $preferred_dates = array_map('sanitize_text_field', $preferred_date_input);
+    $preferred_times = array_map('sanitize_text_field', $preferred_time_input);
         $message = sanitize_textarea_field($_POST['message'] ?? '');
         $payment_method = sanitize_text_field($_POST['payment_method'] ?? 'cash');
 
@@ -1698,11 +1714,44 @@ class UserBookingForm {
         $service_ids = array_map('absint', $service_input);
         $staff_ids = array_map('absint', $staff_input);
 
+    // If schedule-specific ids are submitted (from per-service schedule rows), prefer those for alignment
+    $schedule_service_input = $_POST['schedule_service_id'] ?? array();
+    if (!is_array($schedule_service_input)) { $schedule_service_input = array($schedule_service_input); }
+    $schedule_staff_input = $_POST['schedule_staff_id'] ?? array();
+    if (!is_array($schedule_staff_input)) { $schedule_staff_input = array($schedule_staff_input); }
+
+    $schedule_service_ids = array_map('absint', $schedule_service_input);
+    $schedule_staff_ids = array_map('absint', $schedule_staff_input);
+
+    // If schedule arrays are present, use them as the per-index mapping; otherwise fall back to service_ids/staff_ids
+    $use_schedule_arrays = !empty($schedule_service_ids);
+
         $customer_name = sanitize_text_field($_POST['customer_name'] ?? '');
         $customer_email = sanitize_email($_POST['customer_email'] ?? '');
         $customer_phone = sanitize_text_field($_POST['customer_phone'] ?? '');
-        $preferred_date = sanitize_text_field($_POST['preferred_date'] ?? '');
-        $preferred_time = sanitize_text_field($_POST['preferred_time'] ?? '');
+
+        // Support per-service preferred_date[] and preferred_time[] arrays. Backwards-compatible with single fields.
+        $preferred_dates_raw = $_POST['preferred_date'] ?? array();
+        $preferred_times_raw = $_POST['preferred_time'] ?? array();
+
+        if (!is_array($preferred_dates_raw)) {
+            $single = sanitize_text_field($preferred_dates_raw);
+            $preferred_dates = array_fill(0, max(1, count($service_ids)), $single);
+        } else {
+            $preferred_dates = array_map('sanitize_text_field', $preferred_dates_raw);
+        }
+
+        if (!is_array($preferred_times_raw)) {
+            $single_t = sanitize_text_field($preferred_times_raw);
+            $preferred_times = array_fill(0, max(1, count($service_ids)), $single_t);
+        } else {
+            $preferred_times = array_map('sanitize_text_field', $preferred_times_raw);
+        }
+
+        // Keep legacy scalar variables for compatibility where needed
+        $preferred_date = isset($preferred_dates[0]) ? $preferred_dates[0] : '';
+        $preferred_time = isset($preferred_times[0]) ? $preferred_times[0] : '';
+
         $message = sanitize_textarea_field($_POST['message'] ?? '');
         $payment_method = sanitize_text_field($_POST['payment_method'] ?? 'cash');
 
@@ -1714,43 +1763,152 @@ class UserBookingForm {
             wp_send_json(['success' => false, 'message' => 'Missing required fields']);
         }
 
-        // Pre-check for overlaps across all requested services/staffs to avoid partial booking creation
-        if (!empty($staff_ids) && !empty($preferred_date) && !empty($preferred_time)) {
-            foreach ($service_ids as $index => $sid) {
-                $sid = absint($sid);
-                if ($sid <= 0) continue;
+        // Debug: log the incoming arrays to help trace alignment/values (only when WP_DEBUG)
+        if ( defined('WP_DEBUG') && WP_DEBUG ) {
+            $dbg = date('Y-m-d H:i:s') . " - submit_user_booking_v3 called\n";
+            $dbg .= "POST keys: " . implode(',', array_keys($_POST)) . "\n";
+            $dbg .= "service_ids: " . print_r($service_ids, true) . "\n";
+            $dbg .= "staff_ids: " . print_r($staff_ids, true) . "\n";
+            $dbg .= "schedule_service_ids: " . print_r($schedule_service_ids, true) . "\n";
+            $dbg .= "schedule_staff_ids: " . print_r($schedule_staff_ids, true) . "\n";
+            $dbg .= "preferred_dates: " . print_r($preferred_dates, true) . "\n";
+            $dbg .= "preferred_times: " . print_r($preferred_times, true) . "\n";
+            file_put_contents(plugin_dir_path(__FILE__) . 'booking-debug.log', $dbg, FILE_APPEND);
+        }
+
+        // Pre-check for overlaps across all requested schedule rows to avoid partial booking creation
+        // Also enforce uniqueness across submitted schedule rows (server-side) mirroring frontend checks
+        $seen = array();
+        $conflict_rows = array();
+        $conflict_existing = array(); // map index => existing booking id
+        $loopCount = $use_schedule_arrays ? count($schedule_service_ids) : count($service_ids);
+        for ($index = 0; $index < $loopCount; $index++) {
+            $sid = $use_schedule_arrays ? intval($schedule_service_ids[$index]) : intval($service_ids[$index] ?? 0);
+            if ($sid <= 0) continue;
+
+            $staff_for_index = $use_schedule_arrays ? intval($schedule_staff_ids[$index] ?? 0) : intval($staff_ids[$index] ?? 0);
+            $date_for_index = $preferred_dates[$index] ?? '';
+            $time_for_index = $preferred_times[$index] ?? '';
+
+            // if both date and time provided, validate
+            if ($staff_for_index && $date_for_index && $time_for_index) {
+                $keyStaff = 'staff|' . $staff_for_index . '|' . $date_for_index . '|' . $time_for_index;
+                $keyServiceStaff = 'service|' . $sid . '|' . $staff_for_index . '|' . $date_for_index . '|' . $time_for_index;
+
+                // check duplicates in request
+                if (isset($seen[$keyStaff])) {
+                    // mark current and previous indices as conflicting
+                    $conflict_rows[] = $index;
+                    foreach ($seen[$keyStaff] as $prevIndex) { $conflict_rows[] = $prevIndex; }
+                }
+                if (isset($seen[$keyServiceStaff])) {
+                    $conflict_rows[] = $index;
+                    foreach ($seen[$keyServiceStaff] as $prevIndex) { $conflict_rows[] = $prevIndex; }
+                }
+
+                // record index
+                if (!isset($seen[$keyStaff])) $seen[$keyStaff] = array();
+                $seen[$keyStaff][] = $index;
+                if (!isset($seen[$keyServiceStaff])) $seen[$keyServiceStaff] = array();
+                $seen[$keyServiceStaff][] = $index;
 
                 // Determine duration for this service
                 $s_duration = get_post_meta($sid, '_service_duration', true) ?: get_post_meta($sid, 'service_duration', true);
                 $s_minutes = $this->duration_to_minutes($s_duration);
 
-                $staff_for_index = isset($staff_ids[$index]) ? intval($staff_ids[$index]) : 0;
-                if ($staff_for_index <= 0) continue;
-
-                $conflict_bid = $this->staff_has_overlap($staff_for_index, $preferred_date, $preferred_time, $s_minutes);
+                $conflict_bid = $this->staff_has_overlap($staff_for_index, $date_for_index, $time_for_index, $s_minutes);
+                if ( defined('WP_DEBUG') && WP_DEBUG ) {
+                    file_put_contents(plugin_dir_path(__FILE__) . 'booking-debug.log', date('Y-m-d H:i:s') . " - idx={$index} sid={$sid} staff={$staff_for_index} date={$date_for_index} time={$time_for_index} dur={$s_minutes} conflict_bid=" . print_r($conflict_bid, true) . "\n", FILE_APPEND);
+                }
                 if ($conflict_bid) {
-                    file_put_contents(
-                        plugin_dir_path(__FILE__) . 'booking-debug.log',
-                        date('Y-m-d H:i:s') . " - Overlap detected (v3) for staff_id={$staff_for_index} service_id={$sid} date={$preferred_date} time={$preferred_time} conflict_booking_id={$conflict_bid}\n",
-                        FILE_APPEND
-                    );
-
-                    wp_send_json([
-                        'success' => false,
-                        'message' => 'One or more requested bookings conflict with existing appointments (overlap). Please change the date/time or choose another staff.'
-                    ]);
+                    $conflict_rows[] = $index;
+                    $conflict_existing[$index] = $conflict_bid;
                 }
             }
         }
 
-        $created = array();
+        // If we collected duplicates or overlaps already, respond with indices
+        if (!empty($conflict_rows)) {
+            // make unique & reindex
+            $conflict_rows = array_values(array_unique($conflict_rows));
+            wp_send_json([
+                'success' => false,
+                'message' => 'One or more schedule rows conflict (either duplicate selections or overlap with existing bookings). Please review the highlighted schedule entries.',
+                'conflict_rows' => $conflict_rows,
+                'conflict_existing' => $conflict_existing
+            ]);
+        }
 
-        foreach ($service_ids as $index => $service_id) {
+        // Final strict de-duplication guard: ensure no two rows in the request are identical
+        $strict_seen = array();
+        $strict_conflicts = array();
+        $loopCount2 = $use_schedule_arrays ? count($schedule_service_ids) : count($service_ids);
+        for ($i = 0; $i < $loopCount2; $i++) {
+            $sid_i = $use_schedule_arrays ? intval($schedule_service_ids[$i]) : intval($service_ids[$i] ?? 0);
+            $staff_i = $use_schedule_arrays ? intval($schedule_staff_ids[$i] ?? 0) : intval($staff_ids[$i] ?? 0);
+            $date_i = $preferred_dates[$i] ?? '';
+            $time_i = $preferred_times[$i] ?? '';
+            if (!$staff_i || !$date_i || !$time_i) continue; // only consider fully-specified schedule rows
+
+            $kStaff = $staff_i . '|' . $date_i . '|' . $time_i;
+            $kServiceStaff = $sid_i . '|' . $staff_i . '|' . $date_i . '|' . $time_i;
+
+            if (isset($strict_seen['staff'][$kStaff])) {
+                $strict_conflicts[] = $i;
+                $strict_conflicts[] = $strict_seen['staff'][$kStaff];
+            } else {
+                $strict_seen['staff'][$kStaff] = $i;
+            }
+
+            if ($sid_i && isset($strict_seen['service_staff'][$kServiceStaff])) {
+                $strict_conflicts[] = $i;
+                $strict_conflicts[] = $strict_seen['service_staff'][$kServiceStaff];
+            } else {
+                $strict_seen['service_staff'][$kServiceStaff] = $i;
+            }
+        }
+        if (!empty($strict_conflicts)) {
+            $strict_conflicts = array_values(array_unique($strict_conflicts));
+            if ( defined('WP_DEBUG') && WP_DEBUG ) {
+                file_put_contents(plugin_dir_path(__FILE__) . 'booking-debug.log', date('Y-m-d H:i:s') . " - strict duplicate guard fired indices: " . print_r($strict_conflicts, true) . "\n", FILE_APPEND);
+            }
+            wp_send_json([
+                'success' => false,
+                'message' => 'Duplicate schedule rows detected in your request. Please remove duplicates and try again.',
+                'conflict_rows' => $strict_conflicts
+            ]);
+        }
+
+        // Create a shared group key so each created booking post can be associated together
+        $group_key = uniqid('group_', true);
+        $created = array();
+        $createLoop = $use_schedule_arrays ? $schedule_service_ids : $service_ids;
+        $leader_id = 0;
+
+        foreach ($createLoop as $index => $service_id) {
             $service_id = absint($service_id);
             if ($service_id <= 0) continue;
 
-            $staff_id = isset($staff_ids[$index]) && $staff_ids[$index] ? intval($staff_ids[$index]) : null;
+            $staff_id = $use_schedule_arrays ? (isset($schedule_staff_ids[$index]) && $schedule_staff_ids[$index] ? intval($schedule_staff_ids[$index]) : 0) : (isset($staff_ids[$index]) && $staff_ids[$index] ? intval($staff_ids[$index]) : 0);
 
+            // Validate staff id: ensure it references a staff CPT. If not, treat as "Any available staff" and do not persist a wrong post id
+            $validated_staff_id = 0;
+            $staff_name_to_save = '';
+            if ($staff_id) {
+                $maybe = get_post(intval($staff_id));
+                // Accept the id as staff if it's not a booking/service post and it's not trashed.
+                if ($maybe && isset($maybe->post_type) && $maybe->post_status !== 'trash' && !in_array($maybe->post_type, array('service_booking','service'))) {
+                    $validated_staff_id = intval($staff_id);
+                    $staff_name_to_save = get_the_title($validated_staff_id);
+                } else {
+                    // Invalid staff reference (could be a booking id or legacy id). Don't save as staff_id.
+                    $validated_staff_id = 0;
+                    $staff_name_to_save = 'Any available staff';
+                }
+            } else {
+                $validated_staff_id = 0;
+                $staff_name_to_save = 'Any available staff';
+            }
             $post_id = wp_insert_post([
                 'post_type' => 'service_booking',
                 'post_title' => $customer_name . ' - Booking',
@@ -1759,19 +1917,40 @@ class UserBookingForm {
             ]);
 
             if (is_wp_error($post_id) || !$post_id) {
-                // skip failed inserts but continue with others
-                continue;
+                // rollback any previously created posts for this group to keep atomicity
+                if (!empty($created)) {
+                    foreach ($created as $c) { wp_delete_post($c, true); }
+                }
+                wp_send_json(['success' => false, 'message' => 'Failed to create booking entries. No bookings were saved.']);
             }
 
-            // Save meta for this booking
+            // Save meta for this booking; use per-index schedule if provided
+            $date_for_index = $preferred_dates[$index] ?? '';
+            $time_for_index = $preferred_times[$index] ?? '';
+
             update_post_meta($post_id, '_service_id', $service_id);
             update_post_meta($post_id, '_customer_name', $customer_name);
             update_post_meta($post_id, '_customer_email', $customer_email);
             update_post_meta($post_id, '_customer_phone', $customer_phone);
-            update_post_meta($post_id, '_preferred_date', $preferred_date);
-            update_post_meta($post_id, '_preferred_time', $preferred_time);
+            if ($date_for_index) update_post_meta($post_id, '_preferred_date', $date_for_index);
+            if ($time_for_index) update_post_meta($post_id, '_preferred_time', $time_for_index);
             update_post_meta($post_id, '_payment_method', $payment_method);
-            if ($staff_id) update_post_meta($post_id, '_staff_id', $staff_id);
+            // Persist a safe staff id and the staff name snapshot so the admin UI can always display a reliable label
+            if ($validated_staff_id) {
+                update_post_meta($post_id, '_staff_id', $validated_staff_id);
+            } else {
+                // ensure meta is cleared for no-selection
+                update_post_meta($post_id, '_staff_id', 0);
+            }
+            // Always save the staff name snapshot (so admin view remains consistent even if staff CPT is later removed)
+            update_post_meta($post_id, '_staff_name', sanitize_text_field($staff_name_to_save));
+
+            // attach group metadata
+            update_post_meta($post_id, '_group_booking_key', $group_key);
+            if (!$leader_id) {
+                $leader_id = $post_id;
+            }
+            update_post_meta($post_id, '_group_parent', $leader_id);
 
             $created[] = $post_id;
         }
@@ -1780,9 +1959,115 @@ class UserBookingForm {
             wp_send_json(['success' => false, 'message' => 'Failed to create any bookings']);
         }
 
-        $response = ['success' => true, 'message' => 'Bookings created', 'bookings' => $created];
+        $response = ['success' => true, 'message' => 'Bookings created', 'bookings' => $created, 'group_key' => $group_key];
         if (count($created) === 1) { $response['id'] = $created[0]; }
         wp_send_json($response);
+    }
+
+    /**
+     * AJAX endpoint: check availability for a proposed schedule without creating bookings.
+     * Expects the same schedule arrays as submit_user_booking_v3: schedule_service_id[], schedule_staff_id[], preferred_date[], preferred_time[]
+     * Returns { success: false, conflict_rows: [...], conflict_existing: { index: existing_booking_id, ... }, message }
+     */
+    public function check_schedule_availability_v3() {
+        // Basic request guard
+        if ( ! isset($_POST) || empty($_POST) ) {
+            wp_send_json(['success' => false, 'message' => 'No schedule provided']);
+        }
+
+        // Extract arrays similarly to submit_user_booking_v3
+        $schedule_service_ids = isset($_POST['schedule_service_id']) && is_array($_POST['schedule_service_id']) ? $_POST['schedule_service_id'] : array();
+        $schedule_staff_ids = isset($_POST['schedule_staff_id']) && is_array($_POST['schedule_staff_id']) ? $_POST['schedule_staff_id'] : array();
+        $preferred_dates = isset($_POST['preferred_date']) && is_array($_POST['preferred_date']) ? $_POST['preferred_date'] : array();
+        $preferred_times = isset($_POST['preferred_time']) && is_array($_POST['preferred_time']) ? $_POST['preferred_time'] : array();
+
+        // Normalize lengths: use service ids as the driver
+        $len = count($schedule_service_ids);
+        if ($len === 0) {
+            wp_send_json(['success' => true, 'message' => 'No services selected']);
+        }
+
+    // Basic per-row validation and duplicate detection (intra-request)
+    $seen = array();
+    $conflicts = array();
+    $conflict_items = array();
+    $conflict_existing = array();
+    $strict_seen = array('service_staff' => array());
+    $strict_conflicts = array();
+
+        for ($i = 0; $i < $len; $i++) {
+            $svc = absint($schedule_service_ids[$i]);
+            $staff = isset($schedule_staff_ids[$i]) ? intval($schedule_staff_ids[$i]) : 0;
+            $date = isset($preferred_dates[$i]) ? trim($preferred_dates[$i]) : '';
+            $time = isset($preferred_times[$i]) ? trim($preferred_times[$i]) : '';
+
+            // skip incomplete blocks (no staff chosen) — these are not checked here
+            if (!$staff || !$date || !$time) continue;
+
+            // intra-request strict duplicate guard: same service+staff+date+time
+            $kServiceStaff = sprintf('%d|%d|%s|%s', $svc, $staff, $date, $time);
+            if (isset($strict_seen['service_staff'][$kServiceStaff])) {
+                $strict_conflicts[] = $i;
+                $strict_conflicts[] = $strict_seen['service_staff'][$kServiceStaff];
+            } else {
+                $strict_seen['service_staff'][$kServiceStaff] = $i;
+            }
+
+            // server-side overlap check: reuse staff_has_overlap if available
+            if (method_exists($this, 'staff_has_overlap')) {
+                // Determine duration: try to read from service meta if possible
+                $duration = 0;
+                if ($svc) {
+                    $duration = intval(get_post_meta($svc, 'service_duration', true)) ?: 0;
+                }
+                $overlap = $this->staff_has_overlap($staff, $date, $time, $duration);
+                if ($overlap) {
+                    // staff_has_overlap expected to return existing booking id or truthy; map to booking id when available
+                    $conflicts[] = $i;
+                    $conflict_existing[$i] = is_numeric($overlap) ? intval($overlap) : 0;
+                    // also build a descriptive conflict item so client can match rows robustly
+                    $conflict_items[] = array(
+                        'original_index' => $i,
+                        'service_id' => $svc,
+                        'staff_id' => $staff,
+                        'date' => $date,
+                        'time' => $time,
+                        'existing' => isset($conflict_existing[$i]) ? intval($conflict_existing[$i]) : 0
+                    );
+                }
+            }
+        }
+
+        if (!empty($strict_conflicts)) {
+            $strict_conflicts = array_values(array_unique($strict_conflicts));
+            // build descriptive items for strict conflicts
+            $items = array();
+            foreach ($strict_conflicts as $si) {
+                $svc = isset($schedule_service_ids[$si]) ? absint($schedule_service_ids[$si]) : 0;
+                $staff = isset($schedule_staff_ids[$si]) ? intval($schedule_staff_ids[$si]) : 0;
+                $date = isset($preferred_dates[$si]) ? trim($preferred_dates[$si]) : '';
+                $time = isset($preferred_times[$si]) ? trim($preferred_times[$si]) : '';
+                $items[] = array('original_index' => $si, 'service_id' => $svc, 'staff_id' => $staff, 'date' => $date, 'time' => $time);
+            }
+            wp_send_json([
+                'success' => false,
+                'message' => 'Duplicate schedule rows detected in your request. Please remove duplicates and try again.',
+                'conflict_rows' => $strict_conflicts,
+                'conflict_items' => $items
+            ]);
+        }
+
+        if (!empty($conflicts)) {
+            wp_send_json([
+                'success' => false,
+                'message' => 'Some selected slots are already taken',
+                'conflict_rows' => array_values(array_unique($conflicts)),
+                'conflict_items' => $conflict_items,
+                'conflict_existing' => isset($conflict_existing) ? $conflict_existing : array()
+            ]);
+        }
+
+        wp_send_json(['success' => true, 'message' => 'Slots available']);
     }
 }
 

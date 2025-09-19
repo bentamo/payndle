@@ -2,10 +2,10 @@
 .fc-error a{color:#2b9f6f;font-weight:700;text-decoration:none}
 
 .staff-timetable {
-	display: inline-block;
+	display: block;
 	vertical-align: top;
-	max-width: 1100px;
-	margin: 0;
+	max-width: 1200px;
+	margin: 0 auto;
 }
 .staff-timetable .timetable-header{
 	display:flex;
@@ -17,15 +17,65 @@
 .staff-timetable .timetable-header h3
 .staff-row {
 	display: flex;
-	gap: 20px;
+	gap: 24px;
+	align-items: flex-start;
+}
+
+/* Stronger specificity to prevent parent/theme styles from breaking the two-column layout */
+.staff-timetable.staff-row {
+	display: -webkit-box !important;
+	display: -ms-flexbox !important;
+	display: flex !important;
+	-webkit-box-align: start !important;
+	-ms-flex-align: start !important;
+	align-items: flex-start !important;
+	gap: 24px !important;
 }
 
 .staff-list-column {
-	width: 280px;
+	width: 320px;
+	flex: 0 0 320px;
+	min-width: 220px;
 }
 
 .staff-calendar-column {
-	flex: 1 1 auto;
+	flex: 1 1 0;
+	/* allow the calendar to shrink more in constrained layouts */
+	min-width: 320px;
+}
+
+/* Prevent the two columns from wrapping onto separate lines in most desktop layouts */
+.staff-row {
+	flex-wrap: nowrap !important;
+}
+
+/* Ensure calendar uses full width of the right column and doesn't overflow */
+.staff-calendar-column .staff-calendar {
+	box-sizing: border-box !important;
+	width: 100% !important;
+}
+
+/* Right pane box that visually contains the calendar and floats to the right */
+.staff-calendar-box {
+	float: right;
+	width: 68%; /* use percentage so it adapts to container width */
+	max-width: 920px;
+	min-width: 360px;
+	margin-left: 16px;
+	box-sizing: border-box;
+}
+
+/* Make boxed layout look like a panel */
+.staff-calendar-box .staff-calendar, .staff-calendar-box .timetable-header {
+	background: #fff;
+	border-radius: 10px;
+	box-shadow: 0 8px 20px rgba(12,25,48,0.06);
+	border: 1px solid rgba(12,25,48,0.04);
+}
+
+@media (max-width: 1000px) {
+	.staff-calendar-box { width: 100%; float: none; min-width: 0; max-width: none; margin-left: 0; }
+	.staff-list-column { width: 100%; flex: 1 1 auto; }
 }
 
 .staff-selector-grid {
@@ -73,10 +123,10 @@
 .staff-card-expander-close { float: right; background: var(--ubf-accent,#2b8ee8); color: #fff; border: none; padding:6px 10px; border-radius:4px; cursor:pointer; }
 .staff-card-calendar { min-height: 360px; margin-top: 8px; }
 
-@media (max-width: 800px) {
+@media (max-width: 900px) {
 	.staff-row { flex-direction: column; }
-	.staff-list-column { width: 100%; }
-	.staff-calendar-column { width: 100%; }
+	.staff-list-column { width: 100%; flex: 1 1 auto; }
+	.staff-calendar-column { width: 100%; min-width: 0; }
 }
 .staff-timetable .timetable-controls a{
 	margin-left:8px;

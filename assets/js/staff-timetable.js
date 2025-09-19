@@ -12,7 +12,9 @@ document.addEventListener('DOMContentLoaded', function() {
   // helper to create calendar in a given element for a particular staffId
   var calendar = null;
   function createCalendar(el, staffId) {
-    if (calendar) { calendar.destroy(); calendar = null; }
+    if (calendar) { try{ calendar.destroy(); }catch(e){} calendar = null; }
+    // ensure element is visible for proper rendering
+    if (el.style) el.style.display = 'block';
     calendar = new FullCalendar.Calendar(el, {
       initialView: 'timeGridWeek',
       headerToolbar: {
@@ -37,13 +39,19 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
     calendar.render();
+    // sometimes FullCalendar calculates sizes before layout is final
+    // force a size recalculation immediately and after a short delay
+    try { if (typeof calendar.updateSize === 'function') calendar.updateSize(); } catch (e) { /* ignore */ }
+    setTimeout(function(){ try { if (calendar && typeof calendar.updateSize === 'function') calendar.updateSize(); } catch(e){} }, 120);
     return calendar;
   }
   
 
   // If a calendar container exists on initial load and has a staffId, instantiate it
   if (calendarContainer && staffId) {
-    createCalendar(calendarContainer, staffId);
+    var _initial = createCalendar(calendarContainer, staffId);
+    // ensure layout is correct after page paint
+    setTimeout(function(){ try{ if (_initial && typeof _initial.updateSize === 'function') _initial.updateSize(); }catch(e){} }, 200);
   }
 
   // Spinner controls
@@ -55,176 +63,101 @@ document.addEventListener('DOMContentLoaded', function() {
     spinner.style.display = show ? 'block' : 'none';
   }
 
-  // Attach click handlers to staff cards for inline selection
+  // Attach click handlers to staff cards to load the timetable into the right column
   var staffCards = document.querySelectorAll('.staff-card[data-staff-id]');
   if (staffCards && staffCards.length) {
-    // ensure an inline calendar container exists below the selector
-    var selector = document.querySelector('.staff-selector');
-    if (selector) {
-      // Dynamic delegation: handle clicks on staff cards, including ones added later
-      document.addEventListener('click', function(e) {
-          var card = e.target.closest && e.target.closest('.staff-card[data-staff-id]');
-          if (!card) return;
-          // If user holds ctrl/meta or middle-click, allow opening in new tab
-          if (e.ctrlKey || e.metaKey || e.button === 1) return;
-          e.preventDefault();
-          var staffId = card.getAttribute('data-staff-id');
-        // In-block mode: insert an expander panel after the clicked card and mount calendar there
-        // Remove any existing expander
-        document.querySelectorAll('.staff-card-expander').forEach(function(el){ if (el._calendar) { el._calendar.destroy(); } el.remove(); });
-        // unselect other cards
+    // Dynamic delegation: handle clicks on staff cards, including ones added later
+    document.addEventListener('click', function(e) {
+        var card = e.target.closest && e.target.closest('.staff-card[data-staff-id]');
+        if (!card) return;
+        // If user holds ctrl/meta or middle-click, allow opening in new tab
+        if (e.ctrlKey || e.metaKey || e.button === 1) return;
+        // Prevent full navigation
+        e.preventDefault();
+        var staffId = card.getAttribute('data-staff-id');
+
+        // mark selection
         document.querySelectorAll('.staff-card.selected').forEach(function(c){ c.classList.remove('selected'); });
         card.classList.add('selected');
 
-        // hide the right-column calendar (we're using in-block now)
+        // Prepare right column
         var calendarColumn = document.querySelector('.staff-calendar-column');
-        if (calendarColumn) {
-          var rc = calendarColumn.querySelector('.staff-calendar');
-          var placeholder = calendarColumn.querySelector('.staff-calendar-placeholder');
-          if (rc && rc._calendar) { rc._calendar.destroy(); rc._calendar = null; }
-          if (rc) rc.style.display = 'none';
-          if (placeholder) placeholder.style.display = 'none';
-          var rightClose = calendarColumn.querySelector('.staff-calendar-close'); if (rightClose) rightClose.style.display = 'none';
+        if (!calendarColumn) return;
+        var placeholder = calendarColumn.querySelector('.staff-calendar-placeholder');
+        var calEl = calendarColumn.querySelector('.staff-calendar');
+        if (placeholder) placeholder.style.display = 'none';
+        if (calEl) {
+          calEl.style.display = 'block';
+          calEl.setAttribute('data-staff-id', staffId);
+        }
+        var closeBtn = calendarColumn.querySelector('.staff-calendar-close');
+        if (closeBtn) closeBtn.style.display = 'inline-block';
+
+        // create or re-create calendar in right column
+        if (calEl) {
+          if (calEl._calendar) { try{ calEl._calendar.destroy(); }catch(e){} calEl._calendar = null; }
+          calEl._calendar = createCalendar(calEl, staffId);
         }
 
-        var exp = document.createElement('div');
-        exp.className = 'staff-card-expander';
-        exp.setAttribute('data-staff-id', staffId);
-        var expInner = document.createElement('div');
-        expInner.className = 'staff-card-expander-inner';
-        // close button
-        var closeBtn = document.createElement('button');
-        closeBtn.className = 'staff-card-expander-close';
-        closeBtn.textContent = 'Close';
+        // push state for deep linking
+        if (window.history && window.history.pushState) {
+          var url = new URL(window.location.href);
+          url.searchParams.set('staff_id', staffId);
+          window.history.pushState({staff_id: staffId}, '', url.toString());
+        }
+    });
+
+    // close button behavior and Esc key handling for right column
+    (function(){
+      var closeBtn = document.querySelector('.staff-calendar-close');
+      if (closeBtn) {
         closeBtn.addEventListener('click', function(){
-          if (exp._calendar) { exp._calendar.destroy(); exp._calendar = null; }
-          exp.remove();
-          card.classList.remove('selected');
-          // restore right-column placeholder
-          if (calendarColumn && placeholder) placeholder.style.display = 'block';
+          var calendarColumn = document.querySelector('.staff-calendar-column');
+          if (!calendarColumn) return;
+          var calEl = calendarColumn.querySelector('.staff-calendar');
+          var placeholder = calendarColumn.querySelector('.staff-calendar-placeholder');
+          if (calEl && calEl._calendar) { try{ calEl._calendar.destroy(); }catch(e){} calEl._calendar = null; }
+          if (calEl) { calEl.style.display = 'none'; calEl.removeAttribute('data-staff-id'); }
+          if (placeholder) { placeholder.style.display = 'block'; }
+          closeBtn.style.display = 'none';
+          // remove staff_id param from url
           if (window.history && window.history.pushState) {
             var url = new URL(window.location.href);
             url.searchParams.delete('staff_id');
             window.history.pushState({}, '', url.toString());
           }
+          // unselect any card
+          document.querySelectorAll('.staff-card.selected').forEach(function(c){ c.classList.remove('selected'); });
         });
-        expInner.appendChild(closeBtn);
-        var calWrap = document.createElement('div'); calWrap.className = 'staff-card-calendar';
-        expInner.appendChild(calWrap);
-        exp.appendChild(expInner);
-
-        // insert expander after the card
-        card.parentNode.insertBefore(exp, card.nextSibling);
-        // mount calendar
-        var inst = createCalendar(calWrap, staffId);
-        exp._calendar = inst;
-        calWrap._calendar = inst;
-
-      // push state for deep linking
-      if (window.history && window.history.pushState) {
-        var url = new URL(window.location.href);
-        url.searchParams.set('staff_id', staffId);
-        window.history.pushState({staff_id: staffId}, '', url.toString());
       }
-
-      // show right-column close control (if visible) and focus for accessibility
-      var rightCloseBtn = document.querySelector('.staff-calendar-close');
-      if (rightCloseBtn && rightCloseBtn.style.display !== 'inline-block') {
-        rightCloseBtn.style.display = 'none';
-      }
+      document.addEventListener('keydown', function(e){
+        if (e.key === 'Escape' || e.key === 'Esc') {
+          var closeBtn = document.querySelector('.staff-calendar-close');
+          if (closeBtn && closeBtn.style.display !== 'none') closeBtn.click();
+        }
       });
+    })();
 
-      // handle browser back/forward to open/close inline calendar based on staff_id param
-      window.addEventListener('popstate', function(e) {
-          var params = new URL(window.location.href).searchParams;
-          var sid = params.get('staff_id');
-          var existing = document.querySelector('.staff-calendar-inline');
-          if (sid) {
-              // open if not open or different
-              if (!existing || (existing && existing.getAttribute('data-staff-id') !== sid)) {
-                  if (existing) existing.remove();
-                  var selector = document.querySelector('.staff-selector');
-                  if (!selector) return;
-                  var inline = document.createElement('div');
-                  inline.className = 'staff-calendar-inline';
-                  inline.setAttribute('data-staff-id', sid);
-                  var close = document.createElement('button');
-                  close.className = 'staff-calendar-close';
-                  close.textContent = 'Close';
-                  close.addEventListener('click', function() {
-                      if (inline._calendar) {
-                          inline._calendar.destroy();
-                          inline._calendar = null;
-                      }
-                      inline.remove();
-                      var url = new URL(window.location.href);
-                      url.searchParams.delete('staff_id');
-                      window.history.pushState({}, '', url.toString());
-                  });
-                  inline.appendChild(close);
-                  selector.parentNode.insertBefore(inline, selector.nextSibling);
-                  createCalendar(inline, sid);
-              }
-          } else {
-              // no staff_id -> close existing
-              if (existing) existing.remove();
-              var closeBtn = document.querySelector('.staff-calendar-close');
-              if (closeBtn) closeBtn.style.display = 'none';
-          }
-      });
-
-      // close button behavior and Esc key handling
-      (function(){
-        var closeBtn = document.querySelector('.staff-calendar-close');
-        if (closeBtn) {
-          closeBtn.addEventListener('click', function(){
-            var calendarColumn = document.querySelector('.staff-calendar-column');
-            if (!calendarColumn) return;
-            var calEl = calendarColumn.querySelector('.staff-calendar');
-            var placeholder = calendarColumn.querySelector('.staff-calendar-placeholder');
-            if (calEl && calEl._calendar) { calEl._calendar.destroy(); calEl._calendar = null; }
-            if (calEl) { calEl.style.display = 'none'; calEl.removeAttribute('data-staff-id'); }
-            if (placeholder) { placeholder.style.display = 'block'; }
-            closeBtn.style.display = 'none';
-            // remove staff_id param from url
-            if (window.history && window.history.pushState) {
-              var url = new URL(window.location.href);
-              url.searchParams.delete('staff_id');
-              window.history.pushState({}, '', url.toString());
-            }
-          });
-        }
-        document.addEventListener('keydown', function(e){
-          if (e.key === 'Escape' || e.key === 'Esc') {
-            var closeBtn = document.querySelector('.staff-calendar-close');
-            if (closeBtn && closeBtn.style.display !== 'none') closeBtn.click();
-          }
-        });
-      })();
-
-      // Auto-open calendar if ?staff_id=... on initial load
-      (function(){
-        var params = new URL(window.location.href).searchParams;
-        var sid = params.get('staff_id');
-        if (sid) {
-          // try to find the matching card and simulate a click
-          var card = document.querySelector('.staff-card[data-staff-id="' + sid + '"]');
-          if (card) { card.click(); }
-          else {
-            // if card not present (e.g., rendered later), still mount calendar directly
-            var calendarColumn = document.querySelector('.staff-calendar-column');
-            if (!calendarColumn) return;
-            var placeholder = calendarColumn.querySelector('.staff-calendar-placeholder');
-            var calEl = calendarColumn.querySelector('.staff-calendar');
-            if (placeholder) placeholder.style.display = 'none';
-            if (calEl) { calEl.style.display = 'block'; calEl.setAttribute('data-staff-id', sid); calEl._calendar = createCalendar(calEl, sid); }
-            var closeBtn = document.querySelector('.staff-calendar-close');
-            if (closeBtn) closeBtn.style.display = 'inline-block';
-          }
-        }
-      })();
-
+    // Auto-open calendar if ?staff_id=... on initial load
+    (function(){
+      var params = new URL(window.location.href).searchParams;
+      var sid = params.get('staff_id');
+      if (sid) {
+        // try to find the matching card and simulate a click
+        var card = document.querySelector('.staff-card[data-staff-id="' + sid + '"]');
+        var calendarColumn = document.querySelector('.staff-calendar-column');
+        var placeholder = calendarColumn ? calendarColumn.querySelector('.staff-calendar-placeholder') : null;
+        var calEl = calendarColumn ? calendarColumn.querySelector('.staff-calendar') : null;
+        if (card) { card.click(); }
+        else if (calEl && calendarColumn) {
+          if (placeholder) placeholder.style.display = 'none';
+          calEl.style.display = 'block';
+          calEl.setAttribute('data-staff-id', sid);
+          calEl._calendar = createCalendar(calEl, sid);
+          var close = document.querySelector('.staff-calendar-close'); if (close) close.style.display = 'inline-block';
         }
       }
+    })();
 
+  }
     });
