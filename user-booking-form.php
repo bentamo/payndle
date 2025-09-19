@@ -1231,6 +1231,61 @@ class UserBookingForm {
         $preferred_time = sanitize_text_field($_POST['preferred_time'] ?? '');
         $message = sanitize_textarea_field($_POST['message'] ?? '');
         $payment_method = sanitize_text_field($_POST['payment_method'] ?? 'cash');
+
+        // Normalize preferred_date to Y-m-d where possible
+        if (!empty($preferred_date)) {
+            $norm = null;
+            // numeric timestamp
+            if (is_numeric($preferred_date)) {
+                $ts = intval($preferred_date);
+                if ($ts > 10000000000) { $ts = intval($ts / 1000); }
+                try {
+                    $dt = new DateTime('@' . $ts);
+                    $dt->setTimezone(new DateTimeZone(date_default_timezone_get()));
+                    $norm = $dt->format('Y-m-d');
+                } catch (Exception $e) { $norm = null; }
+            }
+            // common date formats
+            if (!$norm) {
+                $formats = array('Y-m-d','d/m/Y','d-m-Y','d.m.Y','m/d/Y');
+                foreach ($formats as $f) {
+                    $d = DateTime::createFromFormat($f, $preferred_date);
+                    if ($d instanceof DateTime) { $norm = $d->format('Y-m-d'); break; }
+                }
+            }
+            // try generic parse
+            if (!$norm) {
+                try { $d = new DateTime($preferred_date); $norm = $d->format('Y-m-d'); } catch (Exception $e) { $norm = null; }
+            }
+            if ($norm) $preferred_date = $norm;
+        }
+
+        // Normalize preferred_time to HH:MM (24-hour) where possible
+        if (!empty($preferred_time)) {
+            $t = trim($preferred_time);
+            $normt = null;
+            // try parse with DateTime
+            try {
+                $dt = new DateTime($t);
+                $normt = $dt->format('H:i');
+            } catch (Exception $e) {
+                // try strtotime fallback
+                $ts = strtotime($t);
+                if ($ts !== false) { $normt = date('H:i', $ts); }
+            }
+            // numeric like 900 or 0900
+            if (!$normt && is_numeric($t)) {
+                $num = intval($t);
+                if ($num >= 100) {
+                    $h = intval(floor($num / 100));
+                    $m = $num % 100;
+                    $normt = sprintf('%02d:%02d', $h, $m);
+                } else {
+                    $normt = sprintf('%02d:00', $num);
+                }
+            }
+            if ($normt) $preferred_time = $normt;
+        }
         
         file_put_contents(
             plugin_dir_path(__FILE__) . 'booking-debug.log', 

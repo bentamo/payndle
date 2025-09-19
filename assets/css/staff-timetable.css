@@ -2,31 +2,35 @@
 .fc-error a{color:#2b9f6f;font-weight:700;text-decoration:none}
 
 .staff-timetable{
+	--ubf-accent: #2ca77a;
 	font-family: Inter, system-ui, 'Segoe UI', Roboto, Arial, sans-serif;
 	background: #ffffff;
-	padding: 20px;
-	border: 1px solid #eef2f5;
-	border-radius: 10px;
-	box-shadow: 0 6px 18px rgba(12,25,48,0.04);
+	padding: 24px;
+	border: 1px solid rgba(12,25,48,0.06);
+	border-radius: 12px;
+	box-shadow: 0 10px 28px rgba(12,25,48,0.05);
 	overflow-x: auto;
+	max-width: 1100px;
+	margin: 22px auto;
 }
 .staff-timetable .timetable-header{
 	display:flex;
 	justify-content:space-between;
 	align-items:center;
-	margin-bottom:16px;
+	gap:12px;
+	margin-bottom:18px;
 }
 .staff-timetable .timetable-header h3{
 	margin:0;
-	font-size:1.15rem;
-	font-weight:700;
-	color:#0c1930;
+	font-size:1.25rem;
+	font-weight:800;
+	color:#0f2430;
 }
 .staff-timetable .timetable-controls a{
 	margin-left:8px;
-	color:#2b9f6f;
+	color:var(--ubf-accent);
 	text-decoration:none;
-	font-weight:600;
+	font-weight:700;
 }
 .timetable-grid{
 	width:100%;
@@ -65,11 +69,11 @@
 .slot-col .booked{display:flex;flex-direction:column;gap:6px;align-items:center}
 .booking-item{
 	display:inline-block;
-	padding:8px 10px;
-	border-radius:8px;
-	background:#fff;
-	border:1px solid #e6eef2;
-	color:#0c1930;
+	padding:10px 12px;
+	border-radius:10px;
+	background:var(--ubf-accent);
+	border:1px solid rgba(0,0,0,0.04);
+	color:#fff;
 	font-size:0.95rem;
 	width:100%;
 	box-sizing:border-box;
@@ -77,14 +81,78 @@
 
 /* Staff selector (when no staff chosen) */
 .staff-selector{padding:6px 2px}
-.staff-selector-grid{display:flex;flex-wrap:wrap;gap:12px}
-.staff-card{display:inline-flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:#fff;border:1px solid #eef2f5;text-decoration:none;color:inherit}
-.staff-avatar{width:48px;height:48px;border-radius:50%;object-fit:cover}
-.staff-avatar-initial{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#64C493,#4FB07A);color:#fff;font-weight:700}
-.staff-name{font-weight:700}
+.staff-selector-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;align-items:start;justify-items:center;padding-top:6px}
+.staff-card{display:flex;flex-direction:column;align-items:center;gap:12px;padding:18px;min-height:140px;border-radius:12px;background:#fff;border:1px solid rgba(12,25,48,0.06);text-decoration:none;color:inherit;box-shadow:0 6px 14px rgba(12,25,48,0.04);transition:transform .14s ease,box-shadow .14s ease;width:100%;max-width:320px}
+.staff-card:focus, .staff-card:hover{transform:translateY(-4px);box-shadow:0 14px 30px rgba(12,25,48,0.08);outline:none}
+.staff-avatar{width:84px;height:84px;border-radius:50%;object-fit:cover}
+.staff-avatar-initial{width:84px;height:84px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--ubf-accent),#4FB07A);color:#fff;font-weight:800;font-size:26px}
+.staff-name{font-weight:800;text-align:center;font-size:1.05rem}
 
 @media(max-width:900px){
 	.time-col{width:88px}
 	.timetable-grid thead th, .timetable-grid tbody td{padding:8px;font-size:13px}
 	.staff-card{width:100%}
+}
+
+/* Enhanced UI: stronger border, nicer header and calendar container */
+.staff-timetable {
+	border: 1px solid rgba(12,25,48,0.08); /* slightly stronger */
+	padding: 18px;
+}
+.staff-timetable .timetable-header{
+	background: linear-gradient(90deg, rgba(100,196,147,0.06), rgba(12,25,48,0.02));
+	padding: 10px 14px;
+	border-radius: 8px;
+	margin-bottom: 14px;
+}
+.staff-timetable .timetable-header h3{ margin:0; }
+.staff-timetable .timetable-header .timetable-controls a{ color: var(--ubf-accent, #64C493); }
+
+.staff-timetable .staff-calendar{
+	background: #ffffff;
+	border: 1px solid rgba(12,25,48,0.06);
+	border-radius: 10px;
+	padding: 10px;
+	box-shadow: 0 4px 12px rgba(12,25,48,0.04);
+	min-height: 420px;
+}
+
+.staff-calendar-close {
+	display: inline-block;
+	margin: 0 0 12px 0;
+	padding: 6px 10px;
+	background: var(--ubf-accent, #2b8ee8);
+	color: #fff;
+	border: none;
+	border-radius: 4px;
+	cursor: pointer;
+}
+.staff-calendar-close:hover { opacity: 0.95; }
+
+/* FullCalendar overrides scoped to the timetable to keep global styles untouched */
+.staff-timetable .fc { font-family: Inter, system-ui, 'Segoe UI', Roboto, Arial, sans-serif; }
+.staff-timetable .fc .fc-event-main {
+	background: var(--ubf-accent) !important;
+	color: #fff !important;
+	border: none !important;
+	border-radius: 10px !important;
+	padding: 8px 10px !important;
+	box-shadow: 0 6px 18px rgba(12,25,48,0.08) !important;
+	font-weight: 800 !important;
+	line-height: 1.1 !important;
+	white-space: normal !important;
+}
+.staff-timetable .fc .fc-daygrid-event, .staff-timetable .fc .fc-timegrid-event { margin: 8px 0 !important; }
+.staff-timetable .fc .fc-timegrid-event-harness { padding: 4px !important; }
+.staff-timetable .fc .fc-timegrid-slot-label { color: #23303b; font-weight: 700; }
+
+/* Make event titles wrap and use smaller type so long titles don't overflow */
+.staff-timetable .fc .fc-event-title {
+	font-size: 0.9rem !important;
+	word-break: break-word !important;
+}
+
+@media(max-width:600px){
+	.staff-timetable .staff-calendar{ padding:8px; }
+	.staff-timetable .fc .fc-event-main{ padding:5px 6px !important; font-size:0.85rem !important; }
 }
