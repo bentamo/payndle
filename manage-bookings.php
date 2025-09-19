@@ -78,12 +78,15 @@ function elite_cuts_manage_bookings_page() {
                     }
                 }
 
-                $staff_name = null;
+                // Prefer a stored snapshot of the staff name if available (saved at booking creation/update)
+                $staff_name = get_post_meta($id, '_staff_name', true);
                 $staff_position = null;
-                if (!empty($staff_id)) {
+
+                // If snapshot isn't present or is the default text, try resolving from the stored _staff_id
+                if ((empty($staff_name) || strcasecmp(trim($staff_name), 'any available staff') === 0) && !empty($staff_id)) {
                     $staff_post = get_post(intval($staff_id));
                     if ($staff_post && $staff_post->post_status !== 'trash') {
-                        // Staff stored as CPT (preferred)
+                        // Use the post title for the staff label regardless of post_type (covers staff CPT variants)
                         $staff_name = get_the_title($staff_post);
                         $staff_position = get_post_meta($staff_post->ID, 'staff_position', true);
                     } else {
@@ -96,6 +99,9 @@ function elite_cuts_manage_bookings_page() {
                         }
                     }
                 }
+
+                // Final fallback to the default label
+                if (empty($staff_name)) { $staff_name = 'Any available staff'; }
 
                 $bookings[] = (object) [
                     'id' => $id,
@@ -210,7 +216,7 @@ function elite_cuts_manage_bookings_page() {
                                 </td>
                                 <td>
                                     <span class="staff-info">
-                                        <?php if ($booking->staff_name): ?>
+                                        <?php if (!empty($booking->staff_name)): ?>
                                             <strong><?php echo esc_html($booking->staff_name); ?></strong><br>
                                             <small><?php echo esc_html($booking->staff_position); ?></small>
                                         <?php else: ?>
@@ -354,6 +360,7 @@ function elite_cuts_manage_bookings_page() {
                         <div class="form-group">
                             <label for="ubf_staff_id">Preferred Staff</label>
                             <input type="hidden" id="ubf_staff_id" name="staff_id" value="">
+                            <input type="hidden" id="ubf_staff_name_snapshot" name="staff_name_snapshot" value="">
                             <div id="ubf_staff_grid" class="staff-grid" aria-live="polite">
                                 <div class="staff-grid-empty">Select a service to choose staff</div>
                             </div>
@@ -2426,6 +2433,7 @@ function elite_cuts_manage_bookings_page() {
                         if ($('#ubf_customer_phone').length) { $('#ubf_customer_phone').val(b.customer_phone); } else { $('#customer-phone').val(b.customer_phone); }
                         if ($('#ubf_service_id').length) { $('#ubf_service_id').val(b.service_id); } else { $('#service-select').val(b.service_id); }
                         if ($('#ubf_staff_id').length) { $('#ubf_staff_id').val(b.staff_id); }
+                        if ($('#ubf_staff_name_snapshot').length) { $('#ubf_staff_name_snapshot').val(b.staff_name || ''); }
                         if ($('#staff-select').length) { $('#staff-select').val(b.staff_id); }
                         if ($('#ubf_preferred_date').length) { $('#ubf_preferred_date').val(b.preferred_date); } else { $('#booking-date').val(b.preferred_date); }
                         if ($('#ubf_preferred_time').length) { $('#ubf_preferred_time').val(b.preferred_time); } else { $('#booking-time').val(b.preferred_time); }
@@ -2613,6 +2621,10 @@ function elite_cuts_manage_bookings_page() {
                                 row.find('td:nth-child(6) strong').text(payload.preferred_date || 'No date');
                                 row.find('td:nth-child(6) small').text(payload.preferred_time || 'No time');
                                 row.find('.status-badge').text((payload.booking_status || 'pending').charAt(0).toUpperCase() + (payload.booking_status || 'pending').slice(1));
+                                // Use the server-provided staff name snapshot if available
+                                var staffLabel = (resp && resp.data && resp.data.staff_name) ? resp.data.staff_name : (resp && resp.staff_name ? resp.staff_name : ($('#ubf_staff_name_snapshot').val() || 'Any available staff'));
+                                staffLabel = staffLabel || 'Any available staff';
+                                row.find('.staff-info').html('<strong>' + $('<div/>').text(staffLabel).html() + '</strong><br><small></small>');
                             }
 
                                 // Also update the in-memory booking snapshot so Reset doesn't revert the change
@@ -2957,11 +2969,17 @@ function elite_cuts_manage_bookings_page() {
 
             // Service info - prefer UBF v3 select
             const serviceName = ($('#ubf_service_id option:selected').text() || $('#service-select option:selected').text() || '').trim();
-            // Staff name: prefer selected card in UBF grid, then legacy staff-select text
+            // Staff name: prefer stored booking snapshot in hidden inputs (#ubf_staff_id_name may be set), then selected card, then legacy select text
             let staffName = 'Any available staff';
-            const ubfSelected = $('#ubf_staff_grid .staff-card.selected');
-            if (ubfSelected.length) { staffName = ubfSelected.find('.staff-name').text().trim() || staffName; }
-            else if ($('#staff-select option:selected').length) { const t = $('#staff-select option:selected').text().trim(); if (t) staffName = t; }
+            // hidden snapshot (set when editing a booking via AJAX payload)
+            const snapshot = $('#ubf_staff_name_snapshot').length ? $('#ubf_staff_name_snapshot').val() : '';
+            if (snapshot) {
+                staffName = snapshot.trim();
+            } else {
+                const ubfSelected = $('#ubf_staff_grid .staff-card.selected');
+                if (ubfSelected.length) { staffName = ubfSelected.find('.staff-name').text().trim() || staffName; }
+                else if ($('#staff-select option:selected').length) { const t = $('#staff-select option:selected').text().trim(); if (t) staffName = t; }
+            }
 
             $('#summary-service').text(serviceName || 'No service selected');
             $('#summary-staff').text(staffName);
@@ -3539,13 +3557,15 @@ function elite_cuts_get_booking_ajax() {
         $data['customer_email'] = get_post_meta($id, '_customer_email', true);
         $data['customer_phone'] = get_post_meta($id, '_customer_phone', true);
         $data['service_id'] = get_post_meta($id, '_service_id', true);
-        $data['staff_id'] = get_post_meta($id, '_staff_id', true);
+    $data['staff_id'] = get_post_meta($id, '_staff_id', true);
+    // Provide staff name snapshot if available so the admin overlay can display a stable label
+    $data['staff_name'] = get_post_meta($id, '_staff_name', true) ?: '';
         $data['preferred_date'] = get_post_meta($id, '_preferred_date', true);
         $data['preferred_time'] = get_post_meta($id, '_preferred_time', true);
         $data['message'] = get_post_field('post_content', $id);
         $data['booking_status'] = get_post_meta($id, '_booking_status', true) ?: 'pending';
 
-        wp_send_json_success(['booking' => $data]);
+    wp_send_json_success(['booking' => $data]);
     }
 
     // Legacy fallback from table
@@ -3593,12 +3613,24 @@ function elite_cuts_update_booking_ajax() {
         update_post_meta($id, '_customer_email', $customer_email);
         update_post_meta($id, '_customer_phone', $customer_phone);
         update_post_meta($id, '_service_id', $service_id);
-        update_post_meta($id, '_staff_id', $staff_id);
+        // Validate staff id and save a staff name snapshot
+        $validated_staff_id = 0;
+        $staff_name_snapshot = 'Any available staff';
+        if ($staff_id) {
+            $maybe = get_post($staff_id);
+            if ($maybe && isset($maybe->post_type) && $maybe->post_type === 'staff') {
+                $validated_staff_id = intval($staff_id);
+                $staff_name_snapshot = get_the_title($validated_staff_id);
+            }
+        }
+        update_post_meta($id, '_staff_id', $validated_staff_id);
+        update_post_meta($id, '_staff_name', sanitize_text_field($staff_name_snapshot));
         update_post_meta($id, '_preferred_date', $preferred_date);
         update_post_meta($id, '_preferred_time', $preferred_time);
         update_post_meta($id, '_booking_status', $booking_status);
 
-        wp_send_json_success(['message' => 'Booking updated', 'id' => $id]);
+        $resp = ['message' => 'Booking updated', 'id' => $id, 'staff_name' => get_post_meta($id, '_staff_name', true) ?: ''];
+        wp_send_json_success($resp);
     }
 
     // Legacy table update
