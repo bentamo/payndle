@@ -39,6 +39,15 @@ function payndle_render_staff_timetable($atts) {
 
     // If no valid staff id yet, render a selector showing staff from the 'staff' post type
     if (empty($staff_id)) {
+        // Ensure selector styles and scripts are available for inline calendar behavior
+        wp_enqueue_style('staff-timetable-css', plugin_dir_url(__FILE__) . 'assets/css/staff-timetable.css', [], '1.0');
+        wp_enqueue_style('fullcalendar-core', 'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css', [], '6.1.8');
+        wp_enqueue_script('fullcalendar-core', 'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js', array(), '6.1.8', true);
+        wp_enqueue_script('payndle-staff-timetable', plugin_dir_url(__FILE__) . 'assets/js/staff-timetable.js', array('fullcalendar-core'), '1.0', true);
+        wp_localize_script('payndle-staff-timetable', 'payndleStaffTimetable', array(
+            'rest_url' => rest_url('payndle/v1/staff-schedule'),
+            'nonce' => wp_create_nonce('wp_rest')
+        ));
         $all = get_posts(array(
             'post_type' => 'staff',
             'post_status' => 'publish',
@@ -51,7 +60,10 @@ function payndle_render_staff_timetable($atts) {
             return '<div class="staff-timetable">No staff found.</div>';
         }
 
-        $out = '<div class="staff-timetable staff-selector"><h3>Select a staff member</h3><div class="staff-selector-grid">';
+    // Two-column layout: left = staff list, right = calendar container
+    // Force inline-block wrapper so the timetable renders in-block inside surrounding content
+    $out = '<div class="staff-timetable staff-row" style="display:inline-block;vertical-align:top;">';
+    $out .= '<div class="staff-list-column"><h3>Staff</h3><div class="staff-selector-grid">';
         foreach ($all as $p) {
             $pid = $p->ID;
             $avatar = '';
@@ -70,14 +82,28 @@ function payndle_render_staff_timetable($atts) {
             }
 
             $link = esc_url(add_query_arg('staff', $pid));
-            $out .= '<a class="staff-card" href="' . $link . '">';
+            // Keep href for no-JS fallback; JS will handle clicks dynamically
+            $out .= '<a class="staff-card" href="' . $link . '" data-staff-id="' . esc_attr($pid) . '">';
             if ($avatar) $out .= '<img class="staff-avatar" src="' . esc_attr($avatar) . '" alt="' . esc_attr(get_the_title($pid)) . '">';
             else $out .= '<div class="staff-avatar-initial">' . esc_html(substr(get_the_title($pid),0,1)) . '</div>';
             $out .= '<div class="staff-name">' . esc_html(get_the_title($pid)) . '</div>';
             $out .= '</a>';
         }
-        $out .= '</div></div>';
-        return $out;
+    $out .= '</div></div>'; // close grid and left column
+    // right column will host the calendar when a staff is selected
+        $out .= '<div class="staff-calendar-column">';
+        $out .= '<div class="staff-calendar-placeholder">'
+            . '<h4>Pick a staff member</h4>'
+            . '<p>Select someone from the list to the left to view their availability for the week. You can use the calendar to navigate weeks and click a booking to edit it (admins).</p>'
+            . '<ul class="placeholder-sample"><li>Available: Mon 09:00–12:00</li><li>Available: Wed 14:00–18:00</li></ul>'
+            . '</div>';
+        // visible calendar element (hidden until a staff is selected)
+        $out .= '<div class="staff-calendar" style="display:none;min-height:420px" aria-hidden="true" role="region" aria-label="Staff timetable"></div>';
+        // close control (keyboard accessible) - visually hidden until calendar is shown
+        $out .= '<button class="staff-calendar-close" style="display:none;" aria-label="Close timetable">Close</button>';
+        $out .= '</div>'; // close calendar column
+    $out .= '</div>'; // close staff-row
+    return $out;
     }
 
     // Ensure the resolved ID is a staff post
@@ -145,22 +171,67 @@ function payndle_render_staff_timetable($atts) {
 
     // NOTE: REST route registration and callback are handled globally (see below)
 
+    // Build left column staff list so both views use the same two-column layout
+    $all_staff = get_posts(array(
+        'post_type' => 'staff',
+        'post_status' => 'publish',
+        'posts_per_page' => -1,
+        'orderby' => 'title',
+        'order' => 'ASC'
+    ));
+
     ob_start();
     ?>
-    <div class="staff-timetable">
-        <div class="timetable-header">
-            <h3>Timetable for <?php echo esc_html(get_the_title($staff_id)); ?></h3>
-            <div class="timetable-controls">
-                <a class="timetable-prev" href="#" data-week="<?php echo esc_attr($dto->format('o') . '-' . $dto->format('W')); ?>">Previous</a>
-                <a class="timetable-next" href="#" data-week="<?php echo esc_attr($dto->format('o') . '-' . $dto->format('W')); ?>">Next</a>
+    <div class="staff-timetable staff-row" style="display:inline-block;vertical-align:top;">
+        <div class="staff-list-column">
+            <h3>Staff</h3>
+            <div class="staff-selector-grid">
+                <?php foreach ($all_staff as $p):
+                    $pid = $p->ID;
+                    $avatar = '';
+                    $avatar_id = get_post_meta($pid, 'staff_avatar_id', true);
+                    if ($avatar_id) {
+                        $img = wp_get_attachment_image_src($avatar_id, 'thumbnail');
+                        if ($img) { $avatar = $img[0]; }
+                    }
+                    if (!$avatar) {
+                        $meta_url = get_post_meta($pid, 'staff_avatar', true);
+                        if (!empty($meta_url)) { $avatar = esc_url_raw($meta_url); }
+                    }
+                    if (!$avatar && has_post_thumbnail($pid)) {
+                        $img = wp_get_attachment_image_src(get_post_thumbnail_id($pid), 'thumbnail');
+                        if ($img) { $avatar = $img[0]; }
+                    }
+                    $link = esc_url(add_query_arg('staff', $pid));
+                    $sel = ($pid == $staff_id) ? ' selected' : '';
+                ?>
+                    <a class="staff-card<?php echo $sel; ?>" href="<?php echo $link; ?>" data-staff-id="<?php echo esc_attr($pid); ?>">
+                        <?php if ($avatar) : ?>
+                            <img class="staff-avatar" src="<?php echo esc_attr($avatar); ?>" alt="<?php echo esc_attr(get_the_title($pid)); ?>">
+                        <?php else : ?>
+                            <div class="staff-avatar-initial"><?php echo esc_html(substr(get_the_title($pid),0,1)); ?></div>
+                        <?php endif; ?>
+                        <div class="staff-name"><?php echo esc_html(get_the_title($pid)); ?></div>
+                    </a>
+                <?php endforeach; ?>
             </div>
         </div>
-        <div class="staff-calendar" data-staff-id="<?php echo esc_attr($staff_id); ?>" style="min-height:420px"></div>
-        <noscript>
-            <div class="timetable-fallback">
-                <?php echo '<p>Please enable JavaScript to view the interactive timetable. Falling back to a simple view.</p>'; ?>
+        <div class="staff-calendar-column">
+            <div class="timetable-header">
+                <h3>Timetable for <?php echo esc_html(get_the_title($staff_id)); ?></h3>
+                <div class="timetable-controls">
+                    <a class="timetable-prev" href="#" data-week="<?php echo esc_attr($dto->format('o') . '-' . $dto->format('W')); ?>">Previous</a>
+                    <a class="timetable-next" href="#" data-week="<?php echo esc_attr($dto->format('o') . '-' . $dto->format('W')); ?>">Next</a>
+                </div>
             </div>
-        </noscript>
+            <div class="staff-calendar" data-staff-id="<?php echo esc_attr($staff_id); ?>" style="display:block;min-height:420px"></div>
+            <button class="staff-calendar-close" style="display:inline-block;" aria-label="Close timetable">Close</button>
+            <noscript>
+                <div class="timetable-fallback">
+                    <?php echo '<p>Please enable JavaScript to view the interactive timetable. Falling back to a simple view.</p>'; ?>
+                </div>
+            </noscript>
+        </div>
     </div>
     <?php
     return ob_get_clean();
@@ -179,23 +250,47 @@ add_action('init', function() {
  * REST callback moved to global scope so the route is registered during rest_api_init.
  */
 function payndle_rest_get_staff_schedule($request) {
-    $staff_id = (int) $request->get_param('staff_id');
+    $staff_id = $request->get_param('staff_id');
+    if (empty($staff_id) || !is_numeric($staff_id)) {
+        return new WP_Error('invalid_staff', 'Invalid or missing staff_id', array('status' => 400));
+    }
+    $staff_id = absint($staff_id);
+
     $start = $request->get_param('start');
     $end = $request->get_param('end');
+
+    // Use WordPress timezone for parsing/formatting
+    $wp_timezone = wp_timezone();
+
     if (empty($start) || empty($end)) {
-        $dt = new DateTime();
+        // Default to current ISO week
+        $dt = new DateTime('now', $wp_timezone);
         $dt->setISODate((int)$dt->format('o'), (int)$dt->format('W'));
         $start = $dt->format('Y-m-d');
-        $dt->modify('+6 days');
-        $end = $dt->format('Y-m-d');
+        $dt_end = clone $dt;
+        $dt_end->modify('+6 days');
+        $end = $dt_end->format('Y-m-d');
     }
+
+    // Validate date format (YYYY-MM-DD)
+    $date_re = '/^\d{4}-\d{2}-\d{2}$/';
+    if (!preg_match($date_re, $start) || !preg_match($date_re, $end)) {
+        return new WP_Error('invalid_date', 'Start and end must be YYYY-MM-DD', array('status' => 400));
+    }
+    // Use transient caching to speed up repeated requests for the same staff/week
+    $transient_key = 'payndle_staff_sched_' . $staff_id . '_' . $start . '_' . $end;
+    $cached = get_transient($transient_key);
+    if ($cached !== false && is_array($cached)) {
+        return rest_ensure_response($cached);
+    }
+
     $args = array(
         'post_type' => 'service_booking',
         'post_status' => array('publish','pending','draft'),
         'posts_per_page' => -1,
         'meta_query' => array(
             array('key' => '_staff_id', 'value' => $staff_id, 'compare' => '='),
-            array('key' => '_preferred_date', 'value' => array($start, $end), 'compare' => 'BETWEEN')
+            array('key' => '_preferred_date', 'value' => array($start, $end), 'compare' => 'BETWEEN', 'type' => 'DATE')
         )
     );
     $q = get_posts($args);
@@ -221,9 +316,9 @@ function payndle_rest_get_staff_schedule($request) {
         $date = get_post_meta($post->ID, '_preferred_date', true);
         $time = get_post_meta($post->ID, '_preferred_time', true);
         if ($date && $time) {
-            $start_iso = $date . 'T' . $time . ':00';
+            // Build a DateTime using WP timezone to ensure times match site settings
             try {
-                $start_dt = new DateTime($start_iso);
+                $start_dt = new DateTime($date . ' ' . $time, $wp_timezone);
             } catch (Exception $e) {
                 // skip invalid date/time
                 continue;
@@ -245,15 +340,26 @@ function payndle_rest_get_staff_schedule($request) {
             $end_dt = clone $start_dt;
             $end_dt->modify('+' . intval($minutes) . ' minutes');
 
+            // Return times as floating local datetimes (no timezone offset) so the
+            // frontend calendar renders the same hour the booking was saved.
+            // FullCalendar treats timezone-less datetimes as local.
             $events[] = array(
                 'id' => $post->ID,
                 'title' => $post->post_title ?: ('Booking #' . $post->ID),
-                'start' => $start_dt->format('c'),
-                'end' => $end_dt->format('c'),
+                'start' => $start_dt->format('Y-m-d\\TH:i:s'),
+                'end' => $end_dt->format('Y-m-d\\TH:i:s'),
                 'meta' => array('service_id' => $service_id, 'duration_minutes' => $minutes)
             );
         }
     }
+    // Sort events by start time
+    usort($events, function($a, $b) {
+        return strcmp($a['start'], $b['start']);
+    });
+
+    // Cache for 60 seconds (lightweight; reduce if you need faster propagation)
+    set_transient($transient_key, $events, 60);
+
     return rest_ensure_response($events);
 }
 
