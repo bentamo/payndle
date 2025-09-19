@@ -61,8 +61,8 @@ function payndle_render_staff_timetable($atts) {
         }
 
     // Two-column layout: left = staff list, right = calendar container
-    // Force inline-block wrapper so the timetable renders in-block inside surrounding content
-    $out = '<div class="staff-timetable staff-row" style="display:inline-block;vertical-align:top;">';
+    // Let CSS control the layout via .staff-row (flex) rather than inline styles
+    $out = '<div class="staff-timetable staff-row">';
     $out .= '<div class="staff-list-column"><h3>Staff</h3><div class="staff-selector-grid">';
         foreach ($all as $p) {
             $pid = $p->ID;
@@ -91,17 +91,19 @@ function payndle_render_staff_timetable($atts) {
         }
     $out .= '</div></div>'; // close grid and left column
     // right column will host the calendar when a staff is selected
+        $out .= '<div class="staff-calendar-box">';
         $out .= '<div class="staff-calendar-column">';
         $out .= '<div class="staff-calendar-placeholder">'
             . '<h4>Pick a staff member</h4>'
             . '<p>Select someone from the list to the left to view their availability for the week. You can use the calendar to navigate weeks and click a booking to edit it (admins).</p>'
             . '<ul class="placeholder-sample"><li>Available: Mon 09:00–12:00</li><li>Available: Wed 14:00–18:00</li></ul>'
             . '</div>';
-        // visible calendar element (hidden until a staff is selected)
-        $out .= '<div class="staff-calendar" style="display:none;min-height:420px" aria-hidden="true" role="region" aria-label="Staff timetable"></div>';
-        // close control (keyboard accessible) - visually hidden until calendar is shown
-        $out .= '<button class="staff-calendar-close" style="display:none;" aria-label="Close timetable">Close</button>';
-        $out .= '</div>'; // close calendar column
+    // visible calendar element (hidden until a staff is selected)
+    $out .= '<div class="staff-calendar" style="display:none;min-height:420px" aria-hidden="true" role="region" aria-label="Staff timetable"></div>';
+    // close control (keyboard accessible) - visually hidden until calendar is shown
+    $out .= '<button class="staff-calendar-close" style="display:none;" aria-label="Close timetable">Close</button>';
+    $out .= '</div>'; // close calendar column
+    $out .= '</div>'; // close calendar box
     $out .= '</div>'; // close staff-row
     return $out;
     }
@@ -182,7 +184,7 @@ function payndle_render_staff_timetable($atts) {
 
     ob_start();
     ?>
-    <div class="staff-timetable staff-row" style="display:inline-block;vertical-align:top;">
+    <div class="staff-timetable staff-row">
         <div class="staff-list-column">
             <h3>Staff</h3>
             <div class="staff-selector-grid">
@@ -216,6 +218,7 @@ function payndle_render_staff_timetable($atts) {
                 <?php endforeach; ?>
             </div>
         </div>
+        <div class="staff-calendar-box">
         <div class="staff-calendar-column">
             <div class="timetable-header">
                 <h3>Timetable for <?php echo esc_html(get_the_title($staff_id)); ?></h3>
@@ -226,6 +229,9 @@ function payndle_render_staff_timetable($atts) {
             </div>
             <div class="staff-calendar" data-staff-id="<?php echo esc_attr($staff_id); ?>" style="display:block;min-height:420px"></div>
             <button class="staff-calendar-close" style="display:inline-block;" aria-label="Close timetable">Close</button>
+        </div>
+        </div>
+        </div>
             <noscript>
                 <div class="timetable-fallback">
                     <?php echo '<p>Please enable JavaScript to view the interactive timetable. Falling back to a simple view.</p>'; ?>
