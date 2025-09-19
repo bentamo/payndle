@@ -69,41 +69,69 @@ document.addEventListener('DOMContentLoaded', function() {
           if (e.ctrlKey || e.metaKey || e.button === 1) return;
           e.preventDefault();
           var staffId = card.getAttribute('data-staff-id');
-          // create an inline calendar below the selector
-          var selector = document.querySelector('.staff-selector');
-          if (!selector) return;
-          var existing = document.querySelector('.staff-calendar-inline');
-          if (existing) existing.remove();
-          var inline = document.createElement('div');
-          inline.className = 'staff-calendar-inline';
-          // add a close control
-          var close = document.createElement('button');
-          close.className = 'staff-calendar-close';
-          close.textContent = 'Close';
-          close.addEventListener('click', function() {
-              if (inline._calendar) {
-                  inline._calendar.destroy();
-                  inline._calendar = null;
-              }
-              inline.remove();
-              // update history to remove staff query
-              if (window.history && window.history.pushState) {
-                  var url = new URL(window.location.href);
-                  url.searchParams.delete('staff_id');
-                  window.history.pushState({}, '', url.toString());
-              }
-          });
-          inline.appendChild(close);
-          selector.parentNode.insertBefore(inline, selector.nextSibling);
-          createCalendar(inline, staffId);
-          inline.scrollIntoView({behavior: 'smooth'});
+        // In-block mode: insert an expander panel after the clicked card and mount calendar there
+        // Remove any existing expander
+        document.querySelectorAll('.staff-card-expander').forEach(function(el){ if (el._calendar) { el._calendar.destroy(); } el.remove(); });
+        // unselect other cards
+        document.querySelectorAll('.staff-card.selected').forEach(function(c){ c.classList.remove('selected'); });
+        card.classList.add('selected');
 
-          // push state for deep linking
+        // hide the right-column calendar (we're using in-block now)
+        var calendarColumn = document.querySelector('.staff-calendar-column');
+        if (calendarColumn) {
+          var rc = calendarColumn.querySelector('.staff-calendar');
+          var placeholder = calendarColumn.querySelector('.staff-calendar-placeholder');
+          if (rc && rc._calendar) { rc._calendar.destroy(); rc._calendar = null; }
+          if (rc) rc.style.display = 'none';
+          if (placeholder) placeholder.style.display = 'none';
+          var rightClose = calendarColumn.querySelector('.staff-calendar-close'); if (rightClose) rightClose.style.display = 'none';
+        }
+
+        var exp = document.createElement('div');
+        exp.className = 'staff-card-expander';
+        exp.setAttribute('data-staff-id', staffId);
+        var expInner = document.createElement('div');
+        expInner.className = 'staff-card-expander-inner';
+        // close button
+        var closeBtn = document.createElement('button');
+        closeBtn.className = 'staff-card-expander-close';
+        closeBtn.textContent = 'Close';
+        closeBtn.addEventListener('click', function(){
+          if (exp._calendar) { exp._calendar.destroy(); exp._calendar = null; }
+          exp.remove();
+          card.classList.remove('selected');
+          // restore right-column placeholder
+          if (calendarColumn && placeholder) placeholder.style.display = 'block';
           if (window.history && window.history.pushState) {
-              var url = new URL(window.location.href);
-              url.searchParams.set('staff_id', staffId);
-              window.history.pushState({staff_id: staffId}, '', url.toString());
+            var url = new URL(window.location.href);
+            url.searchParams.delete('staff_id');
+            window.history.pushState({}, '', url.toString());
           }
+        });
+        expInner.appendChild(closeBtn);
+        var calWrap = document.createElement('div'); calWrap.className = 'staff-card-calendar';
+        expInner.appendChild(calWrap);
+        exp.appendChild(expInner);
+
+        // insert expander after the card
+        card.parentNode.insertBefore(exp, card.nextSibling);
+        // mount calendar
+        var inst = createCalendar(calWrap, staffId);
+        exp._calendar = inst;
+        calWrap._calendar = inst;
+
+      // push state for deep linking
+      if (window.history && window.history.pushState) {
+        var url = new URL(window.location.href);
+        url.searchParams.set('staff_id', staffId);
+        window.history.pushState({staff_id: staffId}, '', url.toString());
+      }
+
+      // show right-column close control (if visible) and focus for accessibility
+      var rightCloseBtn = document.querySelector('.staff-calendar-close');
+      if (rightCloseBtn && rightCloseBtn.style.display !== 'inline-block') {
+        rightCloseBtn.style.display = 'none';
+      }
       });
 
       // handle browser back/forward to open/close inline calendar based on staff_id param
@@ -140,8 +168,61 @@ document.addEventListener('DOMContentLoaded', function() {
           } else {
               // no staff_id -> close existing
               if (existing) existing.remove();
+              var closeBtn = document.querySelector('.staff-calendar-close');
+              if (closeBtn) closeBtn.style.display = 'none';
           }
       });
+
+      // close button behavior and Esc key handling
+      (function(){
+        var closeBtn = document.querySelector('.staff-calendar-close');
+        if (closeBtn) {
+          closeBtn.addEventListener('click', function(){
+            var calendarColumn = document.querySelector('.staff-calendar-column');
+            if (!calendarColumn) return;
+            var calEl = calendarColumn.querySelector('.staff-calendar');
+            var placeholder = calendarColumn.querySelector('.staff-calendar-placeholder');
+            if (calEl && calEl._calendar) { calEl._calendar.destroy(); calEl._calendar = null; }
+            if (calEl) { calEl.style.display = 'none'; calEl.removeAttribute('data-staff-id'); }
+            if (placeholder) { placeholder.style.display = 'block'; }
+            closeBtn.style.display = 'none';
+            // remove staff_id param from url
+            if (window.history && window.history.pushState) {
+              var url = new URL(window.location.href);
+              url.searchParams.delete('staff_id');
+              window.history.pushState({}, '', url.toString());
+            }
+          });
+        }
+        document.addEventListener('keydown', function(e){
+          if (e.key === 'Escape' || e.key === 'Esc') {
+            var closeBtn = document.querySelector('.staff-calendar-close');
+            if (closeBtn && closeBtn.style.display !== 'none') closeBtn.click();
+          }
+        });
+      })();
+
+      // Auto-open calendar if ?staff_id=... on initial load
+      (function(){
+        var params = new URL(window.location.href).searchParams;
+        var sid = params.get('staff_id');
+        if (sid) {
+          // try to find the matching card and simulate a click
+          var card = document.querySelector('.staff-card[data-staff-id="' + sid + '"]');
+          if (card) { card.click(); }
+          else {
+            // if card not present (e.g., rendered later), still mount calendar directly
+            var calendarColumn = document.querySelector('.staff-calendar-column');
+            if (!calendarColumn) return;
+            var placeholder = calendarColumn.querySelector('.staff-calendar-placeholder');
+            var calEl = calendarColumn.querySelector('.staff-calendar');
+            if (placeholder) placeholder.style.display = 'none';
+            if (calEl) { calEl.style.display = 'block'; calEl.setAttribute('data-staff-id', sid); calEl._calendar = createCalendar(calEl, sid); }
+            var closeBtn = document.querySelector('.staff-calendar-close');
+            if (closeBtn) closeBtn.style.display = 'inline-block';
+          }
+        }
+      })();
 
         }
       }

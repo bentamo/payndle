@@ -60,7 +60,10 @@ function payndle_render_staff_timetable($atts) {
             return '<div class="staff-timetable">No staff found.</div>';
         }
 
-        $out = '<div class="staff-timetable staff-selector"><h3>Select a staff member</h3><div class="staff-selector-grid">';
+    // Two-column layout: left = staff list, right = calendar container
+    // Force inline-block wrapper so the timetable renders in-block inside surrounding content
+    $out = '<div class="staff-timetable staff-row" style="display:inline-block;vertical-align:top;">';
+    $out .= '<div class="staff-list-column"><h3>Staff</h3><div class="staff-selector-grid">';
         foreach ($all as $p) {
             $pid = $p->ID;
             $avatar = '';
@@ -86,8 +89,21 @@ function payndle_render_staff_timetable($atts) {
             $out .= '<div class="staff-name">' . esc_html(get_the_title($pid)) . '</div>';
             $out .= '</a>';
         }
-        $out .= '</div></div>';
-        return $out;
+    $out .= '</div></div>'; // close grid and left column
+    // right column will host the calendar when a staff is selected
+        $out .= '<div class="staff-calendar-column">';
+        $out .= '<div class="staff-calendar-placeholder">'
+            . '<h4>Pick a staff member</h4>'
+            . '<p>Select someone from the list to the left to view their availability for the week. You can use the calendar to navigate weeks and click a booking to edit it (admins).</p>'
+            . '<ul class="placeholder-sample"><li>Available: Mon 09:00–12:00</li><li>Available: Wed 14:00–18:00</li></ul>'
+            . '</div>';
+        // visible calendar element (hidden until a staff is selected)
+        $out .= '<div class="staff-calendar" style="display:none;min-height:420px" aria-hidden="true" role="region" aria-label="Staff timetable"></div>';
+        // close control (keyboard accessible) - visually hidden until calendar is shown
+        $out .= '<button class="staff-calendar-close" style="display:none;" aria-label="Close timetable">Close</button>';
+        $out .= '</div>'; // close calendar column
+    $out .= '</div>'; // close staff-row
+    return $out;
     }
 
     // Ensure the resolved ID is a staff post
@@ -155,22 +171,67 @@ function payndle_render_staff_timetable($atts) {
 
     // NOTE: REST route registration and callback are handled globally (see below)
 
+    // Build left column staff list so both views use the same two-column layout
+    $all_staff = get_posts(array(
+        'post_type' => 'staff',
+        'post_status' => 'publish',
+        'posts_per_page' => -1,
+        'orderby' => 'title',
+        'order' => 'ASC'
+    ));
+
     ob_start();
     ?>
-    <div class="staff-timetable">
-        <div class="timetable-header">
-            <h3>Timetable for <?php echo esc_html(get_the_title($staff_id)); ?></h3>
-            <div class="timetable-controls">
-                <a class="timetable-prev" href="#" data-week="<?php echo esc_attr($dto->format('o') . '-' . $dto->format('W')); ?>">Previous</a>
-                <a class="timetable-next" href="#" data-week="<?php echo esc_attr($dto->format('o') . '-' . $dto->format('W')); ?>">Next</a>
+    <div class="staff-timetable staff-row" style="display:inline-block;vertical-align:top;">
+        <div class="staff-list-column">
+            <h3>Staff</h3>
+            <div class="staff-selector-grid">
+                <?php foreach ($all_staff as $p):
+                    $pid = $p->ID;
+                    $avatar = '';
+                    $avatar_id = get_post_meta($pid, 'staff_avatar_id', true);
+                    if ($avatar_id) {
+                        $img = wp_get_attachment_image_src($avatar_id, 'thumbnail');
+                        if ($img) { $avatar = $img[0]; }
+                    }
+                    if (!$avatar) {
+                        $meta_url = get_post_meta($pid, 'staff_avatar', true);
+                        if (!empty($meta_url)) { $avatar = esc_url_raw($meta_url); }
+                    }
+                    if (!$avatar && has_post_thumbnail($pid)) {
+                        $img = wp_get_attachment_image_src(get_post_thumbnail_id($pid), 'thumbnail');
+                        if ($img) { $avatar = $img[0]; }
+                    }
+                    $link = esc_url(add_query_arg('staff', $pid));
+                    $sel = ($pid == $staff_id) ? ' selected' : '';
+                ?>
+                    <a class="staff-card<?php echo $sel; ?>" href="<?php echo $link; ?>" data-staff-id="<?php echo esc_attr($pid); ?>">
+                        <?php if ($avatar) : ?>
+                            <img class="staff-avatar" src="<?php echo esc_attr($avatar); ?>" alt="<?php echo esc_attr(get_the_title($pid)); ?>">
+                        <?php else : ?>
+                            <div class="staff-avatar-initial"><?php echo esc_html(substr(get_the_title($pid),0,1)); ?></div>
+                        <?php endif; ?>
+                        <div class="staff-name"><?php echo esc_html(get_the_title($pid)); ?></div>
+                    </a>
+                <?php endforeach; ?>
             </div>
         </div>
-        <div class="staff-calendar" data-staff-id="<?php echo esc_attr($staff_id); ?>" style="min-height:420px"></div>
-        <noscript>
-            <div class="timetable-fallback">
-                <?php echo '<p>Please enable JavaScript to view the interactive timetable. Falling back to a simple view.</p>'; ?>
+        <div class="staff-calendar-column">
+            <div class="timetable-header">
+                <h3>Timetable for <?php echo esc_html(get_the_title($staff_id)); ?></h3>
+                <div class="timetable-controls">
+                    <a class="timetable-prev" href="#" data-week="<?php echo esc_attr($dto->format('o') . '-' . $dto->format('W')); ?>">Previous</a>
+                    <a class="timetable-next" href="#" data-week="<?php echo esc_attr($dto->format('o') . '-' . $dto->format('W')); ?>">Next</a>
+                </div>
             </div>
-        </noscript>
+            <div class="staff-calendar" data-staff-id="<?php echo esc_attr($staff_id); ?>" style="display:block;min-height:420px"></div>
+            <button class="staff-calendar-close" style="display:inline-block;" aria-label="Close timetable">Close</button>
+            <noscript>
+                <div class="timetable-fallback">
+                    <?php echo '<p>Please enable JavaScript to view the interactive timetable. Falling back to a simple view.</p>'; ?>
+                </div>
+            </noscript>
+        </div>
     </div>
     <?php
     return ob_get_clean();
