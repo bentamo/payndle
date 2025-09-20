@@ -1149,6 +1149,34 @@ function mvp_manager_shortcode() {
                 /* Tiny UBF v3 tweaks for service manager form */
                 #mvp-form-container.ubf-v3-container { padding: 16px; }
                 #mvp-form-container .ubf-v3-form .mvp-form-control { padding: 10px; border:1px solid #e6eaef; border-radius:10px; }
+                
+                /* Service category badges */
+                .service-item-categories {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 4px;
+                    margin: 8px 16px 0;
+                }
+                
+                .service-category-badge {
+                    display: inline-block;
+                    background-color: #e9f5f0;
+                    color: #2e7d5f;
+                    font-size: 11px;
+                    font-weight: 500;
+                    padding: 2px 8px;
+                    border-radius: 10px;
+                    white-space: nowrap;
+                    border: 1px solid #d1e7dd;
+                }
+                
+                .service-item {
+                    padding-bottom: 16px;
+                }
+                
+                .service-item-content {
+                    margin-top: 12px;
+                }
             </style>
 
         <!-- Category Management -->
@@ -1240,6 +1268,13 @@ function mvp_manager_shortcode() {
                                     </button>
                                 </div>
                             </div>
+                            <?php if (!empty($category_names)): ?>
+                                <div class="service-item-categories">
+                                    <?php foreach ($category_names as $cat_name): ?>
+                                        <span class="service-category-badge"><?php echo esc_html($cat_name); ?></span>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
                             <div class="service-item-content">
                                 <?php echo wp_trim_words(wp_strip_all_tags($service->post_content), 20, '...'); ?>
                             </div>
