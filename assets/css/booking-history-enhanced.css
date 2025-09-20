@@ -90,6 +90,7 @@
 
 .stat-card {
     background: rgba(255, 255, 255, 0.95) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
     backdrop-filter: blur(20px) !important;
     padding: 30px 25px !important;
     border-radius: 20px !important;
@@ -147,6 +148,7 @@
     width: 400px !important;
     transition: all 0.4s ease !important;
     background: rgba(255, 255, 255, 0.95) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
     backdrop-filter: blur(20px) !important;
     box-shadow: 
         0 10px 30px rgba(0, 0, 0, 0.1),
@@ -176,7 +178,7 @@
 
 /* Enhanced Filters */
 .booking-filters {
-    background: rgba(255, 255, 255, 0.95) !important;
+    background: rgba(255, 255, 255, 0.95) !important;-webkit-backdrop-filter: blur(20px) !important;
     backdrop-filter: blur(20px) !important;
     padding: 40px !important;
     border-radius: 25px !important;
@@ -215,6 +217,7 @@
     font-size: 1.1rem !important;
     transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
     background: rgba(255, 255, 255, 0.8) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
     backdrop-filter: blur(10px) !important;
     color: #333 !important;
     appearance: none !important;
@@ -296,6 +299,7 @@
 
 .booking-card {
     background: rgba(255, 255, 255, 0.95) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
     backdrop-filter: blur(20px) !important;
     border-radius: 25px !important;
     padding: 40px !important;
@@ -351,6 +355,7 @@
     box-shadow: 
         0 5px 15px rgba(0, 0, 0, 0.15),
         inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
     backdrop-filter: blur(10px) !important;
     border: 1px solid rgba(255, 255, 255, 0.2) !important;
 }
@@ -413,6 +418,7 @@
     box-shadow: 
         0 5px 15px rgba(0, 0, 0, 0.05),
         inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
     backdrop-filter: blur(10px) !important;
     font-weight: 700 !important;
 }
@@ -435,6 +441,7 @@
     padding: 100px 30px !important;
     color: rgba(255,255,255,0.8) !important;
     background: rgba(255, 255, 255, 0.1) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
     backdrop-filter: blur(20px) !important;
     border-radius: 25px !important;
     border: 1px solid rgba(255, 255, 255, 0.2) !important;
@@ -445,6 +452,7 @@
     padding: 100px 30px !important;
     color: #666 !important;
     background: rgba(255, 255, 255, 0.95) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
     backdrop-filter: blur(20px) !important;
     border-radius: 25px !important;
     box-shadow: 
