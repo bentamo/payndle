@@ -174,7 +174,7 @@ class UserBookingForm {
                     <div class="ubf-progress"><div class="ubf-progress-fill" style="width:0%"></div></div>
                 </div>
 
-                <form id="user-booking-form-v3" class="ubf-v3-form" novalidate>
+                <form id="user-booking-form-v3" class="ubf-v3-form" novalidate data-tax-rate="0">
                     <?php wp_nonce_field('user_booking_nonce', 'booking_nonce'); ?>
 
                     <div class="ubf-form-step" data-step="1">
@@ -244,8 +244,12 @@ class UserBookingForm {
                     </div>
 
                     <div class="ubf-form-step" data-step="4" style="display:none;">
-                        <h3 class="section-title">Choose Payment Method</h3>
-                        <div class="payment-methods">
+                        <div class="ubf-payment-headers">
+                            <h3 class="section-title">Choose Payment Method</h3>
+                            <div class="ubf-breakdown-heading ubf-breakdown-heading-header">Payment breakdown</div>
+                        </div>
+                        <div class="ubf-payment-grid">
+                            <div class="payment-methods payment-methods-stack">
                             <div class="payment-option">
                                 <input type="radio" id="ubf_payment_cash" name="payment_method" value="cash" checked>
                                 <label for="ubf_payment_cash" class="payment-label">
@@ -309,6 +313,19 @@ class UserBookingForm {
                                         <p>Pay securely online before your appointment</p>
                                     </div>
                                 </label>
+                            </div>
+                            </div>
+
+                            <!-- Right column: detailed breakdown per service and totals -->
+                            <div class="ubf-payment-breakdown" aria-live="polite">
+                                <div class="breakdown-services" id="ubf-breakdown-services">
+                                    <!-- Service lines inserted here by JS -->
+                                    <div class="breakdown-service-placeholder">No services selected</div>
+                                </div>
+                                <div class="breakdown-row"><span class="label">Subtotal</span><span class="value" id="ubf-breakdown-subtotal">₱0.00</span></div>
+                                <div class="breakdown-row" id="ubf-breakdown-tax-row" style="display:none"><span class="label">Tax</span><span class="value" id="ubf-breakdown-tax">₱0.00</span></div>
+                                <div class="breakdown-row" id="ubf-breakdown-discount-row" style="display:none"><span class="label">Discount</span><span class="value" id="ubf-breakdown-discount">-₱0.00</span></div>
+                                <div class="breakdown-total"><span class="label">Total Payment</span><span class="value" id="ubf-breakdown-total">₱0.00</span></div>
                             </div>
                         </div>
 

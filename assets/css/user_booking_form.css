@@ -192,15 +192,21 @@ input[type="date"], input[type="time"], select { height: calc(2 * 0.875rem + 1re
 .selected-service-info p { margin:0.25rem 0; color:#666; font-size:0.9rem; }
 .service-price { font-weight:600; color:var(--accent); }
 
-.payment-methods { display:grid; gap:1rem; }
+.payment-methods { display:flex; flex-direction:row; gap:0.75rem; flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:0.25rem; }
 .payment-option { position:relative; }
 .payment-option input[type="radio"] { position:absolute; opacity:0; width:0; height:0; }
-.payment-label { display:flex; align-items:center; padding:1rem; border:2px solid var(--border-color); border-radius:var(--radius); cursor:pointer; transition: all 0.3s ease; background:var(--bg-primary); }
-.payment-label:hover { border-color:var(--accent); transform: translateY(-1px); box-shadow:0 6px 18px rgba(100,196,147,0.08); }
-.payment-option input[type="radio"]:checked + .payment-label { border-color:var(--accent); background: rgba(100,196,147,0.04); }
-.payment-icon { margin-right:1rem; color:var(--accent); font-size:var(--icon-size); width:2.2rem; height:2.2rem; display:inline-flex; align-items:center; justify-content:center; }
-.payment-details h4 { margin:0 0 0.25rem 0; font-size:1rem; font-weight:600; color:var(--text-primary); }
-.payment-details p { margin:0; font-size:0.85rem; color:#666; font-weight:300; }
+.payment-label { display:flex; align-items:center; padding:0.6rem 0.9rem; border:1px solid var(--border-color); border-radius:6px; cursor:pointer; transition: all 0.18s ease; background:var(--bg-primary); min-width:220px; white-space:nowrap; }
+.payment-label:hover { border-color:var(--accent); transform: translateY(-1px); box-shadow:0 6px 18px rgba(100,196,147,0.06); }
+.payment-option input[type="radio"]:checked + .payment-label { border-color:var(--accent); background: rgba(100,196,147,0.03); }
+.payment-icon { margin-right:0.6rem; color:var(--accent); font-size:var(--icon-size); width:1.8rem; height:1.8rem; display:inline-flex; align-items:center; justify-content:center; }
+.payment-details h4 { margin:0 0 0.15rem 0; font-size:0.98rem; font-weight:700; color:var(--text-primary); }
+.payment-details p { margin:0; font-size:0.85rem; color:#666; font-weight:400; }
+
+.ubf-payment-breakdown { margin-top: 0.75rem; border: 1px solid var(--border-color); background: #fff; padding: 0.75rem; border-radius: 8px; max-width:420px; }
+.ubf-payment-breakdown .breakdown-row { display:flex; justify-content:space-between; padding:0.35rem 0; color:var(--text-secondary); }
+.ubf-payment-breakdown .breakdown-total { display:flex; justify-content:space-between; padding-top:0.6rem; border-top:1px dashed var(--border-color); margin-top:0.5rem; font-weight:700; color:var(--text-primary); }
+.ubf-payment-breakdown .label { font-size:0.95rem; }
+.ubf-payment-breakdown .value { font-size:0.95rem; color:var(--accent); }
 
 .booking-notice { display:flex; align-items:flex-start; padding:1.25rem; background:var(--bg-tertiary); border:1px solid var(--border-color); border-radius:var(--radius); margin:2rem 0; }
 .notice-icon { margin-right:1rem; color:var(--bg-primary); font-size:var(--icon-size); width:var(--icon-circle-size); height:var(--icon-circle-size); display:inline-flex; align-items:center; justify-content:center; background:var(--accent); border-radius:999px; margin-top:0; }
@@ -255,6 +261,63 @@ input[type="date"], input[type="time"], select { height: calc(2 * 0.875rem + 1re
         padding-left: 2.5rem;
     }
 }
+
+/* Payment step two-column layout */
+/* Payment step: two-column layout (options left, breakdown right) */
+.ubf-payment-grid { display:grid; grid-template-columns: 1fr 320px; gap: 1.25rem; align-items:start; }
+@media (max-width:767px) { .ubf-payment-grid { grid-template-columns: 1fr; } .payment-methods { gap:0.6rem; } }
+
+/* Make breakdown container full-width below payment options */
+.ubf-payment-breakdown { width:100%; }
+
+.ubf-breakdown-heading {
+    font-weight:600;
+    margin-bottom:0.5rem;
+    color:var(--text-dark, #1f2d3d);
+    font-size:1rem;
+}
+
+/* Header row above the payment grid: left heading and right breakdown heading aligned */
+.ubf-payment-headers { display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:0.75rem; }
+.ubf-payment-headers .section-title { margin:0; }
+.ubf-breakdown-heading-header { text-align:left; font-weight:600; font-size:1.25rem; color: var(--text-primary); }
+
+@media (max-width:767px) {
+    .ubf-payment-headers { flex-direction:column; align-items:flex-start; }
+    .ubf-breakdown-heading-header { text-align:left; }
+}
+
+/* Visual overlapping stack for payment methods (desktop) */
+/* Ensure payment methods-stack shows as a normal single-column list when inside the two-column grid */
+.ubf-payment-grid .payment-methods-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.ubf-payment-grid .payment-methods-stack .payment-option { position: relative; width: 100%; transform: none !important; z-index: auto !important; }
+.ubf-payment-grid .payment-methods-stack .payment-label { box-shadow: none; white-space: normal; }
+
+/* Keep mobile fallback for other contexts */
+@media (max-width:767px) {
+    .payment-methods-stack { padding-top: 0; }
+}
+
+/* Ensure payment options in the left column stack vertically when inside the two-column payment grid */
+.ubf-payment-grid .payment-methods {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.ubf-payment-grid .payment-option { width: 100%; }
+.ubf-payment-grid .payment-label { min-width: auto; white-space: normal; }
+.ubf-payment-breakdown { background: var(--bg-tertiary); border:1px solid var(--border-color); padding:1rem; border-radius:var(--radius); }
+.ubf-payment-breakdown .breakdown-services { margin-bottom:0.75rem; max-height:240px; overflow:auto; }
+.breakdown-service { display:flex; justify-content:space-between; padding:0.45rem 0; border-bottom:1px dashed rgba(0,0,0,0.04); font-size:0.95rem; }
+.breakdown-service .svc-name { color:var(--text-primary); }
+.breakdown-service .svc-price { color:var(--accent); font-weight:600; }
+.breakdown-service-placeholder { color:#666; font-style:italic; }
+.breakdown-row { display:flex; justify-content:space-between; padding:0.5rem 0; }
+.breakdown-total { display:flex; justify-content:space-between; padding-top:0.75rem; border-top:1px solid var(--border-color); font-weight:700; font-size:1.05rem; }
 
 /* Scrollbar */
 ::-webkit-scrollbar { width:8px; }
@@ -355,7 +418,7 @@ input[type="date"], input[type="time"], select { height: calc(2 * 0.875rem + 1re
 .ubf-v3-container .ubf-next:hover,.ubf-v3-container .ubf-submit:hover{background:var(--ubf-primary-green);color:var(--ubf-primary-navy)}
 
 /* Payment methods styling for v3 (copied and adapted from original form) */
-.ubf-v3-container .payment-methods{display:grid;grid-template-columns:1fr;gap:12px}
+.ubf-v3-container .payment-methods{display:block;grid-template-columns:1fr;gap:12px}
 @media(min-width:768px){.ubf-v3-container .payment-methods{grid-template-columns:repeat(2,1fr)}}
 .ubf-v3-container .payment-option{position:relative}
 .ubf-v3-container .payment-option input[type="radio"]{position:absolute;opacity:0;width:0;height:0}
