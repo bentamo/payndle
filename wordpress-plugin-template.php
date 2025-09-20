@@ -72,7 +72,8 @@ require_once 'business-landing-shortcode.php';
 require_once 'user-booking-form.php';
 require_once 'manage-staff-shortcode.php';
 require_once 'staff-timetable.php';
-
+require_once 'business-header-shortcode.php';
+require_once 'contact-us-shortcode.php';
 
 /* Load booking history with error handling
 if (file_exists(__DIR__ . '/booking-history.php')) {
