@@ -1,6 +1,125 @@
 jQuery(document).ready(function($) {
+    // Debug log to check if script is loaded
+    console.log('Assigned Bookings script loaded');
+    
     // Localized script data
     const bookingData = window.assignedBookingsData || {};
+    console.log('Assigned Bookings Data:', bookingData);
+    
+    // Fallback for ajaxurl if not defined
+    if (typeof ajaxurl === 'undefined' && bookingData.ajax_url) {
+        window.ajaxurl = bookingData.ajax_url;
+    }
+    
+    // Status change handler with immediate UI update
+    $(document).on('change', '.status-select', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const $select = $(this);
+        const bookingId = $select.data('booking-id');
+        const newStatus = $select.val();
+        const $row = $select.closest('tr');
+        const originalStatus = $row.attr('data-status');
+        const $statusBadge = $row.find('.status-badge');
+        
+        // If status didn't change, do nothing
+        if (newStatus === originalStatus) {
+            return;
+        }
+        
+        // 1. Immediately update the UI with fade effect
+        const statusText = newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
+        const statusCategory = ['completed', 'cancelled'].includes(newStatus) ? newStatus : 'upcoming';
+        
+        // Add fade-out class to the row
+        $row.addClass('status-changing');
+        
+        // After a short delay, update the status and fade back in
+        setTimeout(() => {
+            // Update status badge
+            $statusBadge
+                .removeClass('status-pending status-confirmed status-completed status-cancelled')
+                .addClass('status-' + newStatus)
+                .text(statusText);
+                
+            // Update row data attributes
+            $row.attr({
+                'data-status': newStatus,
+                'data-status-category': statusCategory
+            });
+            
+            // Remove fade class to trigger the fade-in effect
+            setTimeout(() => {
+                $row.removeClass('status-changing');
+            }, 50);
+        }, 300); // This matches the CSS transition duration
+        
+        // 2. Send AJAX request in the background
+        $.ajax({
+            url: window.assignedBookingsData?.ajax_url || ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'update_booking_status',
+                booking_id: bookingId,
+                status: newStatus,
+                nonce: window.assignedBookingsData?.nonce || ''
+            },
+            dataType: 'json',
+            success: function(response) {
+                if (!response || !response.success) {
+                    // Revert on failure
+                    revertStatusUpdate($select, $row, $statusBadge, originalStatus);
+                    const errorMsg = response?.data?.message || 'Failed to update booking status';
+                    showNotice('error', errorMsg);
+                } else {
+                    // Show success message and refresh the page after a short delay
+                    showNotice('success', 'Status updated successfully! Refreshing...');
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 500); // 0.5 second (500ms) delay before refresh
+                }
+            },
+            error: function() {
+                // Revert on error
+                revertStatusUpdate($select, $row, $statusBadge, originalStatus);
+                showNotice('error', 'An error occurred while updating the status. Please try again.');
+            }
+        });
+        
+        // Helper function to revert UI changes
+        function revertStatusUpdate($select, $row, $statusBadge, originalStatus) {
+            const originalStatusText = originalStatus.charAt(0).toUpperCase() + originalStatus.slice(1);
+            const originalCategory = ['completed', 'cancelled'].includes(originalStatus) ? originalStatus : 'upcoming';
+            
+            // Add fade-out class to the row
+            $row.addClass('status-changing');
+            
+            // After a short delay, revert the changes and fade back in
+            setTimeout(() => {
+                // Revert the status badge
+                $statusBadge
+                    .removeClass('status-pending status-confirmed status-completed status-cancelled')
+                    .addClass('status-' + originalStatus)
+                    .text(originalStatusText);
+                    
+                // Revert row attributes
+                $row.attr({
+                    'data-status': originalStatus,
+                    'data-status-category': originalCategory
+                });
+                
+                // Revert select value
+                $select.val(originalStatus);
+                
+                // Remove fade class to trigger the fade-in effect
+                setTimeout(() => {
+                    $row.removeClass('status-changing');
+                }, 50);
+            }, 300); // This matches the CSS transition duration
+        }
+    });
+    
     let currentStatusFilter = 'all';
     
     // Initialize status filters
@@ -57,65 +176,272 @@ jQuery(document).ready(function($) {
         }
     });
     
-    // Handle status change
-    $(document).on('change', '.status-select', function() {
+    // Debounce function to prevent rapid status changes
+    const debounce = (func, wait) => {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    };
+
+    // Handle status change with debouncing
+    const handleStatusChange = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
         const $select = $(this);
         const bookingId = $select.data('booking-id');
         const newStatus = $select.val();
         const $row = $select.closest('tr');
-        const $savingIndicator = $select.siblings('.status-saving');
+        const originalStatus = $row.attr('data-status');
         
-        // Debug log
-        console.log('Status change initiated:', { bookingId, newStatus, row: $row.length });
+        console.log('Status change initiated:', { bookingId, newStatus, originalStatus });
         
-        // Show saving indicator
-        $savingIndicator.show().text('Saving...');
-        
-        // Get the latest nonce from the table or the localized script data
-        const nonce = $('#assigned-bookings-table').data('nonce') || (window.assignedBookingsData ? window.assignedBookingsData.nonce : '');
-        
-        if (!nonce) {
-            console.error('Security nonce is missing');
-            $savingIndicator.text('Error: Missing security token').fadeOut(3000);
+        // If status didn't change, do nothing
+        if (newStatus === originalStatus) {
+            console.log('Status unchanged, aborting');
             return;
         }
         
-        // Update the global nonce in case it was refreshed
-        if (bookingData) {
-            bookingData.nonce = nonce;
+        // Disable the select during update
+        $select.prop('disabled', true);
+        
+        // Store the original values in case of error
+        $row.data('original-status', originalStatus);
+        $select.data('original-value', originalStatus);
+        
+        // Fade out the row, update status, then fade back in
+        $row.animate({ opacity: 0.4 }, 200, function() {
+            // Call the update function
+            updateBookingStatus(bookingId, newStatus, function(success) {
+                if (!success) {
+                    // On failure, revert the select to original status
+                    $select.val(originalStatus);
+                    $row.attr('data-status', originalStatus);
+                }
+                
+                // Fade the row back in
+                $row.animate({ opacity: 1 }, 200);
+                
+                // Re-enable the select
+                $select.prop('disabled', false);
+            });
+        });
+        
+        // Get the nonce from the table or the localized script data
+        const nonce = $('#assigned-bookings-table').data('nonce') || (window.assignedBookingsData ? window.assignedBookingsData.nonce : '');
+        
+        if (!nonce) {
+            const errorMsg = 'Security nonce is missing';
+            console.error(errorMsg);
+            // Fade the row back in with an error state
+            $row.animate({ opacity: 1 }, 200, function() {
+                // Revert to original status
+                $select.val(originalStatus);
+                $row.attr('data-status', originalStatus);
+                // Re-enable the select
+                $select.prop('disabled', false);
+            });
+            showNotice('error', errorMsg);
+            return;
         }
         
-        console.log('Status change - Booking ID:', bookingId, 'New Status:', newStatus, 'Nonce:', nonce);
+        // Prepare the data to send
+        const data = {
+            action: 'update_booking_status',
+            booking_id: bookingId,
+            status: newStatus,
+            nonce: nonce
+        };
         
-        // Update the status
-        updateBookingStatus(bookingId, newStatus, function(success) {
-            $savingIndicator.hide();
-            
-            if (success) {
-                // Update the status badge
-                const $statusBadge = $row.find('.status-badge');
-                $statusBadge.removeClass('status-pending status-confirmed status-completed status-cancelled')
-                           .addClass('status-' + newStatus)
-                           .text(newStatus.charAt(0).toUpperCase() + newStatus.slice(1));
+        // Debug log the AJAX URL and data
+        console.log('AJAX URL:', window.assignedBookingsData?.ajaxurl || ajaxurl);
+        console.log('Sending AJAX request with data:', data);
+        
+        // Make the AJAX request
+        $.ajax({
+            url: window.assignedBookingsData?.ajaxurl || ajaxurl,
+            type: 'POST',
+            data: data,
+            dataType: 'json',
+            beforeSend: function() {
+                // Show loading state
+                $savingIndicator.find('.saving-text').text('Updating...');
+            },
+            success: function(response) {
+                console.log('AJAX Response:', response);
                 
-                // Update the row's status attributes
-                $row.attr('data-status', newStatus)
-                    .attr('data-status-category', newStatus)
-                    .removeClass('status-pending status-confirmed status-completed status-cancelled')
-                    .addClass('status-' + newStatus);
+                // Remove saving indicator
+                $savingIndicator.remove();
                 
-                // If we're filtering, update the display
-                if (currentStatusFilter !== 'all' && currentStatusFilter !== newStatus) {
-                    $row.hide();
+                // WordPress AJAX responses have success/error in the root object
+                if (response && response.success) {
+                    const successMessage = (response.data && response.data.message) || 'Status updated successfully!';
+                    
+                    // Update the status badge with animation
+                    $statusBadge
+                        .removeClass('status-pending status-confirmed status-completed status-cancelled')
+                        .addClass('status-badge status-' + newStatus)
+                        .text(statusLabel)
+                        .addClass('updated')
+                        .on('animationend', function() {
+                            $(this).removeClass('updated');
+                        });
+                    
+                    // Update the row's data attributes
+                    $row.attr({
+                        'data-status': newStatus,
+                        'data-status-category': newStatus
+                    });
+                    
+                    // Show success indicator
+                    const $successIndicator = $(`
+                        <span class="success-indicator">
+                            <span class="dashicons dashicons-yes"></span>
+                            <span class="success-text">Updated</span>
+                        </span>
+                    `);
+                    $select.after($successIndicator);
+                    
+                    // Hide success indicator after delay
+                    setTimeout(() => {
+                        $successIndicator.fadeOut(500, function() {
+                            $(this).remove();
+                        });
+                    }, 2000);
+                    
+                    // Show success message
+                    showNotice('success', successMessage);
+                    
+                    // If we're filtering, update the display
+                    if (currentStatusFilter !== 'all' && currentStatusFilter !== newStatus) {
+                        $row.fadeOut(300, function() {
+                            $(this).remove();
+                        });
+                    }
+                    
+                    // Re-enable the select
+                    $select.prop('disabled', false);
+                } else {
+                    // Revert to original status on error with animation
+                    const originalStatus = $row.data('original-status');
+                    const originalValue = $select.data('original-value');
+                    
+                    // Revert the select value
+                    $select.val(originalValue);
+                    
+                    // Get error message
+                    const errorMessage = (response && response.data && response.data.message) || 
+                                       (response && response.message) || 
+                                       'Failed to update status. Please try again.';
+                    
+                    // Show error indicator
+                    const $errorIndicator = $(`
+                        <span class="error-indicator">
+                            <span class="dashicons dashicons-warning"></span>
+                            <span class="error-text">Error</span>
+                        </span>
+                    `);
+                    
+                    $savingIndicator.replaceWith($errorIndicator);
+                    
+                    // Show error notice
+                    showNotice('error', errorMessage);
+                    
+                    // Revert status badge
+                    $statusBadge
+                        .removeClass('status-pending status-confirmed status-completed status-cancelled')
+                        .addClass('status-badge status-' + originalStatus)
+                        .addClass('error-animation')
+                        .on('animationend', function() {
+                            $(this).removeClass('error-animation');
+                        });
+                    
+                    // Remove error indicator after delay
+                    setTimeout(() => {
+                        $errorIndicator.fadeOut(3000, function() {
+                            $(this).remove();
+                        });
+                    }, 2000);
+                    
+                    // Re-enable the select
+                    $select.prop('disabled', false);
+                    $row.removeClass('updating').css('opacity', '1');
                 }
-            } else {
-                // Revert the select to the original value
-                const originalStatus = $row.attr('data-status');
-                $select.val(originalStatus);
-                // The error message is shown by the updateBookingStatus function
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX Error:', status, error);
+                console.error('Response Text:', xhr.responseText);
+                
+                // Revert to original status
+                const originalStatus = $row.data('original-status');
+                const originalValue = $select.data('original-value');
+                
+                $select.val(originalValue);
+                
+                // Show error indicator
+                const $errorIndicator = $(`
+                    <span class="error-indicator">
+                        <span class="dashicons dashicons-warning"></span>
+                        <span class="error-text">Network Error</span>
+                    </span>
+                `);
+                
+                $savingIndicator.replaceWith($errorIndicator);
+                
+                // Show error notice
+                showNotice('error', 'Network error. Please check your connection and try again.');
+                
+                // Revert status badge with error animation
+                $row.find('.status-badge')
+                    .removeClass('status-pending status-confirmed status-completed status-cancelled')
+                    .addClass('status-badge status-' + originalStatus)
+                    .addClass('error-animation')
+                    .on('animationend', function() {
+                        $(this).removeClass('error-animation');
+                    });
+                
+                // Remove error indicator after delay
+                setTimeout(() => {
+                    $errorIndicator.fadeOut(3000, function() {
+                        $(this).remove();
+                    });
+                }, 2000);
+                
+                // Re-enable the select
+                $select.prop('disabled', false);
+                $row.removeClass('updating').css('opacity', '1');
+                
+                // Call the callback if provided
+                if (typeof callback === 'function') {
+                    callback(true);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX Error:', status, error);
+                showNotice('error', 'An error occurred while updating the booking status. Please try again.');
+                
+                // Re-enable the select and restore original value
+                $select.val(originalStatus).prop('disabled', false);
+                $row.removeClass('updating').css('opacity', '1');
+                
+                // Call the callback if provided
+                if (typeof callback === 'function') {
+                    callback(false);
+                }
+            },
+            complete: function() {
+                // Clean up any remaining loading states
+                $row.removeClass('updating').css('opacity', '1');
+                $select.prop('disabled', false);
             }
         });
-    });
+    }
     
     // Handle action item clicks
     $(document).on('click', '.action-item', function(e) {
@@ -186,8 +512,78 @@ jQuery(document).ready(function($) {
         }
     });
     
-    // Initialize filters when document is ready
+        // Initialize filters when document is ready
     initStatusFilters();
+    
+    // Add debounced status change handler
+    $(document).on('change', '.status-select', debounce(handleStatusChange, 100));
+    
+    // Add CSS for new animations
+    const statusChangeStyles = `
+        @keyframes statusChangePulse {
+            0% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.8; }
+        }
+        
+        @keyframes statusErrorShake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-3px); }
+            40%, 80% { transform: translateX(3px); }
+        }
+        
+        .status-changing {
+            animation: statusChangePulse 0.6s ease-in-out;
+        }
+        
+        .error-animation {
+            animation: statusErrorShake 0.6s ease-in-out;
+        }
+        
+        .saving-indicator,
+        .success-indicator,
+        .error-indicator {
+            display: inline-flex;
+            align-items: center;
+            margin-left: 8px;
+            font-size: 12px;
+            color: #666;
+            vertical-align: middle;
+        }
+        
+        .success-indicator {
+            color: #4caf50;
+        }
+        
+        .error-indicator {
+            color: #f44336;
+        }
+        
+        .saving-indicator .spinner,
+        .success-indicator .dashicons,
+        .error-indicator .dashicons {
+            margin-right: 4px;
+            width: 16px;
+            height: 16px;
+            font-size: 16px;
+            line-height: 1;
+        }
+        
+        .success-indicator .dashicons {
+            color: #4caf50;
+        }
+        
+        .error-indicator .dashicons {
+            color: #f44336;
+        }
+        
+        .status-badge {
+            transition: all 0.3s ease;
+        }
+    `;
+    
+    // Add styles to the head
+    $('<style>').text(statusChangeStyles).appendTo('head');
     
     // Show booking details in modal
     function showBookingDetails(bookingId) {
@@ -242,6 +638,8 @@ jQuery(document).ready(function($) {
     
     // Update booking status via AJAX
     function updateBookingStatus(bookingId, status, callback) {
+        console.log('updateBookingStatus called with:', { bookingId, status });
+        
         // Convert bookingId to integer to ensure it's a valid number
         bookingId = parseInt(bookingId, 10);
         
@@ -300,14 +698,8 @@ jQuery(document).ready(function($) {
         const $statusSelect = $row.find('.status-select');
         const originalStatus = $row.attr('data-status');
         
-        // Show loading state
+        // Disable the select during update
         $statusSelect.prop('disabled', true);
-        if ($statusCell.length) {
-            $statusCell.html('<span class="dashicons dashicons-update-alt spin"></span>');
-        }
-        
-        // Show saving indicator
-        $statusSelect.siblings('.status-saving').show();
         
         // Get the nonce from the localized script data
         const nonce = window.assignedBookingsData?.nonce || '';
@@ -358,10 +750,6 @@ jQuery(document).ready(function($) {
                 console.log('jqXHR:', jqXHR);
                 console.groupEnd();
                 
-                // Re-enable the select and hide saving indicator
-                $statusSelect.prop('disabled', false);
-                $savingIndicator.hide();
-                
                 if (response && response.success) {
                     console.log('Update successful, updating UI...');
                     let statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
@@ -378,19 +766,33 @@ jQuery(document).ready(function($) {
                         'completed': 'completed',
                         'cancelled': 'cancelled',
                         'confirmed': 'upcoming',
-                        'pending': 'upcoming'
+                        'pending': 'pending'
                     };
                     
                     const statusCategory = statusToCategory[status] || 'upcoming';
                     
-                    // Update the row's data attributes
-                    $row.attr('data-status', status)
-                        .attr('data-status-category', statusCategory)
-                        .removeClass('status-pending status-confirmed status-completed status-cancelled')
-                        .addClass('status-' + status);
+                    // Update the row's data attributes and classes
+                    $row.attr({
+                        'data-status': status,
+                        'data-status-category': statusCategory
+                    });
                     
-                    // Update the select to show the new status
-                    $statusSelect.val(status);
+                    // Update the select to show the new status and re-enable it
+                    $statusSelect.val(status)
+                               .prop('disabled', false)
+                               .attr('data-status', status)
+                               .siblings('.status-saving').hide();
+                    
+                    // Update any status badges in the row
+                    $row.find('.status-badge')
+                        .removeClass('status-pending status-confirmed status-completed status-cancelled')
+                        .addClass('status-badge status-' + status)
+                        .text(statusLabel);
+                    
+                    // If we're filtering, update the display
+                    if (currentStatusFilter !== 'all' && currentStatusFilter !== status) {
+                        $row.hide('fast');
+                    }
                     
                     // Show success message
                     const successMsg = response.data && response.data.message || 'Booking status updated successfully!';
@@ -454,9 +856,8 @@ jQuery(document).ready(function($) {
                 showNotice('error', errorMsg);
             },
             complete: function() {
-                // Re-enable the status select and hide saving indicator
+                // Re-enable the status select
                 $statusSelect.prop('disabled', false);
-                $statusSelect.siblings('.status-saving').hide();
                 
                 // If we're filtering, update the display
                 if (currentStatusFilter !== 'all' && currentStatusFilter !== status) {

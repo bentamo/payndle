@@ -1336,16 +1336,123 @@
     border-color: #545b62;
 }
 
-/* Status badges */
-.status-badge {
-    display: inline-block;
-    padding: 4px 10px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 500;
-    text-transform: capitalize;
+/* Status Change Animation */
+.assigned-bookings-table tbody tr.status-changing {
+    opacity: 0.5;
+    transition: opacity 0.3s ease-in-out;
 }
 
+.assigned-bookings-table tbody tr {
+    transition: opacity 0.3s ease-in-out;
+}
+
+/* Status Badges */
+.status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: capitalize;
+    letter-spacing: 0.3px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    min-width: 80px;
+    text-align: center;
+}
+
+/* Status colors */
+.status-badge.status-pending { background-color: #FEF3C7; color: #92400E; }
+.status-badge.status-confirmed { background-color: #DBEAFE; color: #1E40AF; }
+.status-badge.status-completed { background-color: #D1FAE5; color: #065F46; }
+.status-badge.status-cancelled { background-color: #F3F4F6; color: #4B5563; }
+
+/* Status select */
+.status-select {
+    min-width: 120px;
+    padding: 6px 8px;
+    border: 1px solid #E5E7EB;
+    border-radius: 6px;
+    background-color: white;
+    font-size: 13px;
+    color: #111827;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    padding-right: 28px;
+}
+
+.status-select:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    background-color: #F9FAFB;
+}
+
+/* Row States */
+.assigned-bookings-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.assigned-bookings-table tbody tr:hover {
+    background-color: #f9fafb;
+}
+
+.assigned-bookings-table tbody tr.update-success {
+    animation: highlightSuccess 2s ease-out;
+}
+
+.assigned-bookings-table tbody tr.update-error {
+    animation: highlightError 0.5s ease-out;
+}
+
+/* Saving Indicator */
+.saving-indicator {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 8px;
+    font-size: 12px;
+    color: #4B5563;
+    transition: all 0.3s ease;
+}
+
+.saving-indicator .spinner {
+    margin: 0 4px 0 0 !important;
+    float: none !important;
+    visibility: visible !important;
+}
+
+.saving-indicator.error {
+    color: #DC2626;
+}
+
+/* Animations */
+@keyframes pulse {
+    0% { opacity: 0.7; }
+    50% { opacity: 0.4; }
+    100% { opacity: 0.7; }
+}
+
+@keyframes pop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+@keyframes highlightSuccess {
+    0% { background-color: rgba(16, 185, 129, 0.1); }
+    100% { background-color: transparent; }
+}
+
+@keyframes highlightError {
+    0%, 100% { background-color: rgba(220, 38, 38, 0.1); }
+    50% { background-color: rgba(220, 38, 38, 0.2); }
+}
+
+/* Status Badge Colors */
 .status-badge .dashicons {
     margin-right: 4px;
     font-size: 14px;

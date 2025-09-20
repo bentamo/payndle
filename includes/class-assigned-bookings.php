@@ -22,6 +22,9 @@ class Assigned_Bookings {
      * Handle AJAX request to update booking status
      */
     public function ajax_update_booking_status() {
+        // Set content type header
+        header('Content-Type: application/json');
+        
         // Enable error logging
         error_log('=== Starting ajax_update_booking_status ===');
         error_log('POST data: ' . print_r($_POST, true));
@@ -221,10 +224,16 @@ class Assigned_Bookings {
         // Log the update for debugging
         error_log('Booking ' . $booking_id . ' status updated to ' . $status . ' (WP Status: ' . $wp_status . ')');
         
-        wp_send_json_success(array(
-            'message' => 'Booking status updated successfully',
-            'booking' => $booking_data
-        ));
+        $response = array(
+            'success' => true,
+            'data' => array(
+                'message' => 'Booking status updated successfully!',
+                'status' => $status
+            )
+        );
+        
+        error_log('Sending success response: ' . print_r($response, true));
+        wp_send_json_success($response['data']);
         wp_die();
     }
     
@@ -317,12 +326,29 @@ class Assigned_Bookings {
      * Enqueue CSS & JS
      */
     public function enqueue_assets() {
-        $plugin_url = plugin_dir_url(__FILE__) . '../';
-
-        // Only load on pages with the shortcode
+        // Get the correct plugin URL
+        $plugin_path = plugin_dir_path(dirname(__FILE__));
+        $plugin_url = plugin_dir_url(dirname(__FILE__));
+        
+        // Check if we're in admin or on a page with the shortcode
         global $post;
-        if (!is_a($post, 'WP_Post') || !has_shortcode($post->post_content, 'assigned_bookings')) {
+        $is_shortcode_page = is_a($post, 'WP_Post') && has_shortcode($post->post_content, 'assigned_bookings');
+        
+        // Load on admin pages or pages with the shortcode
+        if (!is_admin() && !$is_shortcode_page) {
             return;
+        }
+
+        // Debug information
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            $css_path = $plugin_path . 'assets/css/assigned-bookings.css';
+            $js_path = $plugin_path . 'assets/js/assigned-bookings.js';
+            
+            error_log('Assigned Bookings Debug:');
+            error_log('- Plugin Path: ' . $plugin_path);
+            error_log('- Plugin URL: ' . $plugin_url);
+            error_log('- CSS Path: ' . $css_path . ' (exists: ' . (file_exists($css_path) ? 'yes' : 'no') . ')' );
+            error_log('- JS Path: ' . $js_path . ' (exists: ' . (file_exists($js_path) ? 'yes' : 'no') . ')' );
         }
 
         // Enqueue Inter font from Google Fonts
@@ -336,12 +362,18 @@ class Assigned_Bookings {
         // Enqueue WordPress dashicons
         wp_enqueue_style('dashicons');
 
+        // Get file modification time for cache busting
+        $css_path = dirname(dirname(__FILE__)) . '/assets/css/assigned-bookings.css';
+        $js_path = dirname(dirname(__FILE__)) . '/assets/js/assigned-bookings.js';
+        $css_ver = file_exists($css_path) ? filemtime($css_path) : '1.0';
+        $js_ver = file_exists($js_path) ? filemtime($js_path) : '1.0';
+
         // Enqueue styles
         wp_enqueue_style(
             'assigned-bookings-style',
             $plugin_url . 'assets/css/assigned-bookings.css',
             array('google-font-inter'),
-            '1.2'
+            $css_ver
         );
 
         // Enqueue scripts
@@ -349,7 +381,7 @@ class Assigned_Bookings {
             'assigned-bookings-script',
             $plugin_url . 'assets/js/assigned-bookings.js',
             array('jquery'),
-            '1.2',
+            $js_ver,
             true
         );
 
@@ -831,10 +863,10 @@ class Assigned_Bookings {
                             $status_class = strtolower($booking['status'] ?? 'pending');
                             $status_category = $booking['status_category'] ?? 'pending';
                         ?>
-                            <tr class="status-<?php echo esc_attr($status_class); ?>" 
+                            <tr class="booking-row status-<?php echo esc_attr($status_class); ?>" 
                                 data-booking-id="<?php echo esc_attr($booking['booking_id']); ?>"
                                 data-status="<?php echo esc_attr($status_class); ?>"
-                                data-status-category="<?php echo esc_attr($status_category); ?>">
+                                data-status-category="<?php echo $status_class === 'completed' || $status_class === 'cancelled' ? $status_class : 'upcoming'; ?>">
                                 <td data-label="ID">#<?php echo esc_html($booking['booking_id']); ?></td>
                                 <td data-label="Customer">
                                     <strong><?php echo esc_html($booking['customer_name']); ?></strong>
