@@ -1072,7 +1072,7 @@
         });
 
         // When the service blocks change (service select or staff selection), re-render rows and check availability
-        $blocksContainer.on('change', '.ubf-service-select, .ubf-staff-input', function(){ renderPerServiceSchedule(); debouncedCheck(); });
+    $blocksContainer.on('change', '.ubf-service-select, .ubf-staff-input', function(){ renderPerServiceSchedule(); debouncedCheck(); try { const inst = $(this).closest('.ubf-v3-form').data('ubf-instance'); if (inst && typeof inst.updatePaymentBreakdown === 'function') inst.updatePaymentBreakdown(); } catch(e){} });
 
         // Refresh all blocks when global v3 date/time changes OR when any block-specific date/time changes
         function refreshAllBlocks(){
@@ -1178,6 +1178,8 @@
                 $scheduleRoot.html(rows.join(''));
                 // hide placeholder
                 $scheduleRoot.find('.ubf-schedule-placeholder').remove();
+                // update payment breakdown after rendering schedule rows (in case service selections changed)
+                try { const inst = $scheduleRoot.closest('.ubf-v3-form').data('ubf-instance'); if (inst && typeof inst.updatePaymentBreakdown === 'function') inst.updatePaymentBreakdown(); } catch(e){}
             } else {
                 $scheduleRoot.html('<div class="ubf-schedule-placeholder">Select and configure services in step 1 to set schedules per service.</div>');
             }
@@ -1204,6 +1206,73 @@
         this.current = step;
         this.updateStepper();
         this.updateProgress();
+        // When entering payment step, refresh breakdown
+        if (parseInt(step,10) === 4) {
+            try { this.updatePaymentBreakdown(); } catch(e){}
+        }
+    }
+
+    // Compute and update the payment breakdown shown on the payment step
+    UBFv3.prototype.updatePaymentBreakdown = function(){
+        try {
+            const $form = this.form;
+            // tax-rate can be supplied as a data attribute on the form (e.g. data-tax-rate="0.12" for 12%)
+            const taxRate = parseFloat($form.attr('data-tax-rate') || '0') || 0;
+
+            // gather selected services from blocks (use per-block select values)
+            const $blocks = this.blocksContainer ? this.blocksContainer.find('.ubf-service-block') : $form.find('.ubf-service-block');
+            let subtotal = 0;
+            const serviceLines = [];
+            if ($blocks && $blocks.length) {
+                $blocks.each(function(){
+                    const $b = $(this);
+                    const opt = $b.find('.ubf-service-select option:selected');
+                    const price = parseFloat(opt.data('price') || 0) || 0;
+                    const title = String(opt.text() || '').split(' - ')[0] || opt.text() || 'Service';
+                    subtotal += price;
+                    serviceLines.push({ title: title.trim(), price: price });
+                });
+            } else {
+                // fallback: single select (legacy)
+                const opt = $form.find('#ubf_service_id option:selected');
+                const price = parseFloat(opt.data('price') || 0) || 0;
+                const title = String(opt.text() || '').split(' - ')[0] || opt.text() || 'Service';
+                subtotal = price;
+                if (price > 0 || title) serviceLines.push({ title: title.trim(), price: price });
+            }
+
+            const tax = subtotal * taxRate;
+            const discount = 0; // future: apply coupon/discount logic here
+            const total = Math.max(0, subtotal + tax - discount);
+
+            function fmt(v){
+                try { return parseFloat(v||0).toLocaleString('en-PH', {minimumFractionDigits:2, maximumFractionDigits:2}); } catch(e){ return Number((v||0)).toFixed(2); }
+            }
+
+            $('#ubf-breakdown-subtotal').text('₱' + fmt(subtotal));
+            // render each service line
+            const $services = $('#ubf-breakdown-services');
+            $services.empty();
+            if (serviceLines.length) {
+                serviceLines.forEach(function(s){
+                    const row = '<div class="breakdown-service"><span class="svc-name">'+$('<div>').text(s.title).html()+'</span><span class="svc-price">₱'+fmt(s.price)+'</span></div>';
+                    $services.append(row);
+                });
+            } else {
+                $services.html('<div class="breakdown-service-placeholder">No services selected</div>');
+            }
+            if (taxRate && tax > 0) { $('#ubf-breakdown-tax').text('₱' + fmt(tax)); $('#ubf-breakdown-tax-row').show(); } else { $('#ubf-breakdown-tax-row').hide(); }
+            if (discount && discount > 0) { $('#ubf-breakdown-discount').text('-₱' + fmt(discount)); $('#ubf-breakdown-discount-row').show(); } else { $('#ubf-breakdown-discount-row').hide(); }
+            $('#ubf-breakdown-total').text('₱' + fmt(total));
+
+            // Also expose values on the form for server-side consumption if desired
+            $form.find('input[name="ubf_subtotal"]').remove();
+            $form.append('<input type="hidden" name="ubf_subtotal" value="'+ subtotal.toFixed(2) +'" />');
+            $form.find('input[name="ubf_tax"]').remove();
+            $form.append('<input type="hidden" name="ubf_tax" value="'+ tax.toFixed(2) +'" />');
+            $form.find('input[name="ubf_total"]').remove();
+            $form.append('<input type="hidden" name="ubf_total" value="'+ total.toFixed(2) +'" />');
+        } catch (e){ console.warn('Failed to update payment breakdown', e); }
     }
 
     /**
