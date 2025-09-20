@@ -96,31 +96,99 @@ function manager_dashboard_shortcode() {
     ob_start();
     ?>
     <div class="dashboard-container">
-        <!-- Simple Header -->
+        <!-- Header Section -->
         <header class="dashboard-header">
             <div class="header-content">
-                <h1><?php echo esc_html($business_name); ?> Dashboard</h1>
-                <p class="welcome-message">Welcome back, <?php echo esc_html($current_user->display_name); ?></p>
+                <h1>Hello, <?php echo esc_html($current_user->display_name); ?></h1>
+                <p class="business-name"><?php echo esc_html($business_name); ?></p>
             </div>
         </header>
 
         <main class="main-content">
-
-            <!-- Business Info Section -->
-            <section class="business-info-section">
-                <div class="section-header">
-                    <h2 class="section-title">Business Information</h2>
-                    <button id="edit-business-info" class="btn btn-edit">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <!-- Business Info Card -->
+            <section class="info-card">
+                <div class="card-header">
+                    <h2>Business Information</h2>
+                    <button id="edit-business-info" class="btn-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                         </svg>
-                        Edit
                     </button>
                 </div>
                 
-                <div class="ubf-v3-container">
-                <form id="business-info-form" class="info-grid ubf-v3-form" style="display: none;">
+                <div id="business-info-display" class="info-content">
+                    <div class="info-section">
+                        <h3>Business Details</h3>
+                        <div class="info-row">
+                            <span class="info-label">Business Name</span>
+                            <span class="info-value"><?php echo esc_html($business_name); ?></span>
+                        </div>
+                        <?php if (!empty($business_code)) : ?>
+                        <div class="info-row">
+                            <span class="info-label">Business ID</span>
+                            <span class="info-value"><?php echo esc_html($business_code); ?></span>
+                        </div>
+                        <?php endif; ?>
+                        <?php if (!empty($business_description)) : ?>
+                        <div class="info-row">
+                            <span class="info-label">Description</span>
+                            <span class="info-value"><?php echo esc_html($business_description); ?></span>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                    
+                    <div class="info-section">
+                        <h3>Contact Information</h3>
+                        <?php if (!empty($business_email)) : ?>
+                        <div class="info-row">
+                            <span class="info-label">Email</span>
+                            <span class="info-value"><?php echo esc_html($business_email); ?></span>
+                        </div>
+                        <?php endif; ?>
+                        <?php if (!empty($business_phone)) : ?>
+                        <div class="info-row">
+                            <span class="info-label">Phone</span>
+                            <span class="info-value"><?php echo esc_html($business_phone); ?></span>
+                        </div>
+                        <?php endif; ?>
+                        <?php if (!empty($business_website)) : ?>
+                        <div class="info-row">
+                            <span class="info-label">Website</span>
+                            <a href="<?php echo esc_url($business_website); ?>" target="_blank" class="info-value link">
+                                <?php echo esc_html(parse_url($business_website, PHP_URL_HOST)); ?>
+                            </a>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                    
+                    <?php if (!empty($business_address) || !empty($business_city) || !empty($business_state) || !empty($business_zip)) : ?>
+                    <div class="info-section">
+                        <h3>Location</h3>
+                        <div class="info-address">
+                            <?php if (!empty($business_address)) : ?>
+                                <div><?php echo esc_html($business_address); ?></div>
+                            <?php endif; ?>
+                            <div>
+                                <?php 
+                                $location_parts = array_filter([
+                                    $business_city,
+                                    $business_state,
+                                    $business_zip
+                                ]);
+                                echo esc_html(implode(', ', $location_parts));
+                                ?>
+                            </div>
+                            <?php if (!empty($business_country)) : ?>
+                                <div><?php echo esc_html($business_country); ?></div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                </div>
+
+                <!-- Edit Form (initially hidden) -->
+                <form id="business-info-form" class="edit-form" style="display: none;">
                     <?php wp_nonce_field('business_info_nonce', 'business_info_nonce'); ?>
                     <input type="hidden" name="business_id" value="<?php echo esc_attr($business_id); ?>">
                     
@@ -134,10 +202,6 @@ function manager_dashboard_shortcode() {
                             <label for="business_description">Description</label>
                             <textarea id="business_description" name="business_description" rows="3"><?php echo esc_textarea($business_description); ?></textarea>
                         </div>
-                        <div class="form-group">
-                            <label for="business_website">Website</label>
-                            <input type="url" id="business_website" name="business_website" value="<?php echo esc_url($business_website); ?>">
-                        </div>
                     </div>
                     
                     <div class="form-section">
@@ -149,6 +213,10 @@ function manager_dashboard_shortcode() {
                         <div class="form-group">
                             <label for="business_phone">Phone</label>
                             <input type="tel" id="business_phone" name="business_phone" value="<?php echo esc_attr($business_phone); ?>">
+                        </div>
+                        <div class="form-group">
+                            <label for="business_website">Website</label>
+                            <input type="url" id="business_website" name="business_website" value="<?php echo esc_url($business_website); ?>">
                         </div>
                     </div>
                     
@@ -168,7 +236,7 @@ function manager_dashboard_shortcode() {
                                 <input type="text" id="business_state" name="business_state" value="<?php echo esc_attr($business_state); ?>">
                             </div>
                             <div class="form-group">
-                                <label for="business_zip">ZIP</label>
+                                <label for="business_zip">ZIP Code</label>
                                 <input type="text" id="business_zip" name="business_zip" value="<?php echo esc_attr($business_zip); ?>">
                             </div>
                         </div>
@@ -183,101 +251,458 @@ function manager_dashboard_shortcode() {
                         <button type="submit" class="btn btn-primary">Save Changes</button>
                     </div>
                 </form>
-                </div>
-                
-                <div id="business-info-display" class="info-grid">
-                    <div class="info-card">
-                        <h3>Business Details</h3>
-                        <div class="info-content">
-                            <div class="info-row">
-                                <span class="info-label">Name</span>
-                                <span class="info-value"><?php echo esc_html($business_name); ?></span>
-                            </div>
-                            <?php if (!empty($business_code)) : ?>
-                            <div class="info-row">
-                                <span class="info-label">Business ID</span>
-                                <span class="info-value"><?php echo esc_html($business_code); ?></span>
-                            </div>
-                            <?php endif; ?>
-                            <?php if (!empty($business_description)) : ?>
-                            <div class="info-row">
-                                <span class="info-label">Description</span>
-                                <span class="info-value"><?php echo esc_html($business_description); ?></span>
-                            </div>
-                            <?php endif; ?>
-                            <?php if (!empty($business_website)) : ?>
-                            <div class="info-row">
-                                <span class="info-label">Website</span>
-                                <a href="<?php echo esc_url($business_website); ?>" target="_blank" class="info-value">
-                                    <?php echo esc_html(parse_url($business_website, PHP_URL_HOST) ?: $business_website); ?>
-                                </a>
-                            </div>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                    
-                    <div class="info-card">
-                        <h3>Contact Information</h3>
-                        <div class="info-content">
-                            <?php if (!empty($business_email)) : ?>
-                            <div class="info-row">
-                                <span class="info-label">Email</span>
-                                <span class="info-value"><?php echo esc_html($business_email); ?></span>
-                            </div>
-                            <?php endif; ?>
-                            <?php if (!empty($business_phone)) : ?>
-                            <div class="info-row">
-                                <span class="info-label">Phone</span>
-                                <span class="info-value"><?php echo esc_html($business_phone); ?></span>
-                            </div>
-                            <?php endif; ?>
-                            <?php if (!empty($business_address)) : ?>
-                            <div class="info-row">
-                                <span class="info-label">Address</span>
-                                <span class="info-value">
-                                    <?php 
-                                    echo esc_html($business_address);
-                                    if (!empty($business_city)) echo ', ' . esc_html($business_city);
-                                    if (!empty($business_state)) echo ', ' . esc_html($business_state);
-                                    if (!empty($business_zip)) echo ' ' . esc_html($business_zip);
-                                    if (!empty($business_country)) echo '<br>' . esc_html($business_country);
-                                    ?>
-                                </span>
-                            </div>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                    
-                    <div class="info-card">
-                        <h3>Account Status</h3>
-                        <div class="info-content">
-                            <div class="info-row">
-                                <span class="info-label">Status</span>
-                                <span class="status-badge <?php echo $business_status === 'active' ? 'active' : 'inactive'; ?>">
-                                    <?php echo ucfirst(esc_html($business_status)); ?>
-                                </span>
-                            </div>
-                            <div class="info-row">
-                                <span class="info-value">
-                                    <?php if ($business_status === 'active') : ?>
-                                        Your business is live and visible to customers.
-                                    <?php else : ?>
-                                        Your business profile is not yet active.
-                                    <?php endif; ?>
-                                </span>
-                            </div>
-                            <?php if (!empty($setup_completed)) : ?>
-                            <div class="info-row">
-                                <span class="info-label">Setup Date</span>
-                                <span class="info-value"><?php echo esc_html(date('F j, Y', strtotime($setup_completed))); ?></span>
-                            </div>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                </div>
             </section>
         </main>
-        </div>
+    </div>
+
+    <style>
+        /* Base Styles */
+        :root {
+            --primary-green: #64C493;
+            --primary-navy: #0C1930;
+            --white: #FFFFFF;
+            --gray-100: #F3F4F6;
+            --gray-200: #E5E7EB;
+            --gray-300: #D1D5DB;
+            --gray-400: #9CA3AF;
+            --gray-500: #6B7280;
+            --gray-600: #4B5563;
+            --gray-700: #374151;
+            --gray-800: #1F2937;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --rounded: 0.5rem;
+            --rounded-lg: 0.75rem;
+            --transition: all 0.2s ease;
+        }
+
+        /* Typography */
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif;
+            color: var(--gray-700);
+            line-height: 1.5;
+            background-color: var(--gray-100);
+            margin: 0;
+            padding: 0;
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--primary-navy);
+            margin: 0 0 0.5rem;
+            line-height: 1.2;
+        }
+
+        h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--primary-navy);
+            margin: 0 0 1rem;
+        }
+
+        h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--gray-700);
+            margin: 0 0 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-size: 0.75rem;
+            color: var(--gray-500);
+        }
+
+        p {
+            margin: 0 0 1rem;
+            color: var(--gray-600);
+        }
+
+        .business-name {
+            font-size: 1.125rem;
+            color: var(--gray-600);
+            margin: 0;
+        }
+
+        /* Layout */
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        .dashboard-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        /* Card Styles */
+        .info-card {
+            background: var(--white);
+            border-radius: var(--rounded-lg);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--gray-100);
+        }
+
+        .info-content {
+            padding: 0 1.5rem 1.5rem;
+        }
+
+        .info-section {
+            margin-bottom: 2rem;
+        }
+
+        .info-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .info-row {
+            display: flex;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--gray-100);
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .info-label {
+            flex: 0 0 160px;
+            color: var(--gray-600);
+            font-size: 0.9375rem;
+        }
+
+        .info-value {
+            flex: 1;
+            color: var(--gray-800);
+            font-weight: 500;
+        }
+
+        .info-address {
+            color: var(--gray-700);
+            line-height: 1.6;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem 1rem;
+            border-radius: var(--border-radius);
+            font-weight: var(--font-medium);
+            font-size: 0.8125rem;
+            line-height: 1.25;
+            text-align: center;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            border: 1px solid transparent;
+            font-family: var(--font-family);
+            gap: 0.375rem;
+        }
+        
+        .btn-sm {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.75rem;
+            line-height: 1.25;
+        }
+        
+        .btn-lg {
+            padding: 0.625rem 1.25rem;
+            font-size: 0.875rem;
+            line-height: 1.375;
+        }
+        
+        .btn-icon {
+            width: 2rem;
+            height: 2rem;
+            padding: 0;
+            font-size: 1rem;
+        }
+        
+        .btn-primary {
+            background: var(--primary-green);
+            color: white;
+            border-color: var(--primary-green);
+        }
+        
+        .btn-primary:hover {
+            background: #4db07f;
+            border-color: #4db07f;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn-primary:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+        
+        .btn-secondary {
+            background: var(--primary-navy);
+            color: white;
+            border-color: var(--primary-navy);
+        }
+        
+        .btn-secondary:hover {
+            background: #0a1223;
+            border-color: #0a1223;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn-outline {
+            background: transparent;
+            color: var(--primary-green);
+            border: 1px solid var(--primary-green);
+        }
+        
+        .btn-outline:hover {
+            background: rgba(100, 196, 147, 0.1);
+            transform: translateY(-1px);
+        }
+        
+        .btn-text {
+            background: transparent;
+            color: var(--primary-green);
+            padding: 0.5rem 0.75rem;
+            border: none;
+        }
+        
+        .btn-text:hover {
+            background: rgba(100, 196, 147, 0.1);
+            text-decoration: underline;
+            transform: none;
+        }
+        
+        .btn-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 2.25rem;
+            height: 2.25rem;
+            padding: 0;
+            border-radius: 50%;
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-icon:hover {
+            background: var(--primary-light);
+            color: var(--primary-green);
+            border-color: var(--primary-green);
+            transform: translateY(-1px);
+        }
+        
+        .btn-sm {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.8125rem;
+        }
+        
+        .btn-lg {
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+        }
+        
+        .btn-full {
+            width: 100%;
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+        
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+            border-color: #ef4444;
+        }
+        
+        .btn-danger:hover {
+            background: #dc2626;
+            border-color: #dc2626;
+        }
+        
+        .btn-group {
+            display: inline-flex;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+        
+        .btn-group .btn {
+            border-radius: 0;
+            border: none;
+            border-right: 1px solid var(--border-color);
+        }
+        
+        .btn-group .btn:last-child {
+            border-right: none;
+        }
+
+        /* Form Styles */
+        .edit-form {
+            padding: 1.5rem;
+            border-top: 1px solid var(--gray-100);
+        }
+
+        .form-section {
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--gray-700);
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="tel"],
+        input[type="url"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--gray-300);
+            border-radius: var(--rounded);
+            font-size: 0.9375rem;
+            transition: all 0.2s;
+        }
+
+        input[type="text"]:focus,
+        input[type="email"]:focus,
+        input[type="tel"]:focus,
+        input[type="url"]:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--primary-green);
+            box-shadow: 0 0 0 3px rgba(100, 196, 147, 0.2);
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--gray-100);
+            margin-top: 1.5rem;
+        }
+
+        /* Links */
+        .link {
+            color: var(--primary-green);
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        .link:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .info-row {
+                flex-direction: column;
+                gap: 0.25rem;
+            }
+
+            .info-label {
+                flex: 1;
+                margin-bottom: 0.25rem;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+
+    <script>
+    jQuery(document).ready(function($) {
+        // Toggle edit form
+        $('#edit-business-info').on('click', function() {
+            $('#business-info-display').hide();
+            $('#business-info-form').show();
+        });
+
+        // Cancel edit
+        $('#cancel-edit').on('click', function() {
+            $('#business-info-form').hide();
+            $('#business-info-display').show();
+        });
+
+        // Form submission
+        $('#business-info-form').on('submit', function(e) {
+            e.preventDefault();
+            
+            var formData = $(this).serialize();
+            
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: formData + '&action=save_business_info',
+                beforeSend: function() {
+                    // Show loading state
+                    $('button[type="submit"]').prop('disabled', true).text('Saving...');
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Reload the page to show updated data
+                        location.reload();
+                    } else {
+                        alert('Error saving changes. Please try again.');
+                    }
+                },
+                error: function() {
+                    alert('An error occurred. Please try again.');
+                },
+                complete: function() {
+                    $('button[type="submit"]').prop('disabled', false).text('Save Changes');
+                }
+            });
+        });
+    });
+    </script>
     <?php
     return ob_get_clean();
 }
@@ -476,7 +901,7 @@ add_action('wp_head', function() {
             
             .stat-card:hover {
                 transform: translateY(-2px);
-                box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             }
             
             .stat-header {
@@ -656,8 +1081,8 @@ add_action('wp_head', function() {
             }
             
             .booking-amount {
-                font-weight: 600;
-                color: var(--text-primary);
+                font-weight: var(--font-semibold);
+                color: var(--primary-navy);
             }
             
             .action-button {
@@ -678,7 +1103,7 @@ add_action('wp_head', function() {
                 border-radius: var(--border-radius);
                 font-weight: var(--font-medium);
                 cursor: pointer;
-                transition: all 0.2s;
+                transition: all 0.2s ease;
                 font-family: var(--font-family);
             }
             
@@ -877,9 +1302,9 @@ add_action('wp_head', function() {
                 align-items: center;
                 justify-content: center;
                 padding: 0.6875rem 1.5rem;
-                border-radius: 8px;
+                border-radius: var(--border-radius);
                 font-size: 0.9375rem;
-                font-weight: 500;
+                font-weight: var(--font-medium);
                 cursor: pointer;
                 transition: all 0.2s ease;
                 border: 1px solid transparent;
@@ -890,50 +1315,22 @@ add_action('wp_head', function() {
                 background: linear-gradient(135deg, #64C493 0%, #4CAF7D 100%);
                 color: white;
                 border: none;
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+                padding: 0.75rem 1.5rem;
+                border-radius: var(--border-radius);
+                font-weight: var(--font-medium);
+                cursor: pointer;
+                transition: all 0.2s ease;
+                font-family: var(--font-family);
             }
             
             .btn-primary:hover {
-                transform: translateY(-1px);
-                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            }
-            
-            .btn-secondary {
-                background-color: #fff;
-                color: #4b5563;
-                border: 1px solid #e2e8f0;
-                box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
-            }
-            
-            .btn-secondary:hover {
-                background-color: #f8fafc;
-                border-color: #cbd5e1;
-            }
-            
-            .btn-edit {
-                background: #fff;
-                border: 1px solid #e2e8f0;
-                color: #4b5563;
-                font-size: 0.875rem;
-                font-weight: 500;
-                padding: 0.5rem 1rem;
-                border-radius: 8px;
-                display: inline-flex;
-                align-items: center;
-                gap: 0.5rem;
-                cursor: pointer;
-                transition: all 0.2s ease;
-                box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
-            }
-            
-            .btn-edit:hover {
-                background: #f8fafc;
-                border-color: #cbd5e1;
+                background: var(--primary-navy);
                 transform: translateY(-1px);
             }
             
-            .btn:hover {
-                opacity: 0.9;
+            .action-button:hover {
+                background: var(--accent-gray);
+                color: var(--primary-green);
             }
             
             .info-grid {
@@ -942,33 +1339,33 @@ add_action('wp_head', function() {
                 gap: 1.5rem;
                 margin-top: 1.5rem;
             }
-            
+
             .info-content {
                 display: flex;
                 flex-direction: column;
                 gap: 1rem;
             }
-            
+
             .info-row {
                 display: flex;
                 flex-wrap: wrap;
                 gap: 0.5rem;
                 line-height: 1.5;
             }
-            
+
             .info-label {
                 font-weight: 500;
                 color: #374151;
                 min-width: 100px;
                 font-size: 0.875rem;
             }
-            
+
             .info-value {
                 color: #4b5563;
                 flex: 1;
                 font-size: 0.875rem;
             }
-            
+
             .status-badge {
                 display: inline-flex;
                 align-items: center;
@@ -977,17 +1374,17 @@ add_action('wp_head', function() {
                 font-size: 0.75rem;
                 font-weight: 500;
             }
-            
+
             .status-badge.active {
                 background: #ecfdf5;
                 color: #059669;
             }
-            
+
             .status-badge.inactive {
                 background: #fef3c7;
                 color: #d97706;
             }
-            
+
             /* Utility Classes */
             .hidden {
                 display: none !important;

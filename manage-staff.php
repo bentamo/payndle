@@ -112,6 +112,14 @@ function elite_cuts_manage_staff_page() {
         <!-- Staff Table -->
         <div class="table-container">
             <table class="elite-cuts-table">
+                <colgroup>
+                    <col style="width:20%;" /> <!-- Staff -->
+                    <col style="width:20%;" /> <!-- Role -->
+                    <col style="width:30%;" /> <!-- Contact -->
+                    <col style="width:10%;" /> <!-- Availability -->
+                    <col style="width:3%;"  /> <!-- Status -->
+                    <col style="width:17%;" /> <!-- Actions -->
+                </colgroup>
                 <thead>
                     <tr>
                         <th>Staff</th>
@@ -370,6 +378,7 @@ function elite_cuts_admin_scripts($hook) {
     
     // Use the same enhanced JavaScript and CSS as the shortcode for consistency
     wp_enqueue_media(); // Required for wp.media in admin
+    // Enqueue staff management JS (no Select2 dependency)
     wp_enqueue_script('staff-management-js', plugin_dir_url(__FILE__) . 'assets/js/staff-management.js', array('jquery'), '1.0', true);
     wp_enqueue_style('staff-management-css', plugin_dir_url(__FILE__) . 'assets/css/staff-management.css', array(), '1.0');
     
@@ -405,6 +414,9 @@ function handle_manage_staff_ajax() {
     switch ($action_type) {
         case 'get_staff':
             elite_cuts_get_staff($data);
+            break;
+        case 'save_staff_schedule':
+            elite_cuts_save_staff_schedule($data);
             break;
         case 'add_staff':
             elite_cuts_add_staff($data);
@@ -673,6 +685,91 @@ function elite_cuts_delete_staff($data) {
     } else {
         wp_send_json_error('Failed to delete staff member');
     }
+}
+
+// Save staff schedule with basic conflict validation against existing bookings
+function elite_cuts_save_staff_schedule($data) {
+    $staff_id = isset($data['staff_id']) ? intval($data['staff_id']) : 0;
+    $date = isset($data['date']) ? sanitize_text_field($data['date']) : '';
+    $start = isset($data['start']) ? sanitize_text_field($data['start']) : '';
+    $end = isset($data['end']) ? sanitize_text_field($data['end']) : '';
+
+    if (!$staff_id || empty($date) || empty($start) || empty($end)) {
+        wp_send_json_error('Missing required fields');
+    }
+
+    // validate date and time formats (basic)
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) wp_send_json_error('Invalid date format');
+    if (!preg_match('/^\d{2}:\d{2}$/', $start) || !preg_match('/^\d{2}:\d{2}$/', $end)) wp_send_json_error('Invalid time format');
+
+    // Build DateTimes in site timezone
+    $tz = wp_timezone();
+    try {
+        $start_dt = new DateTime($date . ' ' . $start, $tz);
+        $end_dt = new DateTime($date . ' ' . $end, $tz);
+    } catch (Exception $e) {
+        wp_send_json_error('Invalid date/time');
+    }
+
+    if ($end_dt <= $start_dt) wp_send_json_error('End time must be after start time');
+
+    // Query existing bookings for this staff on the same date range
+    $args = array(
+        'post_type' => 'service_booking',
+        'post_status' => array('publish','pending','draft'),
+        'posts_per_page' => -1,
+        'meta_query' => array(
+            array('key' => '_staff_id', 'value' => $staff_id, 'compare' => '='),
+            array('key' => '_preferred_date', 'value' => $date, 'compare' => '=')
+        )
+    );
+    $bookings = get_posts($args);
+
+    foreach ($bookings as $b) {
+        $b_date = get_post_meta($b->ID, '_preferred_date', true);
+        $b_time = get_post_meta($b->ID, '_preferred_time', true);
+        if (empty($b_date) || empty($b_time)) continue;
+        try {
+            $b_start = new DateTime($b_date . ' ' . $b_time, $tz);
+        } catch (Exception $e) { continue; }
+
+        // determine booking duration (minutes)
+        $service_id = get_post_meta($b->ID, '_service_id', true);
+        $raw_dur = '';
+        if ($service_id) {
+            $raw_dur = get_post_meta($service_id, '_service_duration', true);
+            if (empty($raw_dur)) $raw_dur = get_post_meta($service_id, 'service_duration', true);
+        }
+        if (empty($raw_dur)) $raw_dur = get_post_meta($b->ID, '_service_duration', true);
+        // fallback to 60 minutes
+        $minutes = 60;
+        if (!empty($raw_dur)) {
+            if (is_numeric($raw_dur)) $minutes = intval($raw_dur);
+            elseif (strpos($raw_dur, ':') !== false) {
+                $p = explode(':', $raw_dur);
+                $minutes = intval($p[0]) * 60 + intval($p[1] ?? 0);
+            } else {
+                if (preg_match('/(\d+)\s*hour/i', $raw_dur, $m)) $minutes = intval($m[1]) * 60;
+                elseif (preg_match('/(\d+)\s*min/i', $raw_dur, $m)) $minutes = intval($m[1]);
+            }
+        }
+
+        $b_end = clone $b_start;
+        $b_end->modify('+' . intval($minutes) . ' minutes');
+
+        // Check overlap: [start_dt,end_dt) intersects [b_start,b_end)
+        if (($start_dt < $b_end) && ($b_start < $end_dt)) {
+            wp_send_json_error(array('message' => 'Schedule conflicts with existing bookings', 'conflict_booking_id' => $b->ID));
+        }
+    }
+
+    // Persist the schedule into staff meta as an array of entries
+    $meta = get_post_meta($staff_id, 'staff_schedules', true) ?: array();
+    // append this schedule (simple structure)
+    $meta[] = array('date' => $date, 'start' => $start, 'end' => $end);
+    update_post_meta($staff_id, 'staff_schedules', $meta);
+
+    wp_send_json_success(array('message' => 'Schedule assigned successfully'));
 }
 
 // Register submenu under existing Elite Cuts menu (created in manage-bookings.php)

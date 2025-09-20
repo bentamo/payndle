@@ -37,13 +37,18 @@ if (!function_exists('payndle_render_staff_form')) {
                                 <input type="text" id="staff-name" class="elite-input" required>
                             </div>
                             <div class="form-group">
-                                <label for="staff-service"><?php _e('Service', 'payndle'); ?></label>
-                                <select id="staff-service" class="elite-select" name="services[]" required>
-                                    <option value=""><?php _e('Select Service', 'payndle'); ?></option>
-                                    <?php foreach ($services as $s) : ?>
-                                        <option value="<?php echo esc_attr($s->ID); ?>"><?php echo esc_html($s->post_title); ?></option>
-                                    <?php endforeach; ?>
-                                </select>
+                                <label for="staff-service-dropdown"><?php _e('Services', 'payndle'); ?></label>
+                                <div style="display:flex; gap:0.5rem; align-items:center;">
+                                    <select id="staff-service-dropdown" class="elite-select" style="flex:1;">
+                                        <option value=""><?php echo esc_html_x('Select a service...', 'placeholder', 'payndle'); ?></option>
+                                        <?php foreach ($services as $s) : ?>
+                                            <option value="<?php echo esc_attr($s->ID); ?>"><?php echo esc_html($s->post_title); ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <button type="button" id="staff-service-add" class="button button-secondary" aria-label="<?php _e('Add service', 'payndle'); ?>"><?php _e('Add', 'payndle'); ?></button>
+                                </div>
+                                <div id="staff-service-tags" style="margin-top:0.5rem; display:flex; flex-wrap:wrap; gap:6px; align-items:center;"></div>
+                                <!-- Hidden inputs for selected services will be appended here as <input type="hidden" name="services[]" value="ID"> -->
                             </div>
                         </div>
 
@@ -97,8 +102,48 @@ if (!function_exists('payndle_render_staff_form')) {
             /* Small UBF v3 adjustments for staff modal */
             #staff-modal .ubf-v3-container { padding: 16px; }
             #staff-modal .ubf-v3-form input, #staff-modal .ubf-v3-form select { padding: 10px; border-radius: 10px; border:1px solid #e6eaef; }
+            /* Service checkbox list styling to ensure visibility inside modal */
+            #staff-service-list { box-sizing: border-box; width:100%; min-height:54px; max-height:220px; overflow-y:auto; padding:8px; }
+            #staff-service-list label { display:flex !important; align-items:center !important; gap:0.6rem !important; padding:6px 4px !important; border-radius:6px !important; color: #112233 !important; }
+            #staff-service-list label:hover { background: rgba(0,0,0,0.03) !important; }
+            #staff-service-list input.service-checkbox { width:18px !important; height:18px !important; margin:0 !important; flex:0 0 18px !important; appearance:auto !important; -webkit-appearance:checkbox !important; }
+            #staff-service-list label span { color:#112233 !important; display:inline-block !important; font-size:14px !important; line-height:1.2 !important; }
+            /* Ensure the container isn't collapsed by other styles */
+            #staff-service-list { background: #fff !important; color: #112233 !important; }
+            #staff-service-search { box-sizing: border-box; }
+            #staff-service-selectall { transform:scale(1); margin:0; }
+            /* Compact service tag styles (override inline styles if present) */
+            #staff-service-tags { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+            .service-tag { display:inline-flex !important; align-items:center !important; gap:6px !important; padding:4px 6px !important; border-radius:14px !important; background:#eef6ff !important; border:1px solid #cfe6ff !important; font-size:13px !important; color:#0b2540 !important; }
+            .service-tag .tag-label { font-size:12px !important; line-height:1 !important; }
+            .service-tag .tag-remove { background:transparent !important; border:none !important; padding:0 4px !important; margin:0 !important; font-size:12px !important; color:#556 !important; cursor:pointer !important; }
+            .service-tag input[type="hidden"] { display:none !important; }
         </style>
         <?php
+        // Ensure Select2 initializes on pages where shortcode is rendered (safe, checks for jQuery and Select2)
+        ?>
+        <script type="text/javascript">
+        (function(){
+            try {
+                if (typeof jQuery === 'undefined') return;
+                jQuery(function($){
+                    var $sel = $('#staff-service');
+                    if (!$sel.length) return;
+                    // If Select2 plugin is loaded, initialize; otherwise, leave native <select>
+                    if (typeof $.fn.select2 === 'function') {
+                        var placeholder = (typeof staffManager !== 'undefined' && staffManager.select_placeholder) ? staffManager.select_placeholder : '<?php echo esc_js(__('Select services', 'payndle')); ?>';
+                        // Avoid double init
+                        if (!$sel.data('select2')) {
+                            $sel.select2({ placeholder: placeholder, width: 'resolve', allowClear: true });
+                        }
+                    }
+                });
+            } catch(e) { console && console.warn && console.warn('Select2 init error', e); }
+        })();
+        </script>
+
+        <?php
+        // Finish rendering the staff form template
         echo ob_get_clean();
     }
 }
@@ -108,9 +153,13 @@ if (!function_exists('payndle_render_staff_form')) {
  */
 function manage_staff_shortcode($atts) {
     // Enqueue necessary styles and scripts
-    wp_enqueue_style('manage-staff-style', plugin_dir_url(__FILE__) . 'assets/css/manage-staff.css');
+    // corrected filename: staff-management.css exists in assets/css
+    wp_enqueue_style('manage-staff-style', plugin_dir_url(__FILE__) . 'assets/css/staff-management.css');
+    // Enqueue Select2 from CDN for nicer multi-select UI
+    wp_enqueue_style('select2-core', 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css', array(), '4.1.0');
+    wp_enqueue_script('select2-core', 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js', array('jquery'), '4.1.0', true);
     // Enqueue the front-end staff management script (existing file) and ensure underscore is available
-    wp_enqueue_script('staff-management-script', plugin_dir_url(__FILE__) . 'assets/js/staff-management.js', array('jquery', 'underscore'), '1.0.0', true);
+    wp_enqueue_script('staff-management-script', plugin_dir_url(__FILE__) . 'assets/js/staff-management.js', array('jquery', 'underscore', 'select2-core'), '1.0.0', true);
     // Ensure WP media scripts are available for upload functionality
     if (function_exists('wp_enqueue_media')) {
         wp_enqueue_media();
@@ -188,6 +237,14 @@ function manage_staff_shortcode($atts) {
 
         <!-- Staff Table -->
         <table class="wp-list-table widefat fixed striped staff-table">
+            <colgroup>
+                <col style="width:20%;" /> <!-- Staff -->
+                <col style="width:20%;" /> <!-- Role -->
+                <col style="width:30%;" /> <!-- Email/Contact -->
+                <col style="width:10%;" /> <!-- Phone/Availability -->
+                <col style="width:3%;"  /> <!-- Status -->
+                <col style="width:17%;" /> <!-- Actions -->
+            </colgroup>
             <thead>
                 <tr>
                     <th><?php _e('Name', 'payndle'); ?></th>
@@ -423,13 +480,25 @@ function manage_staff_shortcode($atts) {
                     uploadBtn.textContent = '<?php _e('Upload / Select', 'payndle'); ?>';
                     uploadBtn.disabled = false;
                 }
-                event.target.value = '';
-            }
-        }
-
-        // Initialize upload system
-        initializeUploadSystem();
-        
+                                            <div class="form-group">
+                                                <label for="staff-service-search"><?php _e('Services', 'payndle'); ?></label>
+                                                <div style="display:flex; gap:0.5rem; align-items:center; margin-bottom:0.5rem;">
+                                                    <input type="search" id="staff-service-search" class="elite-input" placeholder="<?php echo esc_attr_x('Filter services...', 'placeholder', 'payndle'); ?>" style="flex:1;" />
+                                                    <label style="display:flex; align-items:center; gap:0.4rem; margin-left:0.5rem; font-size:0.9rem;"><input type="checkbox" id="staff-service-selectall" /> <?php _e('All', 'payndle'); ?></label>
+                                                </div>
+                                                <div id="staff-service-list" style="max-height:180px; overflow:auto; padding:6px; border:1px solid #e6eaef; border-radius:8px; background:#fff;">
+                                                    <?php if (!empty($services)) : ?>
+                                                        <?php foreach ($services as $s) : ?>
+                                                            <label style="display:block; margin:4px 0; font-weight:normal;">
+                                                                <input type="checkbox" name="services[]" class="service-checkbox" value="<?php echo esc_attr($s->ID); ?>" />
+                                                                <span style="margin-left:0.5rem;"><?php echo esc_html($s->post_title); ?></span>
+                                                            </label>
+                                                        <?php endforeach; ?>
+                                                    <?php else: ?>
+                                                        <div class="help-text"><?php _e('No services available. Create a service first.', 'payndle'); ?></div>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </div>
         const staffForm = document.getElementById('staff-form');
         const staffList = document.getElementById('staff-list');
         const addStaffBtn = document.getElementById('add-staff-btn');
@@ -526,8 +595,19 @@ function manage_staff_shortcode($atts) {
                 document.getElementById('staff-status').value = item.status || 'active';
                 // set service select
                 if (item.services && item.services.length) {
-                    const sid = item.services[0].id;
-                    const sel = document.getElementById('staff-service'); if (sel) sel.value = sid;
+                    // Mark all services assigned to this staff as checked (supports both select and checkboxes)
+                    const ids = (item.services || []).map(s => String(s.id));
+                    const sel = document.getElementById('staff-service');
+                    if (sel && sel.tagName && sel.tagName.toLowerCase() === 'select') {
+                        for (let i = 0; i < sel.options.length; i++) {
+                            const opt = sel.options[i];
+                            opt.selected = ids.indexOf(String(opt.value)) !== -1;
+                        }
+                    } else {
+                        // check checkboxes
+                        const checkboxes = document.querySelectorAll('input[name="services[]"]');
+                        checkboxes.forEach(cb => { cb.checked = ids.indexOf(String(cb.value)) !== -1; });
+                    }
                 }
                 document.getElementById('staff-modal-title').textContent = '<?php _e('Edit Staff', 'payndle'); ?>';
                 openModal();
@@ -587,8 +667,17 @@ function manage_staff_shortcode($atts) {
                 const email = document.getElementById('staff-email').value;
                 const phone = document.getElementById('staff-phone').value;
                 const status = document.getElementById('staff-status').value || 'active';
+                // Collect selected services from either a select or checkboxes
+                const services = [];
                 const serviceEl = document.getElementById('staff-service');
-                const services = serviceEl && serviceEl.value ? [serviceEl.value] : [];
+                if (serviceEl && serviceEl.tagName && serviceEl.tagName.toLowerCase() === 'select') {
+                    for (let i = 0; i < serviceEl.options.length; i++) {
+                        const opt = serviceEl.options[i];
+                        if (opt.selected && opt.value) services.push(opt.value);
+                    }
+                } else {
+                    document.querySelectorAll('input[name="services[]"]:checked').forEach(cb => { if (cb && cb.value) services.push(cb.value); });
+                }
                 const actionType = id ? 'update_staff' : 'add_staff';
                 const postData = { action: 'manage_staff_public', nonce: '<?php echo wp_create_nonce('staff_management_nonce'); ?>', action_type: actionType, data: JSON.stringify({ id: id, name: name, email: email, phone: phone, status: status, services: services }) };
                 fetch('<?php echo admin_url('admin-ajax.php'); ?>', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' }, body: new URLSearchParams(postData) })
@@ -897,14 +986,8 @@ function handle_staff_ajax() {
                 update_post_meta($post_id, 'staff_status', $status);
                 update_post_meta($post_id, 'staff_services', $services);
 
-                // Sync assigned_staff on service posts
-                foreach ($services as $sid) {
-                    $assigned = get_post_meta($sid, 'assigned_staff', true) ?: array();
-                    if (!in_array($post_id, $assigned)) {
-                        $assigned[] = $post_id;
-                        update_post_meta($sid, 'assigned_staff', $assigned);
-                    }
-                }
+                // Ensure assigned_staff meta on service posts is synchronized
+                payndle_sync_assigned_staff($post_id, $services);
 
                 $response = array('success' => true, 'message' => __('Staff added successfully', 'payndle'), 'data' => array('id' => $post_id));
                 break;
@@ -949,22 +1032,8 @@ function handle_staff_ajax() {
                 }
                 update_post_meta($post_id, 'staff_status', $status);
                 update_post_meta($post_id, 'staff_services', $services);
-
-                // Sync removals
-                $removed = array_diff($old_services, $services);
-                $added = array_diff($services, $old_services);
-                foreach ($removed as $sid) {
-                    $assigned = get_post_meta($sid, 'assigned_staff', true) ?: array();
-                    $assigned = array_filter($assigned, function($v) use ($post_id) { return intval($v) !== intval($post_id); });
-                    update_post_meta($sid, 'assigned_staff', array_values($assigned));
-                }
-                foreach ($added as $sid) {
-                    $assigned = get_post_meta($sid, 'assigned_staff', true) ?: array();
-                    if (!in_array($post_id, $assigned)) {
-                        $assigned[] = $post_id;
-                        update_post_meta($sid, 'assigned_staff', $assigned);
-                    }
-                }
+                // Ensure assigned_staff meta on services is synchronized globally
+                payndle_sync_assigned_staff($post_id, $services);
 
                 $response = array('success' => true, 'message' => __('Staff updated successfully', 'payndle'));
                 break;
@@ -972,14 +1041,9 @@ function handle_staff_ajax() {
             case 'delete_staff':
                 $post_id = isset($data['id']) ? absint($data['id']) : 0;
                 if (!$post_id) throw new Exception(__('Staff id missing', 'payndle'));
-
-                $services = get_post_meta($post_id, 'staff_services', true) ?: array();
-                foreach ($services as $sid) {
-                    $assigned = get_post_meta($sid, 'assigned_staff', true) ?: array();
-                    $assigned = array_filter($assigned, function($v) use ($post_id) { return intval($v) !== intval($post_id); });
-                    update_post_meta($sid, 'assigned_staff', array_values($assigned));
-                }
-
+                // Remove the staff from all service assigned_staff arrays
+                payndle_sync_assigned_staff($post_id, array());
+                // Delete staff post
                 wp_delete_post($post_id, true);
                 $response = array('success' => true, 'message' => __('Staff deleted successfully', 'payndle'));
                 break;
@@ -1234,3 +1298,32 @@ function enqueue_staff_management_assets($hook) {
     }
 }
 add_action('wp_enqueue_scripts', 'enqueue_staff_management_assets');
+
+/**
+ * Keep assigned_staff meta on service posts synchronized.
+ * For a given staff_id, ensure only the provided $service_ids include that staff in their assigned_staff meta.
+ * If $service_ids is empty, remove the staff from all services.
+ */
+function payndle_sync_assigned_staff($staff_id, $service_ids = array()) {
+    $staff_id = absint($staff_id);
+    $service_ids = array_map('absint', (array)$service_ids);
+
+    // Get all published services to iterate (could be narrowed, but safe)
+    $all_services = get_posts(array('post_type' => 'service', 'post_status' => 'publish', 'numberposts' => -1, 'fields' => 'ids'));
+    if (empty($all_services)) return;
+
+    foreach ($all_services as $sid) {
+        $assigned = get_post_meta($sid, 'assigned_staff', true) ?: array();
+        $assigned = array_map('absint', (array)$assigned);
+        $has = in_array($staff_id, $assigned, true);
+        $should = in_array($sid, $service_ids, true);
+
+        if ($should && !$has) {
+            $assigned[] = $staff_id;
+            update_post_meta($sid, 'assigned_staff', array_values(array_unique($assigned)));
+        } elseif (!$should && $has) {
+            $assigned = array_values(array_filter($assigned, function($v) use ($staff_id) { return intval($v) !== intval($staff_id); }));
+            update_post_meta($sid, 'assigned_staff', $assigned);
+        }
+    }
+}

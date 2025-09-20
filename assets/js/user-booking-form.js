@@ -1350,6 +1350,24 @@
         this.form.closest('.ubf-v3-form-wrapper').find('.ubf-progress-fill').css('width', pct+'%');
     }
 
+    // Inline message helper for UBF v3 forms (parity with legacy form.showMessage)
+    UBFv3.prototype.showMessage = function(message, type){
+        type = type || 'info';
+        try {
+            // remove any existing messages within this form
+            this.form.find('.booking-message').remove();
+            const iconClass = (type === 'error') ? 'fa-exclamation-triangle' : 'fa-info-circle';
+            const safe = $('<div>').text(String(message)).html();
+            const messageHtml = '<div class="booking-message booking-' + type + '">'
+                + '<i class="fas ' + iconClass + '"></i> ' + safe + '</div>';
+            this.form.prepend(messageHtml);
+            const self = this;
+            setTimeout(function(){ try { self.form.find('.booking-message').fadeOut(); } catch(e){} }, 5000);
+        } catch (e) {
+            try { console.warn('UBFv3.showMessage failed', e); } catch(_){ }
+        }
+    }
+
     UBFv3.prototype.next = function(){
         const self = this;
 
