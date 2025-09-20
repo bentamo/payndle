@@ -1529,5 +1529,5 @@ if (defined('WP_DEBUG') && WP_DEBUG) {
     include_once plugin_dir_path(__FILE__) . 'test-upload-debug.php';
 }
 
-
-// test
+// Include the business header shortcode
+include_once plugin_dir_path(__FILE__) . 'business-header-shortcode.php';
