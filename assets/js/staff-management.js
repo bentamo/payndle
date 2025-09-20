@@ -20,7 +20,93 @@ jQuery(document).ready(function($) {
         loadStaffList();
         bindEventListeners();
         initializeAvatarUpload();
+        initializeCheckboxServiceList();
     }
+
+    // Small helper to escape HTML in dynamic strings
+    function escapeHtml(str) {
+        if (str === null || typeof str === 'undefined') return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    // Initialize the checkbox-based service list: search filter, select-all, and helpers
+    function initializeCheckboxServiceList() {
+        // Filter services by text
+        $(document).on('input', '#staff-service-search', function() {
+            const q = $(this).val().toLowerCase().trim();
+            $('#staff-service-list label').each(function() {
+                const txt = $(this).text().toLowerCase();
+                $(this).toggle(txt.indexOf(q) !== -1);
+            });
+        });
+
+        // Select-all checkbox
+        $(document).on('change', '#staff-service-selectall', function() {
+            const checked = $(this).is(':checked');
+            $('#staff-service-list input.service-checkbox:visible').prop('checked', checked);
+        });
+
+        // If user manually toggles checkboxes, update select-all state
+        $(document).on('change', '#staff-service-list input.service-checkbox', function() {
+            const total = $('#staff-service-list input.service-checkbox:visible').length;
+            const checked = $('#staff-service-list input.service-checkbox:visible:checked').length;
+            $('#staff-service-selectall').prop('checked', total > 0 && checked === total);
+        });
+
+        // Clear search and selections when modal opens
+        $(document).on('click', '#add-staff-btn', function() {
+            $('#staff-service-search').val('');
+            $('#staff-service-list label').show();
+            $('#staff-service-list input.service-checkbox').prop('checked', false);
+            $('#staff-service-selectall').prop('checked', false);
+        });
+
+        // Also clear when opening modal for edit; edit flow will re-check relevant boxes when data loads
+        $(document).on('click', '.edit-staff', function() {
+            $('#staff-service-search').val('');
+            $('#staff-service-list label').show();
+            $('#staff-service-selectall').prop('checked', false);
+        });
+    }
+
+    // New: manage dropdown + add-button + tags UX for services
+    // Adds click handler, tag rendering, and helpers to read/write selected services
+    (function initDropdownTags(){
+        // Add button handler
+        $(document).on('click', '#staff-service-add', function(){
+            const $sel = $('#staff-service-dropdown');
+            const id = $sel.val();
+            const text = $sel.find('option:selected').text();
+            if (!id) return;
+            // Prevent duplicates
+            if ($('#staff-service-tags').find(`input[type=hidden][value="${id}"]`).length) return;
+            // Create tag element
+            const $tag = $(`<span class="service-tag" data-id="${id}" style="display:inline-flex; align-items:center; gap:8px; padding:6px 8px; border-radius:20px; background:#eef6ff; border:1px solid #cfe6ff;"><span class="tag-label">${text}</span><button type="button" class="tag-remove button" aria-label="Remove service" style="background:transparent; border:none; padding:0; margin:0; font-size:14px; line-height:1;">✕</button></span>`);
+            // Hidden input
+            const $hidden = $(`<input type="hidden" name="services[]" value="${id}" />`);
+            $tag.append($hidden);
+            $('#staff-service-tags').append($tag);
+        });
+
+        // Remove tag handler
+        $(document).on('click', '#staff-service-tags .tag-remove', function(){
+            $(this).closest('.service-tag').remove();
+        });
+
+        // When opening modal for add, clear existing tags
+        $(document).on('click', '#add-staff-btn', function(){
+            $('#staff-service-tags').empty();
+            $('#staff-service-dropdown').val('');
+        });
+
+        // When editing, tags are set in openStaffModal success handler (after AJAX loads services)
+        // Ensure handleStaffFormSubmit collects services[] from hidden inputs already appended to form
+    })();
 
     // Load staff list
     function loadStaffList() {
@@ -83,8 +169,17 @@ jQuery(document).ready(function($) {
         staff.forEach(function(member) {
             const statusClass = member.status === 'active' ? 'status-active' : 'status-inactive';
             const statusText = member.status === 'active' ? 'Active' : 'Inactive';
-            const serviceTitle = (member.services && member.services.length) ? (member.services[0].title || member.services[0]) : '';
-            const roleText = member.role || serviceTitle || '';
+
+            // Render all assigned services/roles as compact badges instead of only the first
+            let roleHtml = '';
+            if (member.services && member.services.length) {
+                roleHtml = member.services.map(function(s){
+                    const title = escapeHtml(s.title || s || '');
+                    return '<span class="role-badge" style="display:inline-block;padding:4px 8px;border-radius:12px;background:#eef6ff;color:#0b2540;margin-right:6px;font-size:12px;">' + title + '</span>';
+                }).join('');
+            } else {
+                roleHtml = escapeHtml(member.role || '');
+            }
 
             // avatar inside name cell
             let avatarHtml = '';
@@ -107,13 +202,16 @@ jQuery(document).ready(function($) {
             const row = `
                 <tr data-id="${member.id}">
                     <td class="staff-name"><div class="staff-cell">${avatarHtml}<div class="staff-meta"><div class="staff-name-text">${member.name || ''}</div></div></div></td>
-                    <td class="staff-role">${roleText}</td>
+                    <td class="staff-role">${roleHtml}</td>
                     <td class="staff-contact">${contactHtml || '—'}</td>
                     <td class="staff-availability">${availabilityHtml}</td>
                     <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                     <td class="staff-actions">
                         <button class="button button-small edit-staff" data-id="${member.id}" title="Edit">
                             <span class="dashicons dashicons-edit"></span>
+                        </button>
+                        <button class="button button-small schedule-staff" data-id="${member.id}" title="Assign Schedule">
+                            <span class="dashicons dashicons-calendar"></span>
                         </button>
                         <button class="button button-small delete-staff" data-id="${member.id}" title="Delete">
                             <span class="dashicons dashicons-trash"></span>
@@ -172,7 +270,9 @@ jQuery(document).ready(function($) {
     function openStaffModal(staffId = null) {
         const $modal = $('#staff-modal');
         const $form = $('#staff-form');
-        $form[0].reset();
+    $form[0].reset();
+    // Clear Select2 selection if present
+    try { $('#staff-service').val(null).trigger('change'); } catch(e) {}
 
         if (staffId) {
             $('#staff-modal-title').text('Edit Staff');
@@ -197,7 +297,16 @@ jQuery(document).ready(function($) {
                         $('#staff-phone').val(staff.phone || '');
                         $('#staff-status').val(staff.status || 'active');
                         if (staff.services && staff.services.length) {
-                            $('#staff-service').val(staff.services[0].id);
+                            // mark all assigned services as checked
+                            const svcIds = staff.services.map(s => String(s.id || s));
+                            $('#staff-service-list input.service-checkbox').each(function(){
+                                const val = String($(this).val());
+                                $(this).prop('checked', svcIds.indexOf(val) !== -1);
+                            });
+                            // Update select-all state for visible items
+                            const total = $('#staff-service-list input.service-checkbox:visible').length;
+                            const checked = $('#staff-service-list input.service-checkbox:visible:checked').length;
+                            $('#staff-service-selectall').prop('checked', total > 0 && checked === total);
                         }
                         
                         // avatar preview
@@ -274,7 +383,9 @@ jQuery(document).ready(function($) {
         const emailVal = $('#staff-email').length ? $('#staff-email').val().trim() : '';
         const phoneVal = $('#staff-phone').length ? $('#staff-phone').val().trim() : '';
         const statusVal = $('#staff-status').length ? $('#staff-status').val() : 'active';
-        const serviceVal = $('#staff-service').length ? $('#staff-service').val() : '';
+        // Gather multiple selected service IDs from hidden inputs created by tag UI
+        let serviceVal = [];
+        $('#staff-service-tags input[type="hidden"]').each(function(){ serviceVal.push($(this).val()); });
 
         // Form validation
         const errors = [];
@@ -301,7 +412,7 @@ jQuery(document).ready(function($) {
             email: emailVal,
             phone: phoneVal,
             status: statusVal,
-            services: serviceVal ? [serviceVal] : []
+            services: serviceVal || []
         };
 
         if (isEdit) { formData.id = staffId; }
@@ -536,6 +647,7 @@ jQuery(document).ready(function($) {
         $('#add-staff-btn').on('click', function() { openStaffModal(); });
         $(document).on('click', '.edit-staff', function() { openStaffModal($(this).data('id')); });
         $(document).on('click', '.delete-staff', function() { deleteStaff($(this).data('id')); });
+    $(document).on('click', '.schedule-staff', function() { openScheduleModal($(this).data('id')); });
         $('.elite-close, .staff-close, .staff-cancel').on('click', closeStaffModal);
         $('#staff-form').on('submit', handleStaffFormSubmit);
 
@@ -582,6 +694,70 @@ jQuery(document).ready(function($) {
         $('.next-page').on('click', function(e) { e.preventDefault(); if (currentPage < totalPages) { currentPage++; loadStaffList(); } });
         $('.last-page').on('click', function(e) { e.preventDefault(); if (currentPage < totalPages) { currentPage = totalPages; loadStaffList(); } });
     }
+
+    // Open schedule modal for staff
+    function openScheduleModal(staffId) {
+        $('#schedule-staff-id').val(staffId);
+        $('#schedule-date').val('');
+        $('#schedule-start').val('');
+        $('#schedule-end').val('');
+        $('#schedule-modal').css('display', 'flex');
+        $('body').css('overflow', 'hidden');
+    }
+
+    // Close schedule modal
+    function closeScheduleModal() {
+        $('#schedule-modal').hide();
+        $('body').css('overflow', '');
+    }
+
+    // Wire schedule modal buttons
+    $(document).on('click', '.schedule-cancel, .schedule-close', function(){ closeScheduleModal(); });
+    $(document).on('click', '#schedule-modal', function(e){ if (e.target === this) closeScheduleModal(); });
+    $(document).on('submit', '#schedule-form', function(e){
+        e.preventDefault();
+        const staffId = $('#schedule-staff-id').val();
+        const date = $('#schedule-date').val();
+        const start = $('#schedule-start').val();
+        const end = $('#schedule-end').val();
+
+        if (!staffId || !date || !start || !end) {
+            showPopup('error', 'Please provide date, start and end times');
+            return;
+        }
+        // Basic time ordering check
+        if (start >= end) {
+            showPopup('error', 'End time must be after start time');
+            return;
+        }
+
+        const payload = {
+            action: (staffManager.ajax_action || 'manage_staff'),
+            nonce: staffManager.nonce,
+            action_type: 'save_staff_schedule',
+            data: JSON.stringify({ staff_id: staffId, date: date, start: start, end: end })
+        };
+
+        $.ajax({
+            url: staffManager.ajax_url,
+            type: 'POST',
+            data: payload,
+            success: function(resp){
+                if (resp && resp.success) {
+                    showPopup('success', resp.data && resp.data.message ? resp.data.message : 'Schedule saved');
+                    closeScheduleModal();
+                } else {
+                    const msg = resp && resp.data && resp.data.message ? resp.data.message : (resp && resp.message ? resp.message : 'Failed to save schedule');
+                    showPopup('error', msg);
+                }
+            },
+            error: function(xhr, status, err){
+                let m = 'Error saving schedule';
+                if (xhr && xhr.responseJSON && xhr.responseJSON.message) m = xhr.responseJSON.message;
+                showPopup('error', m);
+            }
+        });
+    });
 
     // Simple focus trap within the staff modal
     function enableFocusTrap($modal){

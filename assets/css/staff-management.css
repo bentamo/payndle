@@ -203,7 +203,7 @@
 }
 .staff-table th,
 .staff-table td {
-    padding: 12px 8px;
+    padding: 8px 6px;
     text-align: left;
     border-bottom: 1px solid var(--color-accent-gray);
 }
@@ -215,38 +215,71 @@
 .staff-table td.staff-name,
 .staff-table th:first-child {
     width: 30%;
-    min-width: 150px;
+    min-width: 140px;
 }
 .staff-table td.staff-role,
 .staff-table th:nth-child(2) {
-    width: 15%;
-    min-width: 100px;
+    width: 20%;
+    min-width: 120px;
 }
 .staff-table td.staff-email,
 .staff-table th:nth-child(3) {
-    width: 25%;
-    min-width: 150px;
+    width: 22%;
+    min-width: 140px;
 }
 .staff-table td.staff-phone,
 .staff-table th:nth-child(4) {
-    width: 15%;
-    min-width: 100px;
+    width: 13%;
+    min-width: 90px;
+}
+.staff-table td.staff-email {
+    font-size: 12px;
+    color: #62708a; /* subtle muted color for contact info */
+    line-height: 1.2;
+}
+.staff-table td.staff-phone {
+    font-size: 12px;
+    color: #62708a; /* subtle muted color for contact info */
+    line-height: 1.2;
+}
+
+/* On very small screens keep contact legible and allow wrapping */
+@media (max-width: 480px) {
+    .staff-table td.staff-email,
+    .staff-table td.staff-phone {
+        font-size: 11px;
+        line-height: 1.25;
+        word-break: break-word;
+    }
+}
+
+/* Stronger specificity to ensure contact font-size applies across admin and frontend tables */
+.elite-cuts-table td.staff-email,
+.elite-cuts-table td.staff-phone,
+.wp-list-table td.staff-email,
+.wp-list-table td.staff-phone,
+.staff-table td.staff-email,
+.staff-table td.staff-phone {
+    font-size: 12px !important;
+    color: #62708a !important;
+    line-height: 1.2 !important;
+    font-weight: 400 !important;
 }
 .staff-table td.staff-status,
 /* Combined avatar + name cell styling (shared with admin) */
 .staff-cell { display: flex; align-items: center; gap: 0.9rem; }
-.avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(201, 167, 77, 0.35); }
-.avatar-initial { width: 42px; height: 42px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.95rem; color: var(--color-white, #ffffff); border: 2px solid rgba(100,196,147,0.25); background: linear-gradient(135deg, var(--color-green), var(--color-green-dark)); box-shadow: inset 0 1px 0 rgba(255,255,255,0.12); }
+.avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(201, 167, 77, 0.35); }
+.avatar-initial { width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; color: var(--color-white, #ffffff); border: 2px solid rgba(100,196,147,0.25); background: linear-gradient(135deg, var(--color-green), var(--color-green-dark)); box-shadow: inset 0 1px 0 rgba(255,255,255,0.12); }
 .staff-meta { display: flex; flex-direction: column; }
 .staff-name-text { font-weight: 600; color: var(--color-navy); }
 .staff-table th:nth-child(5) {
-    width: 10%;
-    min-width: 80px;
+    width: 6%;
+    min-width: 56px;
 }
 .staff-table td.staff-actions,
 .staff-table th:last-child {
-    width: 5%;
-    min-width: 80px;
+    width: 7%;
+    min-width: 70px;
     text-align: right;
 }
 .staff-table tbody tr {
@@ -260,10 +293,10 @@
 /* Status badges */
 .status-badge {
     display: inline-block;
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 500;
+    padding: 2px 6px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 600;
 }
 .status-active {
     background: var(--color-green);
@@ -272,6 +305,17 @@
 .status-inactive {
     background: var(--color-accent-gray);
     color: var(--color-navy);
+}
+
+/* Role badges (display all roles assigned to a staff) */
+.role-badge {
+    display: inline-block;
+    padding: 3px 7px;
+    border-radius: 10px;
+    background: #eef6ff;
+    color: #0b2540;
+    margin-right: 6px;
+    font-size: 11px;
 }
 
 /* Buttons */
@@ -301,18 +345,20 @@
 /* Actions */
 .staff-actions .button {
     margin: 0 2px;
-    padding: 4px 8px;
+    padding: 3px 6px;
+    font-size: 13px;
+    line-height: 1;
 }
 .staff-actions .dashicons {
-    font-size: 16px;
+    font-size: 14px;
     vertical-align: middle;
 }
 
 /* Icon button normalization for consistent sizing and centering */
 .action-buttons { display: inline-flex; gap: 0.4rem; align-items: center; justify-content: flex-end; }
-.icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 0; border-radius: 8px; box-sizing: border-box; }
-.icon-btn i, .icon-btn svg, .icon-btn .dashicons { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; font-size: 16px; line-height: 1; }
-.icon-btn svg { width: 18px; height: 18px; fill: currentColor; }
+.icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border-radius: 6px; box-sizing: border-box; }
+.icon-btn i, .icon-btn svg, .icon-btn .dashicons { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; font-size: 14px; line-height: 1; }
+.icon-btn svg { width: 14px; height: 14px; fill: currentColor; }
 .icon-btn:hover i, .icon-btn:hover svg, .icon-btn:hover .dashicons { color: var(--color-white); }
 
 /* Font Awesome specific tweak: reduce vertical misalignment for some FA icons */
@@ -324,6 +370,43 @@
 /* Ensure action icons in table cells align consistently */
 .staff-table td.staff-actions { vertical-align: middle; text-align: right; }
 .staff-table .action-buttons .icon-btn { margin-left: 6px; }
+
+/* Compact, uniform action buttons for table rows ---------------------------------- */
+/* Ensure buttons align horizontally and have consistent sizing */
+.staff-table td.staff-actions { white-space: nowrap; text-align: right; }
+.staff-table .action-buttons { display: inline-flex; gap: 6px; align-items: center; justify-content: flex-end; }
+.staff-table .action-buttons .button,
+.staff-table .action-buttons .icon-btn,
+.staff-actions .button {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 34px !important;
+    height: 34px !important;
+    padding: 0 !important;
+    border-radius: 8px !important;
+    box-sizing: border-box !important;
+    background: var(--color-white) !important;
+    border: 1px solid rgba(12,25,48,0.06) !important;
+    color: var(--color-navy) !important;
+}
+.staff-table .action-buttons .button .dashicons,
+.staff-table .action-buttons .icon-btn .dashicons {
+    font-size: 16px !important;
+    line-height: 1 !important;
+}
+.staff-table .action-buttons .button:hover,
+.staff-table .action-buttons .icon-btn:hover {
+    background: var(--color-navy) !important;
+    color: var(--color-white) !important;
+    border-color: transparent !important;
+}
+/* Slightly larger tap area on small screens */
+@media (max-width: 480px) {
+    .staff-table .action-buttons .button,
+    .staff-table .action-buttons .icon-btn,
+    .staff-actions .button { width: 40px !important; height: 40px !important; }
+}
 
 /* Modal */
 .staff-modal {
