@@ -1229,6 +1229,8 @@ function mvp_manager_shortcode() {
                                             data-id="<?php echo $service->ID; ?>"
                                             data-title="<?php echo esc_attr($service->post_title); ?>"
                                             data-description="<?php echo esc_attr($service->post_content); ?>"
+                                            data-price="<?php echo esc_attr($price); ?>"
+                                            data-duration="<?php echo esc_attr($duration); ?>"
                                             data-categories='<?php echo json_encode($category_ids); ?>'>
                                         <?php _e('Edit', 'service-manager'); ?>
                                     </button>
@@ -1331,11 +1333,15 @@ function mvp_manager_shortcode() {
             var id = $card.data('id');
             var title = $(this).data('title');
             var description = $(this).data('description');
+            var price = $(this).data('price');
+            var duration = $(this).data('duration');
             var categories = $(this).data('categories') || [];
             
             $('#mvp-service-id').val(id);
             $('#mvp-service-title').val(title);
             $('#mvp-service-description').val(description);
+            $('#mvp-service-price').val(price);
+            $('#mvp-service-duration').val(duration);
             $('#mvp-service-categories').val(categories).trigger('change');
             
             $('#mvp-form-container').slideDown();
