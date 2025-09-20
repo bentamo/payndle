@@ -71,8 +71,12 @@ require_once 'manager-dashboard.php';
 require_once 'business-landing-shortcode.php';
 require_once 'user-booking-form.php';
 require_once 'manage-staff-shortcode.php';
+<<<<<<< HEAD
 require_once 'business-header-shortcode.php';
 require_once 'contact-us-shortcode.php';
+=======
+require_once 'staff-timetable.php';
+>>>>>>> 91a164f61c80b891396f90f2ae2716beb31175e8
 
 
 /* Load booking history with error handling

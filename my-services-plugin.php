@@ -75,16 +75,16 @@ function mvp_enqueue_scripts() {
             --white: #FFFFFF;           /* Backgrounds, text contrast, clean minimalism */
             --accent-gray: #F8FAFC;     /* Backgrounds, subtle dividers, dashboard UI */
             --border-color: #E2E8F0;    /* Border color for UI elements */
-            --text-body: #1E293B;       /* Main text color */
+            --text-body: #0C1930;       /* Main text color - Using primary navy */
             --text-muted: #64748B;      /* Muted text color */
             
             /* Typography */
             --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, sans-serif;
-            --font-regular: 400;
-            --font-medium: 500;
-            --font-semibold: 600;
-            --font-bold: 700;
-            --border-radius: 8px;       /* Consistent border radius */
+            --font-regular: 400;    /* Body text, small text */
+            --font-medium: 500;     /* Heading 4 */
+            --font-semibold: 600;   /* Heading 2, Heading 3 */
+            --font-bold: 700;       /* Heading 1 */
+            --border-radius: 8px;   /* Button and card radius */
             
             /* Semantic Colors */
             --primary: var(--primary-green);
@@ -122,266 +122,418 @@ function mvp_enqueue_scripts() {
             --text-color: var(--text-body);
         }
         
-        .mvp-services, .mvp-manager {
+        /* Customer-facing Services Grid */
+        .mvp-services {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 1.25rem 1rem;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            width: 100%;
+            box-sizing: border-box;
         }
         
-        .mvp-card {
-            background: var(--bg-white);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            box-shadow: var(--box-shadow);
-            padding: 1.75rem 2rem;
-            margin-bottom: 1.5rem;
-            transition: all 0.2s ease;
+        .mvp-services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+            width: 100%;
+            box-sizing: border-box;
         }
         
-        .mvp-card:hover {
-            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
-            transform: translateY(-2px);
+        @media (max-width: 1024px) {
+            .mvp-services-grid {
+                grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                gap: 1.25rem;
+            }
         }
         
-        .mvp-form-group {
-            margin-bottom: 1rem;
+        @media (max-width: 768px) {
+            .mvp-services {
+                padding: 1rem 0.75rem;
+            }
+            
+            .mvp-services-grid {
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+                gap: 1rem;
+            }
         }
         
-        .mvp-form-control {
+        @media (max-width: 480px) {
+            .mvp-services-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+        }
+        
+        .mvp-category-filter {
+            margin-bottom: 2rem;
+            max-width: 300px;
+        }
+        
+        .mvp-category-filter select {
             width: 100%;
             padding: 0.75rem 1rem;
             border: 1px solid var(--border-color);
-            border-radius: var(--border-radius);
-            font-family: var(--font-family);
+            border-radius: 8px;
             font-size: 0.9375rem;
-            color: var(--text-body);
-            background-color: var(--bg-white);
-            transition: var(--transition);
-            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            color: var(--primary-navy);
+            background-color: var(--white);
+            font-family: var(--font-family);
+            font-weight: var(--font-regular);
+            transition: all 0.2s ease;
         }
         
-        .mvp-form-control:focus {
-            border-color: var(--primary-green);
-            box-shadow: 0 0 0 3px rgba(100, 196, 147, 0.15);
+        .mvp-category-filter select:focus {
             outline: none;
+            border-color: var(--primary-green);
+            box-shadow: 0 0 0 2px rgba(100, 196, 147, 0.2);
         }
         
-        .mvp-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0.6875rem 1.5rem;
-            border-radius: var(--border-radius);
-            font-family: var(--font-family);
-            font-size: 0.9375rem;
-            font-weight: var(--font-medium);
-            line-height: 1.5;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            border: 1px solid transparent;
-            text-align: center;
-            white-space: nowrap;
-            vertical-align: middle;
-            user-select: none;
-            gap: 0.5rem;
+        .mvp-category-filter select:focus {
+            outline: none;
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
         }
         
-        .mvp-btn-primary {
-            background: var(--primary-green);
-            color: white;
-            border: none;
-            font-weight: var(--font-semibold);
-        }
-        
-        .mvp-btn-primary:hover {
-            background: #4CAF7D;
-        }
-        
-        .mvp-btn-primary:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-        
-        .mvp-btn-secondary {
+        .mvp-card {
             background: var(--white);
-            color: var(--primary-navy);
             border: 1px solid var(--border-color);
-            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-        }
-        
-        .mvp-btn-secondary:hover {
-            background: var(--bg-light);
-            border-color: var(--border-color);
-        }
-        
-        .mvp-btn-secondary:hover {
-            background: #0a1427;
-            box-shadow: 0 4px 8px rgba(12, 25, 48, 0.2);
-        }
-        
-        .mvp-btn-danger {
-            background: var(--white);
-            color: #EF4444;
-            border: 1px solid #FECACA;
-        }
-        
-        .mvp-btn-danger:hover {
-            background: #FEE2E2;
-            color: #DC2626;
-        }
-        
-        .mvp-btn-danger:hover {
-            background: #e53935;
-            box-shadow: 0 4px 8px rgba(244, 67, 54, 0.3);
-        }
-        
-        .mvp-category-badge {
-            display: inline-flex;
-            align-items: center;
-            background: var(--white);
-            color: var(--primary-navy);
-            padding: 0.35rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: var(--font-medium);
-            border: 1px solid var(--border-color);
-            transition: all 0.2s ease;
-        }
-        
-        .mvp-category-selector {
-            width: 100%;
-            margin-bottom: 15px;
-        }
-        
-        .mvp-service-actions {
-            display: flex;
-            gap: 0.75rem;
-            margin-top: auto;
-            padding-top: 1rem;
-            border-top: 1px dashed var(--border-color);
-        }
-        
-        /* Responsive grid for services */
-        .mvp-services-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 1.5rem;
-            margin: 2rem 0;
-        }
-        
-        .mvp-service-card {
-            background: var(--white);
-            border-radius: var(--border-radius);
+            border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-            transition: all 0.2s ease;
-            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 12px rgba(12, 25, 48, 0.08);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
             flex-direction: column;
             height: 100%;
+            position: relative;
+            word-wrap: break-word;
+            max-width: 100%;
+            box-sizing: border-box;
+            margin: 0;
+            transform: translateY(0);
+            border: 1px solid rgba(100, 196, 147, 0.2);
+        }
+        
+        .mvp-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px -6px rgba(100, 196, 147, 0.16), 0 8px 16px -4px rgba(12, 25, 48, 0.1);
+            border-color: var(--primary-green);
+        }
+        
+        .mvp-card-inner {
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            overflow: hidden;
+            box-sizing: border-box;
+            width: 100%;
         }
         
         .mvp-service-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            border-color: #d1d5db;
         }
         
         .mvp-service-card-header {
-            padding: 1.25rem 1.5rem;
+            padding: 1rem 1.25rem 0.75rem;
+            background: var(--white);
+            position: relative;
             border-bottom: 1px solid var(--border-color);
-            background: var(--accent-gray);
         }
         
-        .mvp-service-card-title {
-            margin: 0 0 0.5rem;
+        .mvp-service-title {
+            margin: 0 0 1rem;
             color: var(--primary-navy);
             font-size: 1.25rem;
             font-weight: var(--font-semibold);
             line-height: 1.4;
-            font-family: var(--font-family);
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid rgba(100, 196, 147, 0.15);
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            max-width: 100%;
+            position: relative;
+        }
+        
+        .mvp-service-title:after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 60px;
+            height: 2px;
+            background: var(--primary-green);
         }
         
         .mvp-service-card-categories {
             display: flex;
             flex-wrap: wrap;
-            gap: 0.5rem;
-            margin-top: 0.75rem;
+            gap: 0.4rem;
+            margin: 0.5rem 0 0.25rem;
         }
         
         .mvp-category-badge {
-            display: inline-flex;
-            align-items: center;
-            background: var(--white);
+            display: inline-block;
+            background: var(--accent-gray);
             color: var(--primary-navy);
-            padding: 0.35rem 0.75rem;
-            border-radius: 20px;
+            padding: 0.25rem 0.6rem;
+            border-radius: 4px;
             font-size: 0.75rem;
             font-weight: var(--font-medium);
-            border: 1px solid var(--border-color);
+            line-height: 1.1;
             transition: all 0.2s ease;
+            border: 1px solid var(--border-color);
         }
         
-        .mvp-service-card-body {
-            padding: 1.5rem;
-            flex: 1;
-            display: flex;
-            flex-direction: column;
+        .mvp-category-badge:hover {
+            background: var(--primary-green);
+            color: var(--white);
+            border-color: var(--primary-green);
         }
         
-        .mvp-service-description {
+        .mvp-service-content {
             color: var(--text-body);
-            margin: 0 0 1.5rem;
-            line-height: 1.6;
-            flex: 1;
-            font-family: var(--font-family);
-            font-weight: var(--font-regular);
+            margin: 0.5rem 0 1.5rem;
+            line-height: 1.7;
             font-size: 0.9375rem;
-        }
-        
-        .mvp-service-card-footer {
-            padding: 1rem 1.5rem;
-            border-top: 1px solid var(--border-color);
-            background: var(--bg-light);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .mvp-service-meta {
-            display: flex;
-            gap: 1rem;
-            font-size: 0.875rem;
-            color: var(--text-muted);
+            font-weight: var(--font-regular);
+            flex-grow: 1;
+            opacity: 0.9;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            max-width: 100%;
+            hyphens: auto;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 6;
+            -webkit-box-orient: vertical;
+            padding: 0.5rem 0;
         }
         
         .mvp-service-price {
-            font-weight: var(--font-semibold);
+            font-weight: var(--font-bold);
             color: var(--primary-green);
+            font-size: 1.125rem;
+            letter-spacing: -0.01em;
+            margin: 0.5rem 0 0;
+            display: inline-flex;
+            align-items: center;
+            background: rgba(100, 196, 147, 0.1);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
         }
         
         .mvp-service-duration {
             display: flex;
             align-items: center;
-            gap: 0.25rem;
+            gap: 0.4rem;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            font-weight: var(--font-regular);
+            margin-top: 0.25rem;
+        }
+        
+        .mvp-service-duration svg {
+            width: 14px;
+            height: 14px;
+            fill: var(--primary-green);
+        }
+        
+        /* Buttons */
+        .mvp-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem 1.25rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: var(--font-medium);
+            line-height: 1.5;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+            min-width: 100px;
+            text-align: center;
+        }
+
+        .mvp-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Primary Button */
+        .mvp-btn-primary {
+            background-color: var(--primary-green);
+            color: white;
+            border: 1px solid var(--primary-green);
+            transition: all 0.2s ease;
+        }
+        
+        .mvp-btn-primary:hover {
+            background-color: #4a9f78;
+            border-color: #4a9f78;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Secondary Button */
+        .mvp-btn-secondary {
+            background-color: var(--primary-navy);
+            color: white;
+            border: 1px solid var(--primary-navy);
+            transition: all 0.2s ease;
+        }
+        
+        .mvp-btn-secondary:hover {
+            background-color: #0a1426;
+            border-color: #0a1426;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Outline Button */
+        .mvp-btn-outline {
+            background-color: transparent;
+            color: var(--primary-navy);
+            border: 1px solid var(--border-color);
+            transition: all 0.2s ease;
+        }
+        
+        .mvp-btn-outline:hover {
+            background-color: rgba(12, 25, 48, 0.05);
+            border-color: var(--primary-green);
+            color: var(--primary-green);
+            transform: translateY(-1px);
+        }
+
+        /* Danger Button */
+        .mvp-btn-danger {
+            background-color: #fee2e2;
+            color: #b91c1c;
+            border: 1px solid #fecaca;
+            transition: all 0.2s ease;
+        }
+        
+        .mvp-btn-danger:hover {
+            background-color: #fecaca;
+            border-color: #fca5a5;
+            color: #b91c1c;
+            transform: translateY(-1px);
+        }
+        
+        /* Text Button */
+        .mvp-btn-text {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            padding: 0.25rem 0.5rem;
+            transition: all 0.2s ease;
+            border-radius: 4px;
+        }
+        
+        .mvp-btn-text:hover {
+            color: var(--primary-green);
+            background: rgba(100, 196, 147, 0.1);
+            transform: translateY(-1px);
+        }
+        
+        /* Button Sizes */
+        .mvp-btn-sm {
+            padding: 0.25rem 0.75rem;
+            font-size: 0.8125rem;
+        }
+        
+        /* Button with icon */
+        .mvp-btn i {
+            margin-right: 0.5rem;
+            font-size: 0.9em;
+            line-height: 1;
+        }
+
+        /* Form Actions */
+        .mvp-form-actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+            padding-top: 1.25rem;
+            border-top: 1px solid var(--border-color);
+            justify-content: flex-end;
+        }
+
+        .mvp-no-results {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 3rem 2rem;
+            color: var(--text-muted);
+            background: var(--accent-gray);
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        
+        /* Animation for service items */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .service-item {
+            animation: fadeInUp 0.3s ease-out forwards;
+            opacity: 0;
+        }
+        
+        /* Add staggered animation delay */
+        .service-item:nth-child(1) { animation-delay: 0.1s; }
+        .service-item:nth-child(2) { animation-delay: 0.15s; }
+        .service-item:nth-child(3) { animation-delay: 0.2s; }
+        .service-item:nth-child(4) { animation-delay: 0.25s; }
+        .service-item:nth-child(5) { animation-delay: 0.3s; }
+        .service-item:nth-child(6) { animation-delay: 0.35s; }
+            line-height: 1.6;
+            font-size: 0.9375rem;
+        }
+        
+        /* Category badges */
+        .mvp-category-badge {
+            display: inline-block;
+            background: var(--accent-gray);
+            color: var(--primary-navy);
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
         }
         
         /* Card Styles */
         .mvp-service-manager-card {
             background: var(--white);
-            border-radius: var(--border-radius);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(12, 25, 48, 0.08);
             overflow: hidden;
-            margin-bottom: 2rem;
+            margin: 0 0 2rem;
+            border: 1px solid rgba(100, 196, 147, 0.15);
         }
         
         .mvp-card-header {
-            padding: 1.25rem 1.5rem;
-            background: var(--accent-gray);
+            padding: 1rem 1.5rem;
             border-bottom: 1px solid var(--border-color);
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            background: var(--accent-gray);
         }
         
         .mvp-card-title {
@@ -391,23 +543,83 @@ function mvp_enqueue_scripts() {
             font-weight: var(--font-semibold);
         }
         
-        .mvp-card-body {
+        .mvp-service-list {
             padding: 1.5rem;
+        }
+        
+        .mvp-service-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.25rem;
+            margin-top: 1.5rem;
+        }
+        
+        .service-item {
+            background: var(--white);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.25rem;
+            transition: all 0.2s ease;
+        }
+        
+        .service-item:hover {
+            border-color: var(--primary-green);
+            box-shadow: 0 4px 12px rgba(100, 196, 147, 0.1);
+        }
+        
+        .service-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .service-item-title {
+            font-size: 1rem;
+            font-weight: var(--font-semibold);
+            color: var(--primary-navy);
+            margin: 0;
+            line-height: 1.4;
+        }
+        
+        .service-item-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .service-item-content {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        .service-item-meta {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .service-item-price {
+            color: var(--primary-green);
+            font-weight: var(--font-semibold);
         }
         
         /* Form styles */
         .mvp-form-container {
             background: var(--white);
-            padding: 1.5rem;
-            border-radius: var(--border-radius);
-            border: 1px solid var(--border-color);
-            margin: 1.5rem 0;
-        }
-        
-        /* Category management */
-        .mvp-category-list {
-            list-style: none;
             padding: 0;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--accent-gray);
         }
         
         .mvp-category-list li {
@@ -433,6 +645,112 @@ function mvp_enqueue_scripts() {
         
         @keyframes mvp-spin {
             to { transform: rotate(360deg); }
+        }
+        
+        .mvp-section {
+            background: var(--white);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .mvp-section-title {
+            font-size: 1.1rem;
+            margin: 0 0 1.25rem;
+            color: var(--primary-navy);
+            font-weight: var(--font-semibold);
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .mvp-add-category {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.25rem;
+            max-width: 400px;
+            align-items: center;
+        }
+        
+        .mvp-add-category .mvp-form-control {
+            flex: 1;
+            min-width: 0;
+            margin: 0;
+            height: 40px;
+            padding: 0.5rem 0.875rem;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            transition: border-color 0.2s ease;
+        }
+        
+        .mvp-add-category .mvp-form-control:focus {
+            border-color: var(--primary-green);
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(100, 196, 147, 0.2);
+        }
+        
+        #mvp-add-category {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+        }
+        
+        #mvp-add-category .dashicons {
+            margin: 0;
+            width: 20px;
+            height: 20px;
+            font-size: 20px;
+        }
+        
+        .mvp-category-list {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 1.5rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        
+        .mvp-category-list li {
+            background: var(--white);
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            border: 1px solid var(--border-color);
+            padding: 0.25rem 0.75rem 0.25rem 1rem;
+            font-size: 0.8125rem;
+            transition: all 0.2s ease;
+        }
+        
+        .mvp-category-list li:hover {
+            border-color: var(--primary-green);
+            background: rgba(100, 196, 147, 0.05);
+        }
+        
+        .mvp-category-actions {
+            display: flex;
+            gap: 0.25rem;
+            margin-left: 0.5rem;
+        }
+        
+        .mvp-category-actions .mvp-btn {
+            width: 24px;
+            height: 24px;
+            min-width: auto;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+        
+        .mvp-category-actions .mvp-btn i {
+            font-size: 14px;
+            line-height: 1;
         }
     ";
     wp_add_inline_style('mvp-style', $custom_css);
@@ -795,46 +1113,25 @@ function mvp_manager_shortcode() {
                         <label for="mvp-service-duration"><?php _e('Duration', 'service-manager'); ?></label>
                         <input type="text" id="mvp-service-duration" name="duration" class="mvp-form-control" placeholder="e.g. 30 mins">
                     </div>
-                <?php wp_nonce_field('mvp_nonce', 'mvp_nonce'); ?>
-                <input type="hidden" name="service_id" id="mvp-service-id" value="">
-                
-                <div class="mvp-form-group">
-                    <label for="mvp-service-title"><?php _e('Service Title', 'service-manager'); ?> *</label>
-                    <input type="text" id="mvp-service-title" name="title" class="mvp-form-control" required>
-                </div>
-                
-                <div class="mvp-form-group">
-                    <label for="mvp-service-description"><?php _e('Description', 'service-manager'); ?> *</label>
-                    <textarea id="mvp-service-description" name="description" class="mvp-form-control" rows="5" required></textarea>
-                </div>
-                
-                <div class="mvp-form-group">
-                    <label for="mvp-service-price"><?php _e('Price', 'service-manager'); ?></label>
-                    <input type="text" id="mvp-service-price" name="price" class="mvp-form-control" placeholder="e.g. 1200.00">
-                </div>
 
-                <div class="mvp-form-group">
-                    <label for="mvp-service-duration"><?php _e('Duration', 'service-manager'); ?></label>
-                    <input type="text" id="mvp-service-duration" name="duration" class="mvp-form-control" placeholder="e.g. 30 mins">
-                </div>
-
-                <div class="mvp-form-group">
-                    <label for="mvp-service-featured">
-                        <input type="checkbox" id="mvp-service-featured" name="is_featured" value="1"> <?php _e('Mark as featured', 'service-manager'); ?>
-                    </label>
-                </div>
-                
-                <div class="mvp-form-group">
-                    <label for="mvp-service-categories"><?php _e('Categories', 'service-manager'); ?></label>
-                    <select id="mvp-service-categories" name="categories[]" class="mvp-form-control" multiple="multiple">
-                        <?php if (!empty($categories) && !is_wp_error($categories)): ?>
-                            <?php foreach ($categories as $category): ?>
-                                <option value="<?php echo esc_attr($category->term_id); ?>">
-                                    <?php echo esc_html($category->name); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </select>
+                    <div class="mvp-form-group">
+                        <label for="mvp-service-featured">
+                            <input type="checkbox" id="mvp-service-featured" name="is_featured" value="1"> <?php _e('Mark as featured', 'service-manager'); ?>
+                        </label>
+                    </div>
+                    
+                    <div class="mvp-form-group">
+                        <label for="mvp-service-categories"><?php _e('Categories', 'service-manager'); ?></label>
+                        <select id="mvp-service-categories" name="categories[]" class="mvp-form-control" multiple="multiple">
+                            <?php if (!empty($categories) && !is_wp_error($categories)): ?>
+                                <?php foreach ($categories as $category): ?>
+                                    <option value="<?php echo esc_attr($category->term_id); ?>">
+                                        <?php echo esc_html($category->name); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </select>
+                    </div>
                 </div>
                 
                 <div class="mvp-form-actions">
@@ -857,28 +1154,32 @@ function mvp_manager_shortcode() {
         <!-- Category Management -->
         <div class="mvp-category-management">
             <h3><?php _e('Manage Categories', 'service-manager'); ?></h3>
-            <div class="mvp-add-category">
-                <input type="text" id="mvp-new-category" class="mvp-form-control" style="width: 300px; display: inline-block;" 
-                       placeholder="<?php esc_attr_e('New category name', 'service-manager'); ?>">
-                <button type="button" id="mvp-add-category" class="mvp-btn mvp-btn-primary">
-                    <?php _e('Add Category', 'service-manager'); ?>
-                </button>
-            </div>
-            
-            <?php if (!empty($categories) && !is_wp_error($categories)): ?>
-                <ul class="mvp-category-list" style="margin-top: 15px;">
+            <div class="mvp-section">
+                <h3 class="mvp-section-title"><?php _e('Categories', 'service-manager'); ?></h3>
+                
+                <div class="mvp-add-category">
+                    <input type="text" id="mvp-new-category" class="mvp-form-control" 
+                           placeholder="<?php esc_attr_e('Add new category', 'service-manager'); ?>">
+                    <button id="mvp-add-category" class="mvp-btn mvp-btn-primary">
+                        <i class="dashicons dashicons-plus"></i>
+                    </button>
+                </div>
+                
+                <ul class="mvp-category-list">
                     <?php foreach ($categories as $category): ?>
-                        <li data-id="<?php echo $category->term_id; ?>">
-                            <span class="mvp-category-name"><?php echo esc_html($category->name); ?></span>
-                            <span class="mvp-category-count">(<?php echo $category->count; ?>)</span>
-                            <button class="mvp-btn mvp-btn-danger mvp-btn-sm mvp-delete-category" 
-                                    data-id="<?php echo $category->term_id; ?>">
-                                <?php _e('Delete', 'service-manager'); ?>
-                            </button>
+                        <li>
+                            <span><?php echo esc_html($category->name); ?></span>
+                            <div class="mvp-category-actions">
+                                <button class="mvp-delete-category mvp-btn mvp-btn-sm mvp-btn-text" 
+                                        data-id="<?php echo $category->term_id; ?>"
+                                        title="<?php esc_attr_e('Delete', 'service-manager'); ?>">
+                                    <i class="dashicons dashicons-trash"></i>
+                                </button>
+                            </div>
                         </li>
                     <?php endforeach; ?>
                 </ul>
-            <?php endif; ?>
+            </div>
         </div>
 
         <!-- Services List -->
@@ -905,25 +1206,26 @@ function mvp_manager_shortcode() {
                 <div id="mvp-service-list" class="mvp-service-grid">
                     <?php foreach ($services as $service): 
                         $service_cats = get_the_terms($service->ID, 'service_category');
-                        $category_classes = '';
                         $category_ids = array();
                         $category_names = array();
                         
                         if (!empty($service_cats) && !is_wp_error($service_cats)) {
-                            $category_classes = implode(' ', array_map(function($cat) use (&$category_ids, &$category_names) { 
+                            foreach ($service_cats as $cat) {
                                 $category_ids[] = $cat->term_id;
                                 $category_names[] = $cat->name;
-                                return 'category-' . $cat->term_id; 
-                            }, $service_cats));
+                            }
                         }
+                        
+                        $price = get_post_meta($service->ID, '_service_price', true);
+                        $duration = get_post_meta($service->ID, '_service_duration', true);
                     ?>
-                        <div class="mvp-card service-item <?php echo esc_attr($category_classes); ?>" 
+                        <div class="service-item" 
                              data-id="<?php echo $service->ID; ?>"
                              data-categories='<?php echo json_encode($category_ids); ?>'>
-                            <div class="mvp-card-header">
-                                <h3 class="mvp-service-title"><?php echo esc_html($service->post_title); ?></h3>
-                                <div class="mvp-service-actions">
-                                    <button class="mvp-edit-service mvp-btn mvp-btn-sm mvp-btn-secondary" 
+                            <div class="service-item-header">
+                                <h3 class="service-item-title"><?php echo esc_html($service->post_title); ?></h3>
+                                <div class="service-item-actions">
+                                    <button class="mvp-edit-service mvp-btn mvp-btn-sm mvp-btn-outline" 
                                             data-id="<?php echo $service->ID; ?>"
                                             data-title="<?php echo esc_attr($service->post_title); ?>"
                                             data-description="<?php echo esc_attr($service->post_content); ?>"
@@ -936,16 +1238,17 @@ function mvp_manager_shortcode() {
                                     </button>
                                 </div>
                             </div>
-                            <div class="mvp-service-content">
-                                <?php echo wpautop(wp_kses_post($service->post_content)); ?>
+                            <div class="service-item-content">
+                                <?php echo wp_trim_words(wp_strip_all_tags($service->post_content), 20, '...'); ?>
                             </div>
-                            <?php if (!empty($service_cats) && !is_wp_error($service_cats)): ?>
-                                <div class="mvp-service-categories">
-                                    <?php foreach ($service_cats as $cat): ?>
-                                        <span class="mvp-category-badge"><?php echo esc_html($cat->name); ?></span>
-                                    <?php endforeach; ?>
-                                </div>
-                            <?php endif; ?>
+                            <div class="service-item-meta">
+                                <?php if ($price): ?>
+                                    <span class="service-item-price"><?php echo esc_html($price); ?></span>
+                                <?php endif; ?>
+                                <?php if ($duration): ?>
+                                    <span class="service-item-duration"><?php echo esc_html($duration); ?></span>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     <?php endforeach; ?>
                 </div>
