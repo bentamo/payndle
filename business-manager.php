@@ -100,11 +100,105 @@ class Payndle_Business_Manager {
                 // Actions: View Dashboard and Delete (secure form)
                 echo '<td class="actions">';
                 // Add View Dashboard button with admin-post action
-                $dashboard_url = wp_nonce_url(
-                    admin_url('admin-post.php?action=payndle_view_dashboard&business_id=' . $business->ID),
-                    'payndle_view_dashboard_' . $business->ID
-                );
-                echo '<a href="' . esc_url($dashboard_url) . '" class="button button-primary" style="margin-right: 5px;">' . esc_html__('View My Dashboard', 'payndle-business-manager') . '</a>';
+                // Manager Dashboard URL
+                $manager_dashboard_url = admin_url('admin-post.php?action=payndle_view_dashboard&type=manager&business_id=' . $business->ID);
+                error_log('Generated Manager Dashboard URL: ' . $manager_dashboard_url);
+                
+                // Staff Dashboard URL
+                $staff_dashboard_url = admin_url('admin-post.php?action=payndle_view_dashboard&type=staff&business_id=' . $business->ID);
+                error_log('Generated Staff Dashboard URL: ' . $staff_dashboard_url);
+                echo '<div style="display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px;">';
+                
+                // Landing Page button
+                $landing_id = get_post_meta($business->ID, '_business_landing_id', true);
+                $landing_post = $landing_id ? get_post($landing_id) : null;
+                
+                // If landing page doesn't exist or is not published, create it
+                if (!$landing_post || $landing_post->post_status !== 'publish') {
+                    // Create landing page
+                    $landing_title = sprintf( __( '%s - Welcome', 'payndle-business-manager' ), $business->post_title );
+                    $landing_slug = sanitize_title( 'business-landing-' . $business->post_name );
+                    $landing_content = '<!-- wp:uagb/container {"block_id":"1e2d0d91","innerContentWidth":"alignfull","backgroundType":"color","backgroundColor":"#f4f4f4","variationSelected":true,"isBlockRootParent":true} -->
+<div class="wp-block-uagb-container uagb-block-1e2d0d91 alignfull uagb-is-root-container"><!-- wp:shortcode -->
+[business_header]
+<!-- /wp:shortcode --></div>
+<!-- /wp:uagb/container -->
+
+<!-- wp:uagb/container {"block_id":"tl8e4mmk","backgroundType":"color","backgroundColor":"#64c493","topPaddingDesktop":60,"bottomPaddingDesktop":60,"leftPaddingDesktop":60,"rightPaddingDesktop":60,"topPaddingTablet":80,"bottomPaddingTablet":80,"leftPaddingTablet":32,"rightPaddingTablet":32,"topPaddingMobile":64,"bottomPaddingMobile":64,"leftPaddingMobile":24,"rightPaddingMobile":24,"topMarginDesktop":0,"bottomMarginDesktop":0,"leftMarginDesktop":0,"rightMarginDesktop":0,"topMarginTablet":0,"bottomMarginTablet":0,"leftMarginTablet":0,"rightMarginTablet":0,"topMarginMobile":0,"bottomMarginMobile":0,"leftMarginMobile":0,"rightMarginMobile":0,"variationSelected":true,"rowGapDesktop":40,"rowGapTablet":40,"rowGapMobile":40,"columnGapDesktop":0,"columnGapTablet":0,"columnGapMobile":0,"isBlockRootParent":true} -->
+<div class="wp-block-uagb-container uagb-block-tl8e4mmk alignfull uagb-is-root-container"><div class="uagb-container-inner-blocks-wrap"><!-- wp:uagb/advanced-heading {"block_id":"f4d6a079","classMigrate":true,"headingDescToggle":false,"headingAlign":"center"} -->
+<div class="wp-block-uagb-advanced-heading uagb-block-f4d6a079"><h2 class="uagb-heading-text">Our Services</h2></div>
+<!-- /wp:uagb/advanced-heading -->
+
+<!-- wp:shortcode -->
+[user_services]
+<!-- /wp:shortcode -->
+
+<!-- wp:shortcode -->
+[user_booking_form]
+<!-- /wp:shortcode --></div></div>
+<!-- /wp:uagb/container -->
+
+<!-- wp:uagb/container {"block_id":"k0ktjvhi","directionDesktop":"row","alignItemsDesktop":"flex-start","alignItemsTablet":"flex-start","alignItemsMobile":"center","backgroundType":"color","backgroundColor":"var(\u002d\u002dast-global-color-5)","topPaddingDesktop":112,"bottomPaddingDesktop":112,"leftPaddingDesktop":40,"rightPaddingDesktop":40,"topPaddingTablet":80,"bottomPaddingTablet":80,"leftPaddingTablet":32,"rightPaddingTablet":32,"topPaddingMobile":64,"bottomPaddingMobile":64,"leftPaddingMobile":24,"rightPaddingMobile":24,"paddingLink":false,"topMarginDesktop":0,"bottomMarginDesktop":0,"leftMarginDesktop":0,"rightMarginDesktop":0,"topMarginTablet":0,"bottomMarginTablet":0,"leftMarginTablet":0,"rightMarginTablet":0,"topMarginMobile":0,"bottomMarginMobile":0,"leftMarginMobile":0,"rightMarginMobile":0,"variationSelected":true,"rowGapDesktop":0,"rowGapTablet":0,"rowGapMobile":40,"columnGapDesktop":72,"columnGapTablet":40,"columnGapMobile":0,"isBlockRootParent":true} -->
+<div class="wp-block-uagb-container uagb-block-k0ktjvhi alignfull uagb-is-root-container"><div class="uagb-container-inner-blocks-wrap"><!-- wp:shortcode -->
+[contact_us]
+<!-- /wp:shortcode --></div></div>
+<!-- /wp:uagb/container -->
+
+<!-- wp:paragraph -->
+<p></p>
+<!-- /wp:paragraph -->';
+
+                    $landing_data = array(
+                        'post_title'    => $landing_title,
+                        'post_name'     => $landing_slug,
+                        'post_content'  => $landing_content,
+                        'post_status'   => 'publish',
+                        'post_type'     => 'page',
+                        'post_author'   => get_post_field( 'post_author', $business->ID ),
+                        'meta_input'    => array(
+                            '_business_id' => $business->ID
+                        )
+                    );
+
+                    // If we have an existing landing page, update it
+                    if ($landing_id) {
+                        $landing_data['ID'] = $landing_id;
+                        wp_update_post($landing_data);
+                    } else {
+                        // Create new landing page
+                        $landing_id = wp_insert_post($landing_data);
+                        if (!is_wp_error($landing_id)) {
+                            update_post_meta($business->ID, '_business_landing_id', $landing_id);
+                        }
+                    }
+                    
+                    // Force publish status and clear cache
+                    wp_publish_post($landing_id);
+                    clean_post_cache($landing_id);
+                    $landing_post = get_post($landing_id);
+                }
+
+                // Show the landing page button if we have a valid page
+                if ($landing_post && $landing_post->post_status === 'publish') {
+                    $landing_url = get_permalink($landing_id);
+                    if ($landing_url) {
+                        echo '<a href="' . esc_url($landing_url) . '" class="button button-secondary" style="width: 100%; text-align: center;">' . 
+                             '<span class="dashicons dashicons-admin-site" style="margin: 3px 5px 0 -3px;"></span>' . 
+                             esc_html__('Landing Page', 'payndle-business-manager') . '</a>';
+                    }
+                }
+
+                // Manager Dashboard button
+                echo '<a href="' . esc_url($manager_dashboard_url) . '" class="button button-primary" style="width: 100%; text-align: center;">' . 
+                     '<span class="dashicons dashicons-dashboard" style="margin: 3px 5px 0 -3px;"></span>' . 
+                     esc_html__('View My Dashboard', 'payndle-business-manager') . '</a>';
+                
+                // Staff Dashboard button
+                echo '<a href="' . esc_url($staff_dashboard_url) . '" class="button button-secondary" style="width: 100%; text-align: center;">' . 
+                     '<span class="dashicons dashicons-groups" style="margin: 3px 5px 0 -3px;"></span>' . 
+                     esc_html__('Staff Dashboard', 'payndle-business-manager') . '</a>';
+                
+                echo '</div>';
                 echo '<form method="post" action="' . esc_url( admin_url('admin-post.php') ) . '" onsubmit="return confirm(\'Are you sure you want to delete this business? This action cannot be undone.\');">';
                 echo '<input type="hidden" name="action" value="payndle_delete_business" />';
                 echo '<input type="hidden" name="business_id" value="' . esc_attr($business->ID) . '" />';
@@ -126,23 +220,36 @@ class Payndle_Business_Manager {
      * Handle view dashboard action.
      */
     public function handle_view_dashboard() {
-        // Verify user is logged in
-        if ( ! is_user_logged_in() ) {
-            wp_redirect( wp_login_url() );
-            exit;
-        }
-
-        $current_user = wp_get_current_user();
         $business_id = isset( $_GET['business_id'] ) ? intval( $_GET['business_id'] ) : 0;
+        $dashboard_type = isset( $_GET['type'] ) ? sanitize_text_field( $_GET['type'] ) : 'manager';
         
-        // Verify business exists and user has access
+        error_log('Attempting to view dashboard:');
+        error_log('Business ID: ' . $business_id);
+        error_log('Dashboard Type: ' . $dashboard_type);
+        
         if ( $business_id ) {
             $business = get_post( $business_id );
-            $owner_id = get_post_meta( $business_id, '_business_owner_id', true );
+            error_log('Business Post: ' . ($business ? 'Found' : 'Not Found'));
+            if ($business) {
+                error_log('Business Post Type: ' . $business->post_type);
+                
+                if ($business->post_type !== 'payndle_business') {
+                    error_log('Invalid business type: ' . $business->post_type);
+                    wp_die( esc_html__( 'Invalid business type.', 'payndle-business-manager' ) );
+                    return;
+                }
+            } else {
+                error_log('Business not found with ID: ' . $business_id);
+                wp_die( esc_html__( 'Business not found.', 'payndle-business-manager' ) );
+                return;
+            }
             
-            if ( $business && ( $owner_id == $current_user->ID || current_user_can( 'manage_options' ) ) ) {
-                // Check if dedicated dashboard exists
+            // Determine which dashboard to show based on type
+            if ($dashboard_type === 'staff') {
+                $dashboard_id = get_post_meta( $business_id, '_business_staff_dashboard_id', true );
+            } else {
                 $dashboard_id = get_post_meta( $business_id, '_business_dashboard_id', true );
+            }
                 
                 if ( $dashboard_id && get_post( $dashboard_id ) ) {
                     // Redirect to the dedicated dashboard
@@ -154,21 +261,27 @@ class Payndle_Business_Manager {
                     wp_redirect( $dashboard_url );
                     exit;
                 } else {
-                    // Fallback to old behavior if dedicated dashboard doesn't exist
-                    $this->create_business_dashboard( $business_id, $business );
+                // Create the appropriate dashboard if it doesn't exist
+                if ($dashboard_type === 'staff') {
+                    // Create staff dashboard
+                    $this->create_business_dashboard( $business_id, $business, 'staff' );
+                    $dashboard_id = get_post_meta( $business_id, '_business_staff_dashboard_id', true );
+                } else {
+                    // Create manager dashboard
+                    $this->create_business_dashboard( $business_id, $business, 'manager' );
                     $dashboard_id = get_post_meta( $business_id, '_business_dashboard_id', true );
+                }
                     
                     if ( $dashboard_id ) {
                         $dashboard_url = add_query_arg( 'business_id', $business_id, get_permalink( $dashboard_id ) );
                         wp_redirect( $dashboard_url );
                         exit;
-                    }
                 }
             }
         }
         
         // If we get here, something went wrong
-        wp_die( esc_html__( 'You do not have permission to view this dashboard or the business does not exist.', 'payndle-business-manager' ) );
+        wp_die( esc_html__( 'The business does not exist.', 'payndle-business-manager' ) );
     }
 
     /**
@@ -278,7 +391,7 @@ class Payndle_Business_Manager {
     /**
      * Create a dedicated dashboard page for a business
      */
-    public function create_business_dashboard( $post_id, $post ) {
+    public function create_business_dashboard( $post_id, $post, $type = 'manager' ) {
         // Check if this is a revision
         if ( wp_is_post_revision( $post_id ) ) {
             return;
@@ -289,19 +402,139 @@ class Payndle_Business_Manager {
             return;
         }
         
-        // Check if dashboard already exists
-        $dashboard_id = get_post_meta( $post_id, '_business_dashboard_id', true );
-        
-        if ( ! $dashboard_id || ! get_post( $dashboard_id ) ) {
-            // Create dashboard page
+        // Determine which dashboard to create
+        if ($type === 'staff') {
+            $meta_key = '_business_staff_dashboard_id';
+            $dashboard_title = sprintf( __( 'Staff Dashboard - %s', 'payndle-business-manager' ), $post->post_title );
+            $dashboard_slug = sanitize_title( 'staff-dashboard-' . $post->post_name );
+            $dashboard_content = '<!-- wp:uagb/container {"block_id":"b9a6c81d","innerContentWidth":"alignfull","backgroundType":"color","backgroundColor":"#64c493","variationSelected":true,"isBlockRootParent":true} -->
+<div class="wp-block-uagb-container uagb-block-b9a6c81d alignfull uagb-is-root-container"></div>
+<!-- /wp:uagb/container -->
+
+<!-- wp:uagb/container {"block_id":"19535bd1","innerContentWidth":"alignfull","backgroundType":"color","backgroundColor":"#f4f4f4","variationSelected":true,"isBlockRootParent":true} -->
+<div class="wp-block-uagb-container uagb-block-19535bd1 alignfull uagb-is-root-container"><!-- wp:shortcode -->
+[assigned_bookings]
+<!-- /wp:shortcode --></div>
+<!-- /wp:uagb/container -->
+
+<!-- wp:paragraph -->
+<p></p>
+<!-- /wp:paragraph -->';
+
+            $dashboard_data = array(
+                'post_title'    => $dashboard_title,
+                'post_name'     => $dashboard_slug,
+                'post_content'  => $dashboard_content,
+                'post_status'   => 'publish',
+                'post_type'     => 'page',
+                'post_author'   => get_post_field( 'post_author', $post_id ),
+                'meta_input'    => array(
+                    '_business_id' => $post_id
+                )
+            );
+            
+            // Insert the dashboard page
+            $dashboard_id = wp_insert_post( $dashboard_data );
+            
+            if ( ! is_wp_error( $dashboard_id ) ) {
+                // Save the dashboard ID in business meta using the correct meta key
+                update_post_meta( $post_id, $meta_key, $dashboard_id );
+                
+                // Also save the dashboard URL for easy access
+                $dashboard_url = get_permalink( $dashboard_id );
+                update_post_meta( $post_id, $meta_key . '_url', $dashboard_url );
+
+                // Create Landing Page if we're creating the manager dashboard
+                if ($type === 'manager') {
+                    $landing_title = sprintf( __( '%s - Welcome', 'payndle-business-manager' ), $post->post_title );
+                    $landing_slug = sanitize_title( 'business-landing-' . $post->post_name );
+                    $landing_content = '<!-- wp:uagb/container {"block_id":"1e2d0d91","innerContentWidth":"alignfull","backgroundType":"color","backgroundColor":"#f4f4f4","variationSelected":true,"isBlockRootParent":true} -->
+<div class="wp-block-uagb-container uagb-block-1e2d0d91 alignfull uagb-is-root-container"><!-- wp:shortcode -->
+[business_header]
+<!-- /wp:shortcode --></div>
+<!-- /wp:uagb/container -->
+
+<!-- wp:uagb/container {"block_id":"tl8e4mmk","backgroundType":"color","backgroundColor":"#64c493","topPaddingDesktop":60,"bottomPaddingDesktop":60,"leftPaddingDesktop":60,"rightPaddingDesktop":60,"topPaddingTablet":80,"bottomPaddingTablet":80,"leftPaddingTablet":32,"rightPaddingTablet":32,"topPaddingMobile":64,"bottomPaddingMobile":64,"leftPaddingMobile":24,"rightPaddingMobile":24,"topMarginDesktop":0,"bottomMarginDesktop":0,"leftMarginDesktop":0,"rightMarginDesktop":0,"topMarginTablet":0,"bottomMarginTablet":0,"leftMarginTablet":0,"rightMarginTablet":0,"topMarginMobile":0,"bottomMarginMobile":0,"leftMarginMobile":0,"rightMarginMobile":0,"variationSelected":true,"rowGapDesktop":40,"rowGapTablet":40,"rowGapMobile":40,"columnGapDesktop":0,"columnGapTablet":0,"columnGapMobile":0,"isBlockRootParent":true} -->
+<div class="wp-block-uagb-container uagb-block-tl8e4mmk alignfull uagb-is-root-container"><div class="uagb-container-inner-blocks-wrap"><!-- wp:uagb/advanced-heading {"block_id":"f4d6a079","classMigrate":true,"headingDescToggle":false,"headingAlign":"center"} -->
+<div class="wp-block-uagb-advanced-heading uagb-block-f4d6a079"><h2 class="uagb-heading-text">Our Services</h2></div>
+<!-- /wp:uagb/advanced-heading -->
+
+<!-- wp:shortcode -->
+[user_services]
+<!-- /wp:shortcode -->
+
+<!-- wp:shortcode -->
+[user_booking_form]
+<!-- /wp:shortcode --></div></div>
+<!-- /wp:uagb/container -->
+
+<!-- wp:uagb/container {"block_id":"k0ktjvhi","directionDesktop":"row","alignItemsDesktop":"flex-start","alignItemsTablet":"flex-start","alignItemsMobile":"center","backgroundType":"color","backgroundColor":"var(\u002d\u002dast-global-color-5)","topPaddingDesktop":112,"bottomPaddingDesktop":112,"leftPaddingDesktop":40,"rightPaddingDesktop":40,"topPaddingTablet":80,"bottomPaddingTablet":80,"leftPaddingTablet":32,"rightPaddingTablet":32,"topPaddingMobile":64,"bottomPaddingMobile":64,"leftPaddingMobile":24,"rightPaddingMobile":24,"paddingLink":false,"topMarginDesktop":0,"bottomMarginDesktop":0,"leftMarginDesktop":0,"rightMarginDesktop":0,"topMarginTablet":0,"bottomMarginTablet":0,"leftMarginTablet":0,"rightMarginTablet":0,"topMarginMobile":0,"bottomMarginMobile":0,"leftMarginMobile":0,"rightMarginMobile":0,"variationSelected":true,"rowGapDesktop":0,"rowGapTablet":0,"rowGapMobile":40,"columnGapDesktop":72,"columnGapTablet":40,"columnGapMobile":0,"isBlockRootParent":true} -->
+<div class="wp-block-uagb-container uagb-block-k0ktjvhi alignfull uagb-is-root-container"><div class="uagb-container-inner-blocks-wrap"><!-- wp:shortcode -->
+[contact_us]
+<!-- /wp:shortcode --></div></div>
+<!-- /wp:uagb/container -->
+
+<!-- wp:paragraph -->
+<p></p>
+<!-- /wp:paragraph -->';
+
+                    $landing_data = array(
+                        'post_title'    => $landing_title,
+                        'post_name'     => $landing_slug,
+                        'post_content'  => $landing_content,
+                        'post_status'   => 'publish',
+                        'post_type'     => 'page',
+                        'post_author'   => get_post_field( 'post_author', $post_id ),
+                        'meta_input'    => array(
+                            '_business_id' => $post_id
+                        )
+                    );
+
+                    $landing_id = wp_insert_post( $landing_data );
+                    if ( ! is_wp_error( $landing_id ) ) {
+                        update_post_meta( $post_id, '_business_landing_id', $landing_id );
+                    }
+                }
+            }
+        } else {
+            $meta_key = '_business_dashboard_id';
             $dashboard_title = sprintf( __( 'Business Dashboard - %s', 'payndle-business-manager' ), $post->post_title );
             $dashboard_slug = sanitize_title( 'dashboard-' . $post->post_name );
             
-            // Define the dashboard content with all required shortcodes in order
-            $dashboard_content = '<!-- wp:shortcode -->[manager_dashboard]<!-- /wp:shortcode -->' . "\n\n" .
-                               '<!-- wp:shortcode -->[manage_staff]<!-- /wp:shortcode -->' . "\n\n" .
-                               '<!-- wp:shortcode -->[manager_add_service]<!-- /wp:shortcode -->' . "\n\n" .
-                               '<!-- wp:shortcode -->[elite_cuts_manage_bookings]<!-- /wp:shortcode -->';
+            // Define the manager dashboard content with all required shortcodes in order
+            $dashboard_content = '<!-- wp:uagb/container {"block_id":"c35ac3a5","innerContentWidth":"alignfull","backgroundType":"color","backgroundColor":"#64c493","variationSelected":true,"isBlockRootParent":true} -->
+<div class="wp-block-uagb-container uagb-block-c35ac3a5 alignfull uagb-is-root-container"></div>
+<!-- /wp:uagb/container -->
+
+<!-- wp:uagb/container {"block_id":"3dcbb986","innerContentWidth":"alignfull","backgroundType":"color","backgroundColor":"#f4f4f4","variationSelected":true,"isBlockRootParent":true,"layout":"flex"} -->
+<div class="wp-block-uagb-container uagb-layout-flex uagb-block-3dcbb986 alignfull uagb-is-root-container"><!-- wp:shortcode -->
+[manager_dashboard]
+<!-- /wp:shortcode -->
+
+<!-- wp:uagb/tabs {"block_id":"6e6c5d03","tabHeaders":["Bookings","Staff","Services"],"borderStyle":"","borderWidth":"","borderColor":"","tabBorderTopWidth":1,"tabBorderLeftWidth":1,"tabBorderRightWidth":1,"tabBorderBottomWidth":1,"tabBorderStyle":"solid","tabBorderColor":"#e0e0e0"} -->
+<div class="wp-block-uagb-tabs uagb-block-6e6c5d03 uagb-tabs__wrap uagb-tabs__hstyle1-desktop uagb-tabs__vstyle6-tablet uagb-tabs__stack1-mobile" data-tab-active="0"><ul class="uagb-tabs__panel uagb-tabs__align-left" role="tablist"><li class="uagb-tab uagb-tabs__active" role="none"><a href="#uagb-tabs__tab0" class="uagb-tabs-list uagb-tabs__icon-position-left" data-tab="0" role="tab"><div>Bookings</div></a></li><li class="uagb-tab " role="none"><a href="#uagb-tabs__tab1" class="uagb-tabs-list uagb-tabs__icon-position-left" data-tab="1" role="tab"><div>Staff</div></a></li><li class="uagb-tab " role="none"><a href="#uagb-tabs__tab2" class="uagb-tabs-list uagb-tabs__icon-position-left" data-tab="2" role="tab"><div>Services</div></a></li></ul><div class="uagb-tabs__body-wrap"><!-- wp:uagb/tabs-child {"block_id":"6e6c5d03","header":"Bookings","tabActive":0,"tabHeaders":["Bookings","Staff","Services"]} -->
+<div class="wp-block-uagb-tabs-child uagb-tabs__body-container uagb-inner-tab-0" aria-labelledby="uagb-tabs__tab0"><!-- wp:shortcode -->
+[elite_cuts_manage_bookings]
+<!-- /wp:shortcode --></div>
+<!-- /wp:uagb/tabs-child -->
+
+<!-- wp:uagb/tabs-child {"block_id":"a4393535","id":1,"header":"Staff","tabActive":0,"tabHeaders":["Bookings","Staff","Services"]} -->
+<div class="wp-block-uagb-tabs-child uagb-tabs__body-container uagb-inner-tab-1" aria-labelledby="uagb-tabs__tab1"><!-- wp:shortcode -->
+[manage_staff]
+<!-- /wp:shortcode --></div>
+<!-- /wp:uagb/tabs-child -->
+
+<!-- wp:uagb/tabs-child {"block_id":"6e6c5d03","id":2,"header":"Services","tabActive":0,"tabHeaders":["Bookings","Staff","Services"]} -->
+<div class="wp-block-uagb-tabs-child uagb-tabs__body-container uagb-inner-tab-2" aria-labelledby="uagb-tabs__tab2"><!-- wp:shortcode -->
+[manager_add_service]
+<!-- /wp:shortcode --></div>
+<!-- /wp:uagb/tabs-child --></div></div>
+<!-- /wp:uagb/tabs --></div>
+<!-- /wp:uagb/container -->
+
+<!-- wp:paragraph -->
+<p></p>
+<!-- /wp:paragraph -->';
             
             $dashboard_data = array(
                 'post_title'    => $dashboard_title,
@@ -319,12 +552,46 @@ class Payndle_Business_Manager {
             $dashboard_id = wp_insert_post( $dashboard_data );
             
             if ( ! is_wp_error( $dashboard_id ) ) {
-                // Save the dashboard ID in business meta
-                update_post_meta( $post_id, '_business_dashboard_id', $dashboard_id );
+                // Save the dashboard ID in business meta using the correct meta key
+                update_post_meta( $post_id, $meta_key, $dashboard_id );
                 
                 // Also save the dashboard URL for easy access
                 $dashboard_url = get_permalink( $dashboard_id );
-                update_post_meta( $post_id, '_business_dashboard_url', $dashboard_url );
+                update_post_meta( $post_id, $meta_key . '_url', $dashboard_url );
+                
+                // Create Staff Dashboard
+                $staff_dashboard_title = sprintf( __( 'Staff Dashboard - %s', 'payndle-business-manager' ), $post->post_title );
+                $staff_dashboard_slug = sanitize_title( 'staff-dashboard-' . $post->post_name );
+                $staff_dashboard_content = '<!-- wp:uagb/container {"block_id":"b9a6c81d","innerContentWidth":"alignfull","backgroundType":"color","backgroundColor":"#64c493","variationSelected":true,"isBlockRootParent":true} -->
+<div class="wp-block-uagb-container uagb-block-b9a6c81d alignfull uagb-is-root-container"></div>
+<!-- /wp:uagb/container -->
+
+<!-- wp:uagb/container {"block_id":"19535bd1","innerContentWidth":"alignfull","backgroundType":"color","backgroundColor":"#f4f4f4","variationSelected":true,"isBlockRootParent":true} -->
+<div class="wp-block-uagb-container uagb-block-19535bd1 alignfull uagb-is-root-container"><!-- wp:shortcode -->
+[assigned_bookings]
+<!-- /wp:shortcode --></div>
+<!-- /wp:uagb/container -->
+
+<!-- wp:paragraph -->
+<p></p>
+<!-- /wp:paragraph -->';
+
+                $staff_dashboard_data = array(
+                    'post_title'    => $staff_dashboard_title,
+                    'post_name'     => $staff_dashboard_slug,
+                    'post_content'  => $staff_dashboard_content,
+                    'post_status'   => 'publish',
+                    'post_type'     => 'page',
+                    'post_author'   => get_post_field( 'post_author', $post_id ),
+                    'meta_input'    => array(
+                        '_business_id' => $post_id
+                    )
+                );
+
+                $staff_dashboard_id = wp_insert_post( $staff_dashboard_data );
+                if ( ! is_wp_error( $staff_dashboard_id ) ) {
+                    update_post_meta( $post_id, '_business_staff_dashboard_id', $staff_dashboard_id );
+                }
             }
         }
     }
