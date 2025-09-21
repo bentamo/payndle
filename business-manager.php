@@ -107,12 +107,97 @@ class Payndle_Business_Manager {
                 // Staff Dashboard URL
                 $staff_dashboard_url = admin_url('admin-post.php?action=payndle_view_dashboard&type=staff&business_id=' . $business->ID);
                 error_log('Generated Staff Dashboard URL: ' . $staff_dashboard_url);
-                echo '<div style="display: flex; gap: 5px; margin-bottom: 10px;">';
+                echo '<div style="display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px;">';
+                
+                // Landing Page button
+                $landing_id = get_post_meta($business->ID, '_business_landing_id', true);
+                $landing_post = $landing_id ? get_post($landing_id) : null;
+                
+                // If landing page doesn't exist or is not published, create it
+                if (!$landing_post || $landing_post->post_status !== 'publish') {
+                    // Create landing page
+                    $landing_title = sprintf( __( '%s - Welcome', 'payndle-business-manager' ), $business->post_title );
+                    $landing_slug = sanitize_title( 'business-landing-' . $business->post_name );
+                    $landing_content = '<!-- wp:uagb/container {"block_id":"1e2d0d91","innerContentWidth":"alignfull","backgroundType":"color","backgroundColor":"#f4f4f4","variationSelected":true,"isBlockRootParent":true} -->
+<div class="wp-block-uagb-container uagb-block-1e2d0d91 alignfull uagb-is-root-container"><!-- wp:shortcode -->
+[business_header]
+<!-- /wp:shortcode --></div>
+<!-- /wp:uagb/container -->
+
+<!-- wp:uagb/container {"block_id":"tl8e4mmk","backgroundType":"color","backgroundColor":"#64c493","topPaddingDesktop":60,"bottomPaddingDesktop":60,"leftPaddingDesktop":60,"rightPaddingDesktop":60,"topPaddingTablet":80,"bottomPaddingTablet":80,"leftPaddingTablet":32,"rightPaddingTablet":32,"topPaddingMobile":64,"bottomPaddingMobile":64,"leftPaddingMobile":24,"rightPaddingMobile":24,"topMarginDesktop":0,"bottomMarginDesktop":0,"leftMarginDesktop":0,"rightMarginDesktop":0,"topMarginTablet":0,"bottomMarginTablet":0,"leftMarginTablet":0,"rightMarginTablet":0,"topMarginMobile":0,"bottomMarginMobile":0,"leftMarginMobile":0,"rightMarginMobile":0,"variationSelected":true,"rowGapDesktop":40,"rowGapTablet":40,"rowGapMobile":40,"columnGapDesktop":0,"columnGapTablet":0,"columnGapMobile":0,"isBlockRootParent":true} -->
+<div class="wp-block-uagb-container uagb-block-tl8e4mmk alignfull uagb-is-root-container"><div class="uagb-container-inner-blocks-wrap"><!-- wp:uagb/advanced-heading {"block_id":"f4d6a079","classMigrate":true,"headingDescToggle":false,"headingAlign":"center"} -->
+<div class="wp-block-uagb-advanced-heading uagb-block-f4d6a079"><h2 class="uagb-heading-text">Our Services</h2></div>
+<!-- /wp:uagb/advanced-heading -->
+
+<!-- wp:shortcode -->
+[user_services]
+<!-- /wp:shortcode -->
+
+<!-- wp:shortcode -->
+[user_booking_form]
+<!-- /wp:shortcode --></div></div>
+<!-- /wp:uagb/container -->
+
+<!-- wp:uagb/container {"block_id":"k0ktjvhi","directionDesktop":"row","alignItemsDesktop":"flex-start","alignItemsTablet":"flex-start","alignItemsMobile":"center","backgroundType":"color","backgroundColor":"var(\u002d\u002dast-global-color-5)","topPaddingDesktop":112,"bottomPaddingDesktop":112,"leftPaddingDesktop":40,"rightPaddingDesktop":40,"topPaddingTablet":80,"bottomPaddingTablet":80,"leftPaddingTablet":32,"rightPaddingTablet":32,"topPaddingMobile":64,"bottomPaddingMobile":64,"leftPaddingMobile":24,"rightPaddingMobile":24,"paddingLink":false,"topMarginDesktop":0,"bottomMarginDesktop":0,"leftMarginDesktop":0,"rightMarginDesktop":0,"topMarginTablet":0,"bottomMarginTablet":0,"leftMarginTablet":0,"rightMarginTablet":0,"topMarginMobile":0,"bottomMarginMobile":0,"leftMarginMobile":0,"rightMarginMobile":0,"variationSelected":true,"rowGapDesktop":0,"rowGapTablet":0,"rowGapMobile":40,"columnGapDesktop":72,"columnGapTablet":40,"columnGapMobile":0,"isBlockRootParent":true} -->
+<div class="wp-block-uagb-container uagb-block-k0ktjvhi alignfull uagb-is-root-container"><div class="uagb-container-inner-blocks-wrap"><!-- wp:shortcode -->
+[contact_us]
+<!-- /wp:shortcode --></div></div>
+<!-- /wp:uagb/container -->
+
+<!-- wp:paragraph -->
+<p></p>
+<!-- /wp:paragraph -->';
+
+                    $landing_data = array(
+                        'post_title'    => $landing_title,
+                        'post_name'     => $landing_slug,
+                        'post_content'  => $landing_content,
+                        'post_status'   => 'publish',
+                        'post_type'     => 'page',
+                        'post_author'   => get_post_field( 'post_author', $business->ID ),
+                        'meta_input'    => array(
+                            '_business_id' => $business->ID
+                        )
+                    );
+
+                    // If we have an existing landing page, update it
+                    if ($landing_id) {
+                        $landing_data['ID'] = $landing_id;
+                        wp_update_post($landing_data);
+                    } else {
+                        // Create new landing page
+                        $landing_id = wp_insert_post($landing_data);
+                        if (!is_wp_error($landing_id)) {
+                            update_post_meta($business->ID, '_business_landing_id', $landing_id);
+                        }
+                    }
+                    
+                    // Force publish status and clear cache
+                    wp_publish_post($landing_id);
+                    clean_post_cache($landing_id);
+                    $landing_post = get_post($landing_id);
+                }
+
+                // Show the landing page button if we have a valid page
+                if ($landing_post && $landing_post->post_status === 'publish') {
+                    $landing_url = get_permalink($landing_id);
+                    if ($landing_url) {
+                        echo '<a href="' . esc_url($landing_url) . '" class="button button-secondary" style="width: 100%; text-align: center;">' . 
+                             '<span class="dashicons dashicons-admin-site" style="margin: 3px 5px 0 -3px;"></span>' . 
+                             esc_html__('Landing Page', 'payndle-business-manager') . '</a>';
+                    }
+                }
+
                 // Manager Dashboard button
-                echo '<a href="' . esc_url($manager_dashboard_url) . '" class="button button-primary">' . esc_html__('View My Dashboard', 'payndle-business-manager') . '</a>';
+                echo '<a href="' . esc_url($manager_dashboard_url) . '" class="button button-primary" style="width: 100%; text-align: center;">' . 
+                     '<span class="dashicons dashicons-dashboard" style="margin: 3px 5px 0 -3px;"></span>' . 
+                     esc_html__('View My Dashboard', 'payndle-business-manager') . '</a>';
                 
                 // Staff Dashboard button
-                echo '<a href="' . esc_url($staff_dashboard_url) . '" class="button button-secondary">' . esc_html__('Staff Dashboard', 'payndle-business-manager') . '</a>';
+                echo '<a href="' . esc_url($staff_dashboard_url) . '" class="button button-secondary" style="width: 100%; text-align: center;">' . 
+                     '<span class="dashicons dashicons-groups" style="margin: 3px 5px 0 -3px;"></span>' . 
+                     esc_html__('Staff Dashboard', 'payndle-business-manager') . '</a>';
+                
                 echo '</div>';
                 echo '<form method="post" action="' . esc_url( admin_url('admin-post.php') ) . '" onsubmit="return confirm(\'Are you sure you want to delete this business? This action cannot be undone.\');">';
                 echo '<input type="hidden" name="action" value="payndle_delete_business" />';
@@ -165,17 +250,17 @@ class Payndle_Business_Manager {
             } else {
                 $dashboard_id = get_post_meta( $business_id, '_business_dashboard_id', true );
             }
-            
-            if ( $dashboard_id && get_post( $dashboard_id ) ) {
-                // Redirect to the dedicated dashboard
-                $dashboard_url = get_permalink( $dashboard_id );
                 
-                // Add business_id as a query parameter if not already in the URL
-                $dashboard_url = add_query_arg( 'business_id', $business_id, $dashboard_url );
-                
-                wp_redirect( $dashboard_url );
-                exit;
-            } else {
+                if ( $dashboard_id && get_post( $dashboard_id ) ) {
+                    // Redirect to the dedicated dashboard
+                    $dashboard_url = get_permalink( $dashboard_id );
+                    
+                    // Add business_id as a query parameter if not already in the URL
+                    $dashboard_url = add_query_arg( 'business_id', $business_id, $dashboard_url );
+                    
+                    wp_redirect( $dashboard_url );
+                    exit;
+                } else {
                 // Create the appropriate dashboard if it doesn't exist
                 if ($dashboard_type === 'staff') {
                     // Create staff dashboard
@@ -186,11 +271,11 @@ class Payndle_Business_Manager {
                     $this->create_business_dashboard( $business_id, $business, 'manager' );
                     $dashboard_id = get_post_meta( $business_id, '_business_dashboard_id', true );
                 }
-                
-                if ( $dashboard_id ) {
-                    $dashboard_url = add_query_arg( 'business_id', $business_id, get_permalink( $dashboard_id ) );
-                    wp_redirect( $dashboard_url );
-                    exit;
+                    
+                    if ( $dashboard_id ) {
+                        $dashboard_url = add_query_arg( 'business_id', $business_id, get_permalink( $dashboard_id ) );
+                        wp_redirect( $dashboard_url );
+                        exit;
                 }
             }
         }
@@ -358,6 +443,58 @@ class Payndle_Business_Manager {
                 // Also save the dashboard URL for easy access
                 $dashboard_url = get_permalink( $dashboard_id );
                 update_post_meta( $post_id, $meta_key . '_url', $dashboard_url );
+
+                // Create Landing Page if we're creating the manager dashboard
+                if ($type === 'manager') {
+                    $landing_title = sprintf( __( '%s - Welcome', 'payndle-business-manager' ), $post->post_title );
+                    $landing_slug = sanitize_title( 'business-landing-' . $post->post_name );
+                    $landing_content = '<!-- wp:uagb/container {"block_id":"1e2d0d91","innerContentWidth":"alignfull","backgroundType":"color","backgroundColor":"#f4f4f4","variationSelected":true,"isBlockRootParent":true} -->
+<div class="wp-block-uagb-container uagb-block-1e2d0d91 alignfull uagb-is-root-container"><!-- wp:shortcode -->
+[business_header]
+<!-- /wp:shortcode --></div>
+<!-- /wp:uagb/container -->
+
+<!-- wp:uagb/container {"block_id":"tl8e4mmk","backgroundType":"color","backgroundColor":"#64c493","topPaddingDesktop":60,"bottomPaddingDesktop":60,"leftPaddingDesktop":60,"rightPaddingDesktop":60,"topPaddingTablet":80,"bottomPaddingTablet":80,"leftPaddingTablet":32,"rightPaddingTablet":32,"topPaddingMobile":64,"bottomPaddingMobile":64,"leftPaddingMobile":24,"rightPaddingMobile":24,"topMarginDesktop":0,"bottomMarginDesktop":0,"leftMarginDesktop":0,"rightMarginDesktop":0,"topMarginTablet":0,"bottomMarginTablet":0,"leftMarginTablet":0,"rightMarginTablet":0,"topMarginMobile":0,"bottomMarginMobile":0,"leftMarginMobile":0,"rightMarginMobile":0,"variationSelected":true,"rowGapDesktop":40,"rowGapTablet":40,"rowGapMobile":40,"columnGapDesktop":0,"columnGapTablet":0,"columnGapMobile":0,"isBlockRootParent":true} -->
+<div class="wp-block-uagb-container uagb-block-tl8e4mmk alignfull uagb-is-root-container"><div class="uagb-container-inner-blocks-wrap"><!-- wp:uagb/advanced-heading {"block_id":"f4d6a079","classMigrate":true,"headingDescToggle":false,"headingAlign":"center"} -->
+<div class="wp-block-uagb-advanced-heading uagb-block-f4d6a079"><h2 class="uagb-heading-text">Our Services</h2></div>
+<!-- /wp:uagb/advanced-heading -->
+
+<!-- wp:shortcode -->
+[user_services]
+<!-- /wp:shortcode -->
+
+<!-- wp:shortcode -->
+[user_booking_form]
+<!-- /wp:shortcode --></div></div>
+<!-- /wp:uagb/container -->
+
+<!-- wp:uagb/container {"block_id":"k0ktjvhi","directionDesktop":"row","alignItemsDesktop":"flex-start","alignItemsTablet":"flex-start","alignItemsMobile":"center","backgroundType":"color","backgroundColor":"var(\u002d\u002dast-global-color-5)","topPaddingDesktop":112,"bottomPaddingDesktop":112,"leftPaddingDesktop":40,"rightPaddingDesktop":40,"topPaddingTablet":80,"bottomPaddingTablet":80,"leftPaddingTablet":32,"rightPaddingTablet":32,"topPaddingMobile":64,"bottomPaddingMobile":64,"leftPaddingMobile":24,"rightPaddingMobile":24,"paddingLink":false,"topMarginDesktop":0,"bottomMarginDesktop":0,"leftMarginDesktop":0,"rightMarginDesktop":0,"topMarginTablet":0,"bottomMarginTablet":0,"leftMarginTablet":0,"rightMarginTablet":0,"topMarginMobile":0,"bottomMarginMobile":0,"leftMarginMobile":0,"rightMarginMobile":0,"variationSelected":true,"rowGapDesktop":0,"rowGapTablet":0,"rowGapMobile":40,"columnGapDesktop":72,"columnGapTablet":40,"columnGapMobile":0,"isBlockRootParent":true} -->
+<div class="wp-block-uagb-container uagb-block-k0ktjvhi alignfull uagb-is-root-container"><div class="uagb-container-inner-blocks-wrap"><!-- wp:shortcode -->
+[contact_us]
+<!-- /wp:shortcode --></div></div>
+<!-- /wp:uagb/container -->
+
+<!-- wp:paragraph -->
+<p></p>
+<!-- /wp:paragraph -->';
+
+                    $landing_data = array(
+                        'post_title'    => $landing_title,
+                        'post_name'     => $landing_slug,
+                        'post_content'  => $landing_content,
+                        'post_status'   => 'publish',
+                        'post_type'     => 'page',
+                        'post_author'   => get_post_field( 'post_author', $post_id ),
+                        'meta_input'    => array(
+                            '_business_id' => $post_id
+                        )
+                    );
+
+                    $landing_id = wp_insert_post( $landing_data );
+                    if ( ! is_wp_error( $landing_id ) ) {
+                        update_post_meta( $post_id, '_business_landing_id', $landing_id );
+                    }
+                }
             }
         } else {
             $meta_key = '_business_dashboard_id';
