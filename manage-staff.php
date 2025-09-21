@@ -227,21 +227,7 @@ function elite_cuts_manage_staff_page() {
         .shop-name { color: var(--accent); margin: 0 0 0.25rem 0; font-size: 1.5rem; font-weight: 700; font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; letter-spacing: 0.2px; }
         .shop-slogan { color: var(--text-secondary); margin: 0; font-size: 0.875rem; font-weight: 400; }
 
-        /* Table and cells */
-        .table-container { background: var(--card-bg); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); border: 1px solid var(--border-color); }
-        .elite-cuts-table { width: 100%; border-collapse: collapse; color: var(--text-primary); }
-        .elite-cuts-table th { background: var(--bg-tertiary); color: var(--text-secondary); font-weight: 500; text-align: left; padding: 1rem 1.25rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 1; }
-        .elite-cuts-table td { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
-        .elite-cuts-table tbody tr:last-child td { border-bottom: none; }
-        .elite-cuts-table tbody tr:hover { background: rgba(201, 167, 77, 0.05); }
-
-        .staff-cell { display: flex; align-items: center; gap: 0.9rem; }
-        .avatar { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(201, 167, 77, 0.35); }
-        /* Fallback initial-based avatar */
-    .avatar-initial { width: 42px; height: 42px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.95rem; color: var(--color-white, #ffffff); border: 2px solid rgba(100,196,147,0.25); background: linear-gradient(135deg, var(--accent), var(--accent-hover)); box-shadow: inset 0 1px 0 rgba(255,255,255,0.12); }
-        .staff-meta { display: flex; flex-direction: column; }
-        .staff-name { font-weight: 600; color: var(--text-primary); }
-        .staff-sub { color: var(--text-secondary); font-size: 0.85rem; }
+    /* Table, avatar and action-button overrides were moved to assets/css/staff-management.css */
 
     .status-badge { display: inline-flex; align-items: center; padding: 0.35rem 0.85rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.3px; }
     .status-active { background: rgba(100,196,147,0.12); color: var(--accent); border: 1px solid rgba(100,196,147,0.2); }
@@ -261,8 +247,8 @@ function elite_cuts_manage_staff_page() {
         .availability-badge i { font-size: 0.9em; opacity: 0.9; }
 
         /* Modern action buttons */
-        .action-buttons { display: inline-flex; gap: 0.4rem; align-items: center; justify-content: flex-end; }
-    .icon-btn { --btn-bg: #fafafa; --btn-color: var(--text-secondary); --btn-border: rgba(12,25,48,0.06); display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: var(--radius); border: 1px solid var(--btn-border); background: var(--btn-bg); color: var(--btn-color); cursor: pointer; transition: transform 0.12s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease; position: relative; }
+        .action-buttons { display: inline-flex; gap: 0.35rem; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
+        .icon-btn { --btn-bg: #fafafa; --btn-color: var(--text-secondary); --btn-border: rgba(12,25,48,0.06); display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; min-width: 32px; border-radius: var(--radius); border: 1px solid var(--btn-border); background: var(--btn-bg); color: var(--btn-color); cursor: pointer; transition: transform 0.12s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease; position: relative; padding: 0; }
         .icon-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
     .icon-btn:focus { outline: none; box-shadow: 0 0 0 3px rgba(100,196,147,0.18); }
     .icon-btn.edit { --btn-bg: #f6fff9; --btn-color: var(--accent); border-color: rgba(100,196,147,0.25); }
@@ -279,7 +265,7 @@ function elite_cuts_manage_staff_page() {
     .elite-button.secondary { background: transparent; color: var(--text-secondary); border: 1px solid var(--border-color); }
     .elite-button.secondary:hover { background: var(--bg-tertiary); color: var(--text-primary); border-color: var(--text-secondary); }
 
-        .filter-row { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
+    .filter-row { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
         .filter-group { display: flex; flex-direction: column; flex: 1; min-width: 200px; }
         .filter-item label { display: block; margin-bottom: 0.5rem; font-size: 0.85rem; font-weight: 500; color: var(--text-secondary); }
         .search-filter { min-width: 250px; max-width: 350px; }
@@ -342,6 +328,14 @@ function elite_cuts_manage_staff_page() {
         /* Responsive */
         @media (max-width: 1024px) { .filter-row { flex-direction: column; align-items: stretch; } .filter-group { min-width: 100%; } .search-filter { max-width: 100%; } .filter-actions { margin-left: 0; margin-top: 0.5rem; justify-content: flex-end; } }
         @media (max-width: 480px) { .form-row { flex-direction: column; } .filter-actions { flex-direction: column; gap: 0.5rem; } .filter-actions .elite-button { width: 100%; } }
+
+        /* Boxed container adjustments: reduce padding and font sizes slightly so cells fit better */
+        @media (min-width: 800px) and (max-width: 1400px) {
+            .elite-cuts-table th, .elite-cuts-table td { padding: 0.5rem 0.6rem; font-size: 0.82rem; }
+            .staff-name { font-size: 0.95rem; }
+            .staff-sub { font-size: 0.78rem; }
+            .action-buttons { gap: 0.25rem; }
+        }
 
         /* Toasts */
         #elite-toast-container { position: fixed; right: 18px; bottom: 18px; z-index: 10000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }

@@ -3,10 +3,8 @@
  */
 :root {
     /* Palette */
-    --color-green: #64C493; /* Primary Green */
-    --color-green-dark: #4FB07A; /* Slightly darker green for hover */
-    --color-navy: #0C1930; /* Primary Navy */
-    --color-white: #FFFFFF; /* Secondary White */
+
+    
     --color-accent-gray: #E6E9EE; /* Accent Gray - subtle dividers/backgrounds */
 
     /* Typography */
@@ -793,4 +791,58 @@
     .form-actions { flex-direction: column; }
     .form-actions .button { width: 100%; margin: 6px 0; }
     .form-actions .button + .button { margin-left: 0; }
+}
+
+/* --- Admin overrides for Elite Cuts Manage Staff (moved from inline) --- */
+/* Use a more specific namespace to beat other admin styles */
+.wrap.elite-cuts-admin .table-container { background: #fff; border-radius: 8px; overflow: auto; box-shadow: 0 2px 10px rgba(0,0,0,0.06); border: 1px solid #e6e9ee; }
+.wrap.elite-cuts-admin .elite-cuts-table { width: 100%; border-collapse: collapse; color: #0c1930; table-layout: fixed; min-width: 100%; }
+.wrap.elite-cuts-admin .elite-cuts-table th { background: #f7f9fb; color: #62708a; font-weight: 500; text-align: left; padding: 0.6rem 0.8rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #e6e9ee; position: sticky; top: 0; z-index: 1; box-sizing: border-box; }
+.wrap.elite-cuts-admin .elite-cuts-table td { padding: 0.6rem 0.8rem; border-bottom: 1px solid #e6e9ee; vertical-align: middle; box-sizing: border-box; word-break: break-word; overflow-wrap: anywhere; white-space: normal; }
+
+/* Actions wrap rather than forcing horizontal overflow */
+.wrap.elite-cuts-admin .action-buttons { display: inline-flex; gap: 0.35rem; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
+.wrap.elite-cuts-admin .icon-btn { width: 32px; height: 32px; min-width: 32px; padding: 0; border-radius: 8px; }
+
+/* Stronger selector for Contact column: reduce font size and tighten lines */
+.wrap.elite-cuts-admin .elite-cuts-table td:nth-child(3),
+.wrap.elite-cuts-admin .elite-cuts-table td:nth-child(3) * {
+    font-size: 10px !important;
+    line-height: 1.22 !important;
+}
+
+@media (min-width: 800px) and (max-width: 1400px) {
+    .wrap.elite-cuts-admin .elite-cuts-table th, .wrap.elite-cuts-admin .elite-cuts-table td { padding: 0.5rem 0.6rem; font-size: 0.82rem; }
+    .wrap.elite-cuts-admin .staff-name { font-size: 0.95rem; }
+    .wrap.elite-cuts-admin .staff-sub { font-size: 0.78rem; }
+    .wrap.elite-cuts-admin .action-buttons { gap: 0.25rem; }
+}
+
+/* End admin overrides */
+
+/* Emergency: enforce contact column sizing at highest specificity for admin staff list */
+#adminwrap #wpbody #wpcontent .wrap.elite-cuts-admin #staff-list td:nth-child(3),
+#adminwrap #wpbody #wpcontent .wrap.elite-cuts-admin #staff-list td:nth-child(3) * {
+    font-size: 10px !important;
+    line-height: 1.22 !important;
+}
+
+/* Additional direct class targeting in case markup wraps content in divs with classes */
+.wrap.elite-cuts-admin .elite-cuts-table .contact-email,
+.wrap.elite-cuts-admin .elite-cuts-table .contact-email *,
+.wrap.elite-cuts-admin .elite-cuts-table .contact-phone,
+.wrap.elite-cuts-admin .elite-cuts-table .contact-phone *,
+.wrap.elite-cuts-admin #staff-list .contact-email,
+.wrap.elite-cuts-admin #staff-list .contact-email *,
+.wrap.elite-cuts-admin #staff-list .contact-phone,
+.wrap.elite-cuts-admin #staff-list .contact-phone * {
+    font-size: 10px !important;
+    line-height: 1.22 !important;
+}
+
+/* Also target any direct td with contact-related classes */
+.wrap.elite-cuts-admin .elite-cuts-table td.contact-cell,
+.wrap.elite-cuts-admin .elite-cuts-table td.contact-cell * {
+    font-size: 10px !important;
+    line-height: 1.22 !important;
 }
