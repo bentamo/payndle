@@ -16,12 +16,30 @@ if (!defined('ABSPATH')) {
  * Usage: [business_header name="Your Business Name" description="Your business description"]
  */
 function payndle_business_header_shortcode($atts) {
-    // Default attributes
+    global $post;
+    
+    // First try to get the business name from the post title (how manager dashboard primarily stores it)
+    $business_name = !empty($post->post_title) ? $post->post_title : '';
+    
+    // Then try to get from meta if not found in title
+    if (empty($business_name)) {
+        $business_name = get_post_meta($post->ID, '_business_name', true);
+    }
+    
+    // Get other business information from meta
+    $business_description = get_post_meta($post->ID, '_business_description', true);
+    $business_logo = get_post_meta($post->ID, '_business_logo', true);
+    
+    // Set default values if empty
+    $default_name = !empty($business_name) ? $business_name : 'Business Name';
+    $default_description = !empty($business_description) ? $business_description : 'A short description of your business';
+    
+    // Shortcode attributes with defaults from post meta
     $atts = shortcode_atts(
         array(
-            'name' => 'Business Name',
-            'description' => 'A short description of your business',
-            'logo_url' => '',
+            'name' => $default_name,
+            'description' => $default_description,
+            'logo_url' => !empty($business_logo) ? $business_logo : '',
         ),
         $atts,
         'business_header'

@@ -22,14 +22,36 @@ if (!defined('ABSPATH')) {
  * ]
  */
 function payndle_contact_us_shortcode($atts) {
-    // Default attributes
+    global $post;
+    
+    // Get business information from post meta (matching manager dashboard format)
+    $business_address = get_post_meta($post->ID, '_business_address', true);
+    $business_city = get_post_meta($post->ID, '_business_city', true);
+    $business_state = get_post_meta($post->ID, '_business_state', true);
+    $business_zip = get_post_meta($post->ID, '_business_zip', true);
+    $business_country = get_post_meta($post->ID, '_business_country', true);
+    $business_email = get_post_meta($post->ID, '_business_email', true);
+    $business_phone = get_post_meta($post->ID, '_business_phone', true);
+    $business_hours = get_post_meta($post->ID, '_business_hours', true);
+    
+    // Format address if we have the components
+    $formatted_address = '';
+    if (!empty($business_address)) {
+        $formatted_address = $business_address;
+        if (!empty($business_city)) $formatted_address .= ", {$business_city}";
+        if (!empty($business_state)) $formatted_address .= ", {$business_state}";
+        if (!empty($business_zip)) $formatted_address .= " {$business_zip}";
+        if (!empty($business_country)) $formatted_address .= ", {$business_country}";
+    }
+    
+    // Default attributes with values from post meta
     $atts = shortcode_atts(
         array(
             'heading' => 'Contact Us',
-            'address' => '123 Business Street, City, Country',
-            'email' => 'contact@example.com',
-            'phone' => '+1 (555) 123-4567',
-            'hours' => "Mon-Fri: 9:00 AM - 6:00 PM<br>Sat: 10:00 AM - 4:00 PM",
+            'address' => $formatted_address ?: '123 Business Street, City, Country',
+            'email' => $business_email ?: 'contact@example.com',
+            'phone' => $business_phone ?: '+1 (555) 123-4567',
+            'hours' => $business_hours ?: "Mon-Fri: 9:00 AM - 6:00 PM<br>Sat: 10:00 AM - 4:00 PM",
         ),
         $atts,
         'contact_us'
