@@ -383,15 +383,36 @@ jQuery(document).ready(function($) {
         const emailVal = $('#staff-email').length ? $('#staff-email').val().trim() : '';
         const phoneVal = $('#staff-phone').length ? $('#staff-phone').val().trim() : '';
         const statusVal = $('#staff-status').length ? $('#staff-status').val() : 'active';
-        // Gather multiple selected service IDs from hidden inputs created by tag UI
+        // Gather multiple selected service IDs from several sources:
+        // 1) hidden inputs created by tag UI (#staff-service-tags)
+        // 2) checked checkboxes in #staff-service-list (if checkbox list is used)
+        // 3) fallback to the dropdown #staff-service-dropdown (if user selected but didn't click Add)
         let serviceVal = [];
-        $('#staff-service-tags input[type="hidden"]').each(function(){ serviceVal.push($(this).val()); });
+        $('#staff-service-tags input[type="hidden"]').each(function(){ serviceVal.push(String($(this).val())); });
+        $('#staff-service-list input.service-checkbox:checked').each(function(){ serviceVal.push(String($(this).val())); });
+        const dropdownVal = ($('#staff-service-dropdown').length) ? String($('#staff-service-dropdown').val()) : '';
+        if (dropdownVal && serviceVal.indexOf(dropdownVal) === -1) {
+            serviceVal.push(dropdownVal);
+        }
+        // Normalize: remove empty values and duplicates
+        serviceVal = serviceVal.filter(function(v){ return v !== null && typeof v !== 'undefined' && String(v).trim() !== ''; });
+        serviceVal = Array.from(new Set(serviceVal));
 
         // Form validation
         const errors = [];
         
         if (!nameVal) {
             errors.push('Staff name is required.');
+        }
+
+        // Require at least one service to be assigned
+        if (!serviceVal || (Array.isArray(serviceVal) && serviceVal.length === 0)) {
+            errors.push('Please assign at least one service/role to the staff member.');
+        }
+
+        // Require at least one contact method (email or phone)
+        if (!emailVal && !phoneVal) {
+            errors.push('Please provide at least one contact method: email or phone.');
         }
         
         if (emailVal && !isValidEmail(emailVal)) {

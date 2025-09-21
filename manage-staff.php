@@ -576,8 +576,34 @@ function elite_cuts_get_staff($filters = array()) {
 
 // Add staff function
 function elite_cuts_add_staff($data) {
+    // Server-side validation
+    $name = isset($data['name']) ? trim(sanitize_text_field($data['name'])) : '';
+    $services = isset($data['services']) && is_array($data['services']) ? array_map('absint', $data['services']) : array();
+    $email = isset($data['email']) ? sanitize_email($data['email']) : '';
+    $phone = isset($data['phone']) ? sanitize_text_field($data['phone']) : '';
+    $email = isset($data['email']) ? sanitize_email($data['email']) : '';
+    $phone = isset($data['phone']) ? sanitize_text_field($data['phone']) : '';
+
+    if (empty($name)) {
+        wp_send_json_error(array('message' => 'Staff name is required.'));
+    }
+
+    if (empty($services)) {
+        wp_send_json_error(array('message' => 'Please assign at least one service to the staff member.'));
+    }
+
+    // Require at least one contact method
+    if (empty($email) && empty($phone)) {
+        wp_send_json_error(array('message' => 'Please provide at least one contact method: email or phone.'));
+    }
+
+    // Require at least one contact method
+    if (empty($email) && empty($phone)) {
+        wp_send_json_error(array('message' => 'Please provide at least one contact method: email or phone.'));
+    }
+
     $post_data = array(
-        'post_title' => sanitize_text_field($data['name']),
+        'post_title' => $name,
         'post_type' => 'staff',
         'post_status' => 'publish',
     );
@@ -585,13 +611,12 @@ function elite_cuts_add_staff($data) {
     $post_id = wp_insert_post($post_data);
 
     if ($post_id) {
-        update_post_meta($post_id, 'staff_email', sanitize_email($data['email']));
-        update_post_meta($post_id, 'staff_phone', sanitize_text_field($data['phone']));
+    update_post_meta($post_id, 'staff_email', sanitize_email($data['email']));
+    update_post_meta($post_id, 'staff_phone', sanitize_text_field($data['phone']));
         update_post_meta($post_id, 'staff_status', sanitize_text_field($data['status']));
-        update_post_meta($post_id, 'staff_role', sanitize_text_field($data['role']));
-        // services from admin form (single select sent as array)
-        $services = isset($data['services']) && is_array($data['services']) ? array_map('absint', $data['services']) : array();
-        update_post_meta($post_id, 'staff_services', $services);
+    update_post_meta($post_id, 'staff_role', sanitize_text_field($data['role']));
+    // services from admin form (validated above)
+    update_post_meta($post_id, 'staff_services', $services);
         
         if (isset($data['avatar']) && !empty($data['avatar'])) {
             update_post_meta($post_id, 'staff_avatar', esc_url_raw($data['avatar']));
@@ -619,10 +644,22 @@ function elite_cuts_add_staff($data) {
 // Update staff function
 function elite_cuts_update_staff($data) {
     $post_id = intval($data['id']);
-    
+
+    // Server-side validation
+    $name = isset($data['name']) ? trim(sanitize_text_field($data['name'])) : '';
+    $services = isset($data['services']) && is_array($data['services']) ? array_map('absint', $data['services']) : array();
+
+    if (empty($name)) {
+        wp_send_json_error(array('message' => 'Staff name is required.'));
+    }
+
+    if (empty($services)) {
+        wp_send_json_error(array('message' => 'Please assign at least one service to the staff member.'));
+    }
+
     $post_data = array(
         'ID' => $post_id,
-        'post_title' => sanitize_text_field($data['name']),
+        'post_title' => $name,
     );
 
     $result = wp_update_post($post_data);
