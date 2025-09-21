@@ -238,11 +238,11 @@ function elite_cuts_manage_bookings_page() {
                     <?php if ($bookings && count($bookings) > 0): ?>
                         <?php foreach ($bookings as $booking): ?>
                             <tr data-booking-id="<?php echo $booking->id; ?>">
-                                <td>#<?php echo $booking->id; ?></td>
-                                <td>
+                                <td data-label="ID">#<?php echo $booking->id; ?></td>
+                                <td data-label="Customer">
                                     <strong><?php echo esc_html($booking->customer_name ?: 'Unknown'); ?></strong>
                                 </td>
-                                <td>
+                                <td data-label="Service">
                                     <span class="service-name">
                                         <?php echo esc_html($booking->service_name ?: 'Service ID: ' . $booking->service_id); ?>
                                     </span>
@@ -252,7 +252,7 @@ function elite_cuts_manage_bookings_page() {
                                         </div>
                                     <?php endif; ?>
                                 </td>
-                                <td>
+                                <td data-label="Staff">
                                     <span class="staff-info">
                                         <?php if (!empty($booking->staff_name)): ?>
                                             <strong><?php echo esc_html($booking->staff_name); ?></strong><br>
@@ -262,20 +262,20 @@ function elite_cuts_manage_bookings_page() {
                                         <?php endif; ?>
                                     </span>
                                 </td>
-                                <td class="contact-info">
+                                <td class="contact-info" data-label="Contact">
                                     <?php echo esc_html($booking->customer_email ?: 'No email'); ?><br>
                                     <small><?php echo esc_html($booking->customer_phone ?: 'No phone'); ?></small>
                                 </td>
-                                <td>
+                                <td data-label="Date &amp; Time">
                                     <strong><?php echo esc_html($booking->preferred_date ?: 'No date'); ?></strong><br>
                                     <small><?php echo esc_html($booking->preferred_time ?: 'No time'); ?></small>
                                 </td>
-                                <td>
+                                <td data-label="Status">
                                     <span class="status-badge status-<?php echo esc_attr($booking->booking_status); ?>">
                                         <?php echo esc_html(ucfirst($booking->booking_status)); ?>
                                     </span>
                                 </td>
-                                <td class="actions">
+                                <td class="actions" data-label="Actions">
                                     <button class="elite-button small edit-booking" data-id="<?php echo $booking->id; ?>">
                                         Edit
                                     </button>
@@ -872,30 +872,37 @@ function elite_cuts_manage_bookings_page() {
             width: 100%;
             border-collapse: collapse;
             color: var(--text-primary);
-            table-layout: fixed;
-            min-width: 800px;
+            /* Use auto layout so columns can shrink and wrap inside boxed containers */
+            table-layout: auto;
+            /* allow the table to shrink below previously forced minimums when the WP container is boxed */
+            min-width: 0;
         }
 
-        /* Column widths for 8 columns: ID, Customer, Service, Staff, Contact, Date & Time, Status, Actions */
-        .elite-cuts-table th:nth-child(1) { width: 8%; }   /* ID */
-        .elite-cuts-table th:nth-child(2) { width: 15%; }  /* Customer */
-        .elite-cuts-table th:nth-child(3) { width: 13%; }  /* Service */
-        .elite-cuts-table th:nth-child(4) { width: 12%; }  /* Staff */
-        .elite-cuts-table th:nth-child(5) { width: 16%; }  /* Contact */
-        .elite-cuts-table th:nth-child(6) { width: 14%; }  /* Date & Time */
-        .elite-cuts-table th:nth-child(7) { width: 10%; }  /* Status */
-        .elite-cuts-table th:nth-child(8) { width: 12%; }  /* Actions */
+        /* Prefer flexible columns; avoid forcing rigid percentages so content can wrap */
+        .elite-cuts-table th:nth-child(1), /* ID */
+        .elite-cuts-table th:nth-child(2), /* Customer */
+        .elite-cuts-table th:nth-child(3), /* Service */
+        .elite-cuts-table th:nth-child(4), /* Staff */
+        .elite-cuts-table th:nth-child(5), /* Contact */
+        .elite-cuts-table th:nth-child(6), /* Date & Time */
+        .elite-cuts-table th:nth-child(7), /* Status */
+        .elite-cuts-table th:nth-child(8)  /* Actions */ {
+            /* let the browser size columns naturally and allow wrapping of cell content */
+            width: auto;
+            max-width: none;
+        }
 
         .elite-cuts-table th {
             background: var(--bg-tertiary);
             color: var(--text-secondary);
             font-weight: 500;
             text-align: left;
-            padding: 1rem 1.25rem;
-            font-size: 0.8rem;
+            padding: 0.65rem 0.9rem;
+            font-size: 0.78rem;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             border-bottom: 1px solid var(--border-color);
+            white-space: normal;
         }
 
         /* Center the Actions header only */
@@ -904,31 +911,61 @@ function elite_cuts_manage_bookings_page() {
         }
 
         .elite-cuts-table td {
-            padding: 1rem 1.25rem;
+            padding: 0.5rem 0.75rem;
             border-bottom: 1px solid var(--border-color);
             vertical-align: middle;
-            height: 113.16px;
+            /* Let rows expand naturally to fit wrapped content */
+            height: auto;
+            white-space: normal; /* allow wrapping */
+            word-break: break-word;
+            overflow-wrap: anywhere;
         }
 
-        /* Actions column - maintain table cell behavior */
+        /* Truncate long unbroken strings with ellipsis for specific columns to avoid ugly breaks */
+        .elite-cuts-table td:nth-child(1), /* ID */
+        .elite-cuts-table td:nth-child(3), /* Service */
+        .elite-cuts-table td:nth-child(4), /* Staff */
+        .elite-cuts-table td:nth-child(5)  /* Contact */ {
+            max-width: 12rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* On very small screens (or extremely narrow boxed containers) allow wrapping instead of ellipsis */
+        @media (max-width: 480px) {
+            .elite-cuts-table td:nth-child(1),
+            .elite-cuts-table td:nth-child(3),
+            .elite-cuts-table td:nth-child(4),
+            .elite-cuts-table td:nth-child(5) {
+                max-width: none;
+                white-space: normal;
+                overflow-wrap: anywhere;
+            }
+        }
+
+        /* Actions column - keep centered, but allow buttons to wrap/stack on small widths */
         .elite-cuts-table td.actions {
             text-align: center;
             vertical-align: middle;
-            /* Remove line-height, let table determine natural height */
-        }
-
-        /* Container for buttons - positioned to center without affecting cell height */
-        .elite-cuts-table td.actions {
             display: table-cell; /* Ensure proper table cell behavior */
+            padding-top: 0.5rem;
+            padding-bottom: 0.5rem;
         }
 
+        /* Buttons inside action cells should wrap and be compact */
         .elite-cuts-table td.actions .elite-button {
-            display: inline-block;
-            margin: 0 0.2rem;
-            min-width: auto;
-            padding: 0.4rem 0.6rem;
+            display: inline-flex;
+            margin: 0 0.2rem 0.2rem 0.2rem;
+            min-width: 0;
+            padding: 0.35rem 0.6rem;
             font-size: 0.75rem;
             height: auto;
+        }
+
+        /* Stack action buttons vertically on narrow containers so they don't force horizontal scrolling */
+        @media (max-width: 720px) {
+            .elite-cuts-table td.actions .elite-button { display: block; width: 100%; margin: 0 0 0.5rem 0; }
         }
 
         .elite-cuts-table tbody tr:last-child td {
