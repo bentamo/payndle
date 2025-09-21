@@ -28,7 +28,7 @@ if (!function_exists('payndle_render_staff_form')) {
                     <span class="elite-close staff-close">&times;</span>
                 </div>
                 <div class="elite-modal-body ubf-v3-container">
-                    <form id="staff-form" class="ubf-v3-form">
+                    <form id="staff-form" class="ubf-v3-form" novalidate>
                         <input type="hidden" id="staff-id" value="">
 
                         <div class="form-row">
