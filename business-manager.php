@@ -298,10 +298,39 @@ class Payndle_Business_Manager {
             $dashboard_slug = sanitize_title( 'dashboard-' . $post->post_name );
             
             // Define the dashboard content with all required shortcodes in order
-            $dashboard_content = '<!-- wp:shortcode -->[manager_dashboard]<!-- /wp:shortcode -->' . "\n\n" .
-                               '<!-- wp:shortcode -->[manage_staff]<!-- /wp:shortcode -->' . "\n\n" .
-                               '<!-- wp:shortcode -->[manager_add_service]<!-- /wp:shortcode -->' . "\n\n" .
-                               '<!-- wp:shortcode -->[elite_cuts_manage_bookings]<!-- /wp:shortcode -->';
+            $dashboard_content = '<!-- wp:uagb/container {"block_id":"c35ac3a5","innerContentWidth":"alignfull","backgroundType":"color","backgroundColor":"#64c493","variationSelected":true,"isBlockRootParent":true} -->
+<div class="wp-block-uagb-container uagb-block-c35ac3a5 alignfull uagb-is-root-container"></div>
+<!-- /wp:uagb/container -->
+
+<!-- wp:uagb/container {"block_id":"3dcbb986","innerContentWidth":"alignfull","backgroundType":"color","backgroundColor":"#f4f4f4","variationSelected":true,"isBlockRootParent":true,"layout":"flex"} -->
+<div class="wp-block-uagb-container uagb-layout-flex uagb-block-3dcbb986 alignfull uagb-is-root-container"><!-- wp:shortcode -->
+[manager_dashboard]
+<!-- /wp:shortcode -->
+
+<!-- wp:uagb/tabs {"block_id":"6e6c5d03","tabHeaders":["Bookings","Staff","Services"],"borderStyle":"","borderWidth":"","borderColor":"","tabBorderTopWidth":1,"tabBorderLeftWidth":1,"tabBorderRightWidth":1,"tabBorderBottomWidth":1,"tabBorderStyle":"solid","tabBorderColor":"#e0e0e0"} -->
+<div class="wp-block-uagb-tabs uagb-block-6e6c5d03 uagb-tabs__wrap uagb-tabs__hstyle1-desktop uagb-tabs__vstyle6-tablet uagb-tabs__stack1-mobile" data-tab-active="0"><ul class="uagb-tabs__panel uagb-tabs__align-left" role="tablist"><li class="uagb-tab uagb-tabs__active" role="none"><a href="#uagb-tabs__tab0" class="uagb-tabs-list uagb-tabs__icon-position-left" data-tab="0" role="tab"><div>Bookings</div></a></li><li class="uagb-tab " role="none"><a href="#uagb-tabs__tab1" class="uagb-tabs-list uagb-tabs__icon-position-left" data-tab="1" role="tab"><div>Staff</div></a></li><li class="uagb-tab " role="none"><a href="#uagb-tabs__tab2" class="uagb-tabs-list uagb-tabs__icon-position-left" data-tab="2" role="tab"><div>Services</div></a></li></ul><div class="uagb-tabs__body-wrap"><!-- wp:uagb/tabs-child {"block_id":"6e6c5d03","header":"Bookings","tabActive":0,"tabHeaders":["Bookings","Staff","Services"]} -->
+<div class="wp-block-uagb-tabs-child uagb-tabs__body-container uagb-inner-tab-0" aria-labelledby="uagb-tabs__tab0"><!-- wp:shortcode -->
+[elite_cuts_manage_bookings]
+<!-- /wp:shortcode --></div>
+<!-- /wp:uagb/tabs-child -->
+
+<!-- wp:uagb/tabs-child {"block_id":"a4393535","id":1,"header":"Staff","tabActive":0,"tabHeaders":["Bookings","Staff","Services"]} -->
+<div class="wp-block-uagb-tabs-child uagb-tabs__body-container uagb-inner-tab-1" aria-labelledby="uagb-tabs__tab1"><!-- wp:shortcode -->
+[manage_staff]
+<!-- /wp:shortcode --></div>
+<!-- /wp:uagb/tabs-child -->
+
+<!-- wp:uagb/tabs-child {"block_id":"6e6c5d03","id":2,"header":"Services","tabActive":0,"tabHeaders":["Bookings","Staff","Services"]} -->
+<div class="wp-block-uagb-tabs-child uagb-tabs__body-container uagb-inner-tab-2" aria-labelledby="uagb-tabs__tab2"><!-- wp:shortcode -->
+[manager_add_service]
+<!-- /wp:shortcode --></div>
+<!-- /wp:uagb/tabs-child --></div></div>
+<!-- /wp:uagb/tabs --></div>
+<!-- /wp:uagb/container -->
+
+<!-- wp:paragraph -->
+<p></p>
+<!-- /wp:paragraph -->';
             
             $dashboard_data = array(
                 'post_title'    => $dashboard_title,
