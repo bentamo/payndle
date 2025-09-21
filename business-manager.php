@@ -100,11 +100,20 @@ class Payndle_Business_Manager {
                 // Actions: View Dashboard and Delete (secure form)
                 echo '<td class="actions">';
                 // Add View Dashboard button with admin-post action
-                $dashboard_url = wp_nonce_url(
-                    admin_url('admin-post.php?action=payndle_view_dashboard&business_id=' . $business->ID),
-                    'payndle_view_dashboard_' . $business->ID
-                );
-                echo '<a href="' . esc_url($dashboard_url) . '" class="button button-primary" style="margin-right: 5px;">' . esc_html__('View My Dashboard', 'payndle-business-manager') . '</a>';
+                // Manager Dashboard URL
+                $manager_dashboard_url = admin_url('admin-post.php?action=payndle_view_dashboard&type=manager&business_id=' . $business->ID);
+                error_log('Generated Manager Dashboard URL: ' . $manager_dashboard_url);
+                
+                // Staff Dashboard URL
+                $staff_dashboard_url = admin_url('admin-post.php?action=payndle_view_dashboard&type=staff&business_id=' . $business->ID);
+                error_log('Generated Staff Dashboard URL: ' . $staff_dashboard_url);
+                echo '<div style="display: flex; gap: 5px; margin-bottom: 10px;">';
+                // Manager Dashboard button
+                echo '<a href="' . esc_url($manager_dashboard_url) . '" class="button button-primary">' . esc_html__('View My Dashboard', 'payndle-business-manager') . '</a>';
+                
+                // Staff Dashboard button
+                echo '<a href="' . esc_url($staff_dashboard_url) . '" class="button button-secondary">' . esc_html__('Staff Dashboard', 'payndle-business-manager') . '</a>';
+                echo '</div>';
                 echo '<form method="post" action="' . esc_url( admin_url('admin-post.php') ) . '" onsubmit="return confirm(\'Are you sure you want to delete this business? This action cannot be undone.\');">';
                 echo '<input type="hidden" name="action" value="payndle_delete_business" />';
                 echo '<input type="hidden" name="business_id" value="' . esc_attr($business->ID) . '" />';
@@ -126,49 +135,68 @@ class Payndle_Business_Manager {
      * Handle view dashboard action.
      */
     public function handle_view_dashboard() {
-        // Verify user is logged in
-        if ( ! is_user_logged_in() ) {
-            wp_redirect( wp_login_url() );
-            exit;
-        }
-
-        $current_user = wp_get_current_user();
         $business_id = isset( $_GET['business_id'] ) ? intval( $_GET['business_id'] ) : 0;
+        $dashboard_type = isset( $_GET['type'] ) ? sanitize_text_field( $_GET['type'] ) : 'manager';
         
-        // Verify business exists and user has access
+        error_log('Attempting to view dashboard:');
+        error_log('Business ID: ' . $business_id);
+        error_log('Dashboard Type: ' . $dashboard_type);
+        
         if ( $business_id ) {
             $business = get_post( $business_id );
-            $owner_id = get_post_meta( $business_id, '_business_owner_id', true );
-            
-            if ( $business && ( $owner_id == $current_user->ID || current_user_can( 'manage_options' ) ) ) {
-                // Check if dedicated dashboard exists
-                $dashboard_id = get_post_meta( $business_id, '_business_dashboard_id', true );
+            error_log('Business Post: ' . ($business ? 'Found' : 'Not Found'));
+            if ($business) {
+                error_log('Business Post Type: ' . $business->post_type);
                 
-                if ( $dashboard_id && get_post( $dashboard_id ) ) {
-                    // Redirect to the dedicated dashboard
-                    $dashboard_url = get_permalink( $dashboard_id );
-                    
-                    // Add business_id as a query parameter if not already in the URL
-                    $dashboard_url = add_query_arg( 'business_id', $business_id, $dashboard_url );
-                    
+                if ($business->post_type !== 'payndle_business') {
+                    error_log('Invalid business type: ' . $business->post_type);
+                    wp_die( esc_html__( 'Invalid business type.', 'payndle-business-manager' ) );
+                    return;
+                }
+            } else {
+                error_log('Business not found with ID: ' . $business_id);
+                wp_die( esc_html__( 'Business not found.', 'payndle-business-manager' ) );
+                return;
+            }
+            
+            // Determine which dashboard to show based on type
+            if ($dashboard_type === 'staff') {
+                $dashboard_id = get_post_meta( $business_id, '_business_staff_dashboard_id', true );
+            } else {
+                $dashboard_id = get_post_meta( $business_id, '_business_dashboard_id', true );
+            }
+            
+            if ( $dashboard_id && get_post( $dashboard_id ) ) {
+                // Redirect to the dedicated dashboard
+                $dashboard_url = get_permalink( $dashboard_id );
+                
+                // Add business_id as a query parameter if not already in the URL
+                $dashboard_url = add_query_arg( 'business_id', $business_id, $dashboard_url );
+                
+                wp_redirect( $dashboard_url );
+                exit;
+            } else {
+                // Create the appropriate dashboard if it doesn't exist
+                if ($dashboard_type === 'staff') {
+                    // Create staff dashboard
+                    $this->create_business_dashboard( $business_id, $business, 'staff' );
+                    $dashboard_id = get_post_meta( $business_id, '_business_staff_dashboard_id', true );
+                } else {
+                    // Create manager dashboard
+                    $this->create_business_dashboard( $business_id, $business, 'manager' );
+                    $dashboard_id = get_post_meta( $business_id, '_business_dashboard_id', true );
+                }
+                
+                if ( $dashboard_id ) {
+                    $dashboard_url = add_query_arg( 'business_id', $business_id, get_permalink( $dashboard_id ) );
                     wp_redirect( $dashboard_url );
                     exit;
-                } else {
-                    // Fallback to old behavior if dedicated dashboard doesn't exist
-                    $this->create_business_dashboard( $business_id, $business );
-                    $dashboard_id = get_post_meta( $business_id, '_business_dashboard_id', true );
-                    
-                    if ( $dashboard_id ) {
-                        $dashboard_url = add_query_arg( 'business_id', $business_id, get_permalink( $dashboard_id ) );
-                        wp_redirect( $dashboard_url );
-                        exit;
-                    }
                 }
             }
         }
         
         // If we get here, something went wrong
-        wp_die( esc_html__( 'You do not have permission to view this dashboard or the business does not exist.', 'payndle-business-manager' ) );
+        wp_die( esc_html__( 'The business does not exist.', 'payndle-business-manager' ) );
     }
 
     /**
@@ -278,7 +306,7 @@ class Payndle_Business_Manager {
     /**
      * Create a dedicated dashboard page for a business
      */
-    public function create_business_dashboard( $post_id, $post ) {
+    public function create_business_dashboard( $post_id, $post, $type = 'manager' ) {
         // Check if this is a revision
         if ( wp_is_post_revision( $post_id ) ) {
             return;
@@ -289,15 +317,54 @@ class Payndle_Business_Manager {
             return;
         }
         
-        // Check if dashboard already exists
-        $dashboard_id = get_post_meta( $post_id, '_business_dashboard_id', true );
-        
-        if ( ! $dashboard_id || ! get_post( $dashboard_id ) ) {
-            // Create dashboard page
+        // Determine which dashboard to create
+        if ($type === 'staff') {
+            $meta_key = '_business_staff_dashboard_id';
+            $dashboard_title = sprintf( __( 'Staff Dashboard - %s', 'payndle-business-manager' ), $post->post_title );
+            $dashboard_slug = sanitize_title( 'staff-dashboard-' . $post->post_name );
+            $dashboard_content = '<!-- wp:uagb/container {"block_id":"b9a6c81d","innerContentWidth":"alignfull","backgroundType":"color","backgroundColor":"#64c493","variationSelected":true,"isBlockRootParent":true} -->
+<div class="wp-block-uagb-container uagb-block-b9a6c81d alignfull uagb-is-root-container"></div>
+<!-- /wp:uagb/container -->
+
+<!-- wp:uagb/container {"block_id":"19535bd1","innerContentWidth":"alignfull","backgroundType":"color","backgroundColor":"#f4f4f4","variationSelected":true,"isBlockRootParent":true} -->
+<div class="wp-block-uagb-container uagb-block-19535bd1 alignfull uagb-is-root-container"><!-- wp:shortcode -->
+[assigned_bookings]
+<!-- /wp:shortcode --></div>
+<!-- /wp:uagb/container -->
+
+<!-- wp:paragraph -->
+<p></p>
+<!-- /wp:paragraph -->';
+
+            $dashboard_data = array(
+                'post_title'    => $dashboard_title,
+                'post_name'     => $dashboard_slug,
+                'post_content'  => $dashboard_content,
+                'post_status'   => 'publish',
+                'post_type'     => 'page',
+                'post_author'   => get_post_field( 'post_author', $post_id ),
+                'meta_input'    => array(
+                    '_business_id' => $post_id
+                )
+            );
+            
+            // Insert the dashboard page
+            $dashboard_id = wp_insert_post( $dashboard_data );
+            
+            if ( ! is_wp_error( $dashboard_id ) ) {
+                // Save the dashboard ID in business meta using the correct meta key
+                update_post_meta( $post_id, $meta_key, $dashboard_id );
+                
+                // Also save the dashboard URL for easy access
+                $dashboard_url = get_permalink( $dashboard_id );
+                update_post_meta( $post_id, $meta_key . '_url', $dashboard_url );
+            }
+        } else {
+            $meta_key = '_business_dashboard_id';
             $dashboard_title = sprintf( __( 'Business Dashboard - %s', 'payndle-business-manager' ), $post->post_title );
             $dashboard_slug = sanitize_title( 'dashboard-' . $post->post_name );
             
-            // Define the dashboard content with all required shortcodes in order
+            // Define the manager dashboard content with all required shortcodes in order
             $dashboard_content = '<!-- wp:uagb/container {"block_id":"c35ac3a5","innerContentWidth":"alignfull","backgroundType":"color","backgroundColor":"#64c493","variationSelected":true,"isBlockRootParent":true} -->
 <div class="wp-block-uagb-container uagb-block-c35ac3a5 alignfull uagb-is-root-container"></div>
 <!-- /wp:uagb/container -->
@@ -348,12 +415,46 @@ class Payndle_Business_Manager {
             $dashboard_id = wp_insert_post( $dashboard_data );
             
             if ( ! is_wp_error( $dashboard_id ) ) {
-                // Save the dashboard ID in business meta
-                update_post_meta( $post_id, '_business_dashboard_id', $dashboard_id );
+                // Save the dashboard ID in business meta using the correct meta key
+                update_post_meta( $post_id, $meta_key, $dashboard_id );
                 
                 // Also save the dashboard URL for easy access
                 $dashboard_url = get_permalink( $dashboard_id );
-                update_post_meta( $post_id, '_business_dashboard_url', $dashboard_url );
+                update_post_meta( $post_id, $meta_key . '_url', $dashboard_url );
+                
+                // Create Staff Dashboard
+                $staff_dashboard_title = sprintf( __( 'Staff Dashboard - %s', 'payndle-business-manager' ), $post->post_title );
+                $staff_dashboard_slug = sanitize_title( 'staff-dashboard-' . $post->post_name );
+                $staff_dashboard_content = '<!-- wp:uagb/container {"block_id":"b9a6c81d","innerContentWidth":"alignfull","backgroundType":"color","backgroundColor":"#64c493","variationSelected":true,"isBlockRootParent":true} -->
+<div class="wp-block-uagb-container uagb-block-b9a6c81d alignfull uagb-is-root-container"></div>
+<!-- /wp:uagb/container -->
+
+<!-- wp:uagb/container {"block_id":"19535bd1","innerContentWidth":"alignfull","backgroundType":"color","backgroundColor":"#f4f4f4","variationSelected":true,"isBlockRootParent":true} -->
+<div class="wp-block-uagb-container uagb-block-19535bd1 alignfull uagb-is-root-container"><!-- wp:shortcode -->
+[assigned_bookings]
+<!-- /wp:shortcode --></div>
+<!-- /wp:uagb/container -->
+
+<!-- wp:paragraph -->
+<p></p>
+<!-- /wp:paragraph -->';
+
+                $staff_dashboard_data = array(
+                    'post_title'    => $staff_dashboard_title,
+                    'post_name'     => $staff_dashboard_slug,
+                    'post_content'  => $staff_dashboard_content,
+                    'post_status'   => 'publish',
+                    'post_type'     => 'page',
+                    'post_author'   => get_post_field( 'post_author', $post_id ),
+                    'meta_input'    => array(
+                        '_business_id' => $post_id
+                    )
+                );
+
+                $staff_dashboard_id = wp_insert_post( $staff_dashboard_data );
+                if ( ! is_wp_error( $staff_dashboard_id ) ) {
+                    update_post_meta( $post_id, '_business_staff_dashboard_id', $staff_dashboard_id );
+                }
             }
         }
     }
