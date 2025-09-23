@@ -951,6 +951,10 @@ function mvp_user_services_shortcode($atts) {
                         }, $category_slugs));
                         $category_data = 'data-categories="' . esc_attr(implode(',', $category_slugs)) . '"';
                     }
+
+                    // Fetch price and duration meta so we can display them on the public shortcode
+                    $price = get_post_meta($service->ID, '_service_price', true);
+                    $duration = get_post_meta($service->ID, '_service_duration', true);
                 ?>
                     <div class="mvp-card service-item <?php echo esc_attr($category_classes); ?>" 
                          <?php echo $category_data; ?>>
@@ -959,6 +963,15 @@ function mvp_user_services_shortcode($atts) {
                             <div class="mvp-service-content">
                                 <?php echo wpautop(wp_kses_post($service->post_content)); ?>
                             </div>
+
+                            <?php if (!empty($price)): ?>
+                                <div class="mvp-service-price"><?php echo '₱' . esc_html($price); ?></div>
+                            <?php endif; ?>
+
+                            <?php if (!empty($duration)): ?>
+                                <div class="mvp-service-duration"><?php echo esc_html($duration); ?></div>
+                            <?php endif; ?>
+
                             <?php if (!empty($service_cats) && !is_wp_error($service_cats)): ?>
                                 <div class="mvp-service-categories">
                                     <?php foreach ($service_cats as $cat): ?>
