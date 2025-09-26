@@ -38,6 +38,9 @@ function save_business_info() {
         'business_country', 'business_website', 'business_hours'
     ];
 
+    // Capture old business title for propagation
+    $old_business_name = $business_id ? get_the_title( $business_id ) : '';
+
     $response = [];
 
 
@@ -61,6 +64,95 @@ function save_business_info() {
             }
 
             $response[ $field ] = $value;
+        }
+    }
+    // If business_name changed, propagate to connected posts (landing/dashboard/staff)
+    if ( isset( $_POST['business_name'] ) ) {
+        $new_name = sanitize_text_field( wp_unslash( $_POST['business_name'] ) );
+        if ( $old_business_name && $new_name && $old_business_name !== $new_name ) {
+            // helper to recursively replace strings in arrays/objects
+            $recursive_replace = function( $search, $replace, $data ) use ( & $recursive_replace ) {
+                if ( is_array( $data ) ) {
+                    foreach ( $data as $k => $v ) {
+                        $data[ $k ] = $recursive_replace( $search, $replace, $v );
+                    }
+                    return $data;
+                } elseif ( is_object( $data ) ) {
+                    foreach ( $data as $k => $v ) {
+                        $data->$k = $recursive_replace( $search, $replace, $v );
+                    }
+                    return $data;
+                } elseif ( is_string( $data ) ) {
+                    return str_replace( $search, $replace, $data );
+                }
+                return $data;
+            };
+
+            $connected_ids = array();
+            $landing_id = get_post_meta( $business_id, '_business_landing_id', true );
+            if ( $landing_id ) $connected_ids[] = intval( $landing_id );
+            $dashboard_id = get_post_meta( $business_id, '_business_dashboard_id', true );
+            if ( $dashboard_id ) $connected_ids[] = intval( $dashboard_id );
+            $staff_dashboard_id = get_post_meta( $business_id, '_business_staff_dashboard_id', true );
+            if ( $staff_dashboard_id ) $connected_ids[] = intval( $staff_dashboard_id );
+
+            foreach ( $connected_ids as $pid ) {
+                $post = get_post( $pid );
+                if ( ! $post ) continue;
+
+                // Update title formats depending on meta key
+                // For landing pages use "{Name} - Welcome" if that matches existing pattern; otherwise just replace occurrences in title
+                if ( $pid == $landing_id ) {
+                    $new_title = sprintf('%s - Welcome', $new_name);
+                } elseif ( $pid == $dashboard_id ) {
+                    $new_title = sprintf('Manager Dashboard - %s', $new_name);
+                } elseif ( $pid == $staff_dashboard_id ) {
+                    $new_title = sprintf('Staff Dashboard - %s', $new_name);
+                } else {
+                    $new_title = str_replace( $old_business_name, $new_name, $post->post_title );
+                }
+                wp_update_post( array( 'ID' => $pid, 'post_title' => $new_title ) );
+
+                // Replace occurrences in post_content
+                $content = $post->post_content;
+                if ( is_string( $content ) && strpos( $content, $old_business_name ) !== false ) {
+                    $new_content = str_replace( $old_business_name, $new_name, $content );
+                    wp_update_post( array( 'ID' => $pid, 'post_content' => $new_content ) );
+                }
+
+                // Replace occurrences in post meta (including serialized meta)
+                $all_meta = get_post_meta( $pid );
+                if ( ! empty( $all_meta ) ) {
+                    foreach ( $all_meta as $meta_key => $meta_values ) {
+                        foreach ( $meta_values as $meta_value ) {
+                            $orig = $meta_value;
+                            $updated = $meta_value;
+
+                            // If serialized, unserialize and recursively replace
+                            if ( is_string( $meta_value ) && is_serialized( $meta_value ) ) {
+                                $maybe = maybe_unserialize( $meta_value );
+                                $replaced = $recursive_replace( $old_business_name, $new_name, $maybe );
+                                if ( $replaced !== $maybe ) {
+                                    $updated = maybe_serialize( $replaced );
+                                }
+                            } elseif ( is_string( $meta_value ) ) {
+                                if ( strpos( $meta_value, $old_business_name ) !== false ) {
+                                    $updated = str_replace( $old_business_name, $new_name, $meta_value );
+                                }
+                            }
+
+                            if ( $updated !== $orig ) {
+                                // update_post_meta will add or update; ensure we update the specific value by deleting and adding
+                                // delete existing value then add the updated one
+                                delete_post_meta( $pid, $meta_key, $orig );
+                                add_post_meta( $pid, $meta_key, $updated );
+                            }
+                        }
+                    }
+                }
+
+                clean_post_cache( $pid );
+            }
         }
     }
 
