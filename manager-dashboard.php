@@ -14,12 +14,24 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 // Handle form submission
 function save_business_info() {
     check_ajax_referer('business_info_nonce', 'business_info_nonce');
+    $business_id = isset($_POST['business_id']) ? intval($_POST['business_id']) : 0;
 
-    if ( ! current_user_can('edit_posts') ) {
-        wp_send_json_error('Unauthorized');
+    // Validate business post exists and is the expected post type
+    if ( ! $business_id ) {
+        wp_send_json_error('Missing business id');
     }
 
-    $business_id = isset($_POST['business_id']) ? intval($_POST['business_id']) : 0;
+    $business_post = get_post( $business_id );
+    if ( ! $business_post || $business_post->post_type !== 'payndle_business' ) {
+        wp_send_json_error('Invalid business');
+    }
+
+    // Capability check: user must be able to edit this specific post or be an admin
+    $current_user_id = get_current_user_id();
+    $owner_id = intval( get_post_meta( $business_id, '_business_owner_id', true ) );
+    if ( $owner_id !== $current_user_id && ! current_user_can( 'manage_options' ) && ! current_user_can( 'edit_post', $business_id ) ) {
+        wp_send_json_error('Unauthorized');
+    }
     $fields = [
         'business_name', 'business_description', 'business_email', 'business_phone',
         'business_address', 'business_city', 'business_state', 'business_zip',
@@ -28,18 +40,27 @@ function save_business_info() {
 
     $response = [];
 
-    foreach ($fields as $field) {
-        if ( isset($_POST[$field]) ) {
-            $value = sanitize_text_field($_POST[$field]);
-            if ( $field === 'business_name' ) {
-                wp_update_post([
-                    'ID' => $business_id,
-                    'post_title' => $value
-                ]);
+
+    foreach ( $fields as $field ) {
+        if ( isset( $_POST[ $field ] ) ) {
+            // Use textarea sanitizer for larger text fields
+            if ( in_array( $field, array( 'business_description', 'business_hours' ), true ) ) {
+                $value = sanitize_textarea_field( wp_unslash( $_POST[ $field ] ) );
             } else {
-                update_post_meta($business_id, '_' . $field, $value);
+                $value = sanitize_text_field( wp_unslash( $_POST[ $field ] ) );
             }
-            $response[$field] = $value;
+
+            if ( $field === 'business_name' ) {
+                // Only update the post_title of the validated business post
+                wp_update_post( array(
+                    'ID'         => $business_id,
+                    'post_title' => $value,
+                ) );
+            } else {
+                update_post_meta( $business_id, '_' . $field, $value );
+            }
+
+            $response[ $field ] = $value;
         }
     }
 
@@ -89,6 +110,23 @@ function manager_dashboard_shortcode() {
     $products_count = intval(get_post_meta($business_id, '_products_count', true) ?: 0);
     $users_count    = intval(get_post_meta($business_id, '_users_count', true) ?: 0);
     $orders_count   = intval(get_post_meta($business_id, '_orders_count', true) ?: 0);
+
+    // Ensure frontend script is enqueued and localized for AJAX
+    if ( function_exists( 'wp_enqueue_script' ) ) {
+        wp_enqueue_script(
+            'manager-dashboard-js',
+            plugin_dir_url(__FILE__) . 'assets/js/manager-dashboard.js',
+            array('jquery'),
+            '1.0.0',
+            true
+        );
+
+        wp_localize_script('manager-dashboard-js', 'managerDashboard', array(
+            'ajax_url' => admin_url('admin-ajax.php'),
+            // Nonce name: this will be sent as business_info_nonce
+            'nonce'    => wp_create_nonce('business_info_nonce'),
+        ));
+    }
 
     ob_start();
     ?>
@@ -304,45 +342,7 @@ function manager_dashboard_shortcode() {
     }
     </style>
 
-    <script>
-    jQuery(document).ready(function($){
-        $('#edit-business-info').on('click', function(){
-            $('#business-info-display').hide();
-            $('#business-info-form').show();
-            $('html,body').animate({ scrollTop: $('#business-info-form').offset().top - 80 }, 300);
-        });
-
-        $('#cancel-edit').on('click', function(e){
-            e.preventDefault();
-            $('#business-info-form').hide();
-            $('#business-info-display').show();
-        });
-
-        $('#business-info-form').on('submit', function(e){
-            e.preventDefault();
-            var $form = $(this);
-            var $btn = $form.find('button[type="submit"]');
-            var data = $form.serialize();
-            var ajaxUrl = (typeof managerDashboard !== 'undefined' && managerDashboard.ajax_url) ? managerDashboard.ajax_url : ajaxurl;
-            var nonce = (typeof managerDashboard !== 'undefined' && managerDashboard.nonce) ? managerDashboard.nonce : '';
-
-            $.ajax({
-                url: ajaxUrl,
-                method: 'POST',
-                data: data + '&action=save_business_info&business_info_nonce=' + encodeURIComponent(nonce),
-                beforeSend: function(){
-                    $btn.prop('disabled', true).data('txt', $btn.text()).text('Saving...');
-                },
-                success: function(resp){
-                    if (resp && resp.success) location.reload();
-                    else alert(resp && resp.data ? resp.data : 'Save failed');
-                },
-                error: function(){ alert('An error occurred.'); },
-                complete: function(){ $btn.prop('disabled', false).text($btn.data('txt') || 'Save Changes'); }
-            });
-        });
-    });
-    </script>
+    <!-- manager-dashboard.js handles edit/cancel/submit interactions; script enqueued and localized by PHP -->
     <?php
     return ob_get_clean();
 }
