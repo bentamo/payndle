@@ -23,16 +23,47 @@ if (!defined('ABSPATH')) {
  */
 function payndle_contact_us_shortcode($atts) {
     global $post;
-    
+
+    // Allow an explicit business_id attribute to override resolution
+    $a = shortcode_atts(array(
+        'business_id' => 0,
+    ), $atts, 'contact_us');
+
+    $resolved_business_id = 0;
+
+    // 1) If shortcode provided a business_id attribute, use it
+    if ( ! empty( $a['business_id'] ) ) {
+        $resolved_business_id = intval( $a['business_id'] );
+    }
+
+    // 2) If we're on a page that was created as a landing page, it may store the business id in post meta
+    if ( ! $resolved_business_id && isset( $post->ID ) ) {
+        $landing_business_id = get_post_meta( $post->ID, '_business_id', true );
+        if ( $landing_business_id ) {
+            $resolved_business_id = intval( $landing_business_id );
+        }
+    }
+
+    // 3) If still not resolved and current post looks like a business post, use it
+    if ( ! $resolved_business_id && isset( $post->ID ) ) {
+        // If the current post itself is a business post type, use its ID
+        if ( isset( $post->post_type ) && $post->post_type === 'payndle_business' ) {
+            $resolved_business_id = intval( $post->ID );
+        }
+    }
+
+    // If we have a resolved business post, read meta from that; otherwise fall back to current post meta
+    $meta_source_id = isset( $resolved_business_id ) && $resolved_business_id ? $resolved_business_id : ( isset($post->ID) ? $post->ID : 0 );
+
     // Get business information from post meta (matching manager dashboard format)
-    $business_address = get_post_meta($post->ID, '_business_address', true);
-    $business_city = get_post_meta($post->ID, '_business_city', true);
-    $business_state = get_post_meta($post->ID, '_business_state', true);
-    $business_zip = get_post_meta($post->ID, '_business_zip', true);
-    $business_country = get_post_meta($post->ID, '_business_country', true);
-    $business_email = get_post_meta($post->ID, '_business_email', true);
-    $business_phone = get_post_meta($post->ID, '_business_phone', true);
-    $business_hours = get_post_meta($post->ID, '_business_hours', true);
+    $business_address = $meta_source_id ? get_post_meta($meta_source_id, '_business_address', true) : '';
+    $business_city = $meta_source_id ? get_post_meta($meta_source_id, '_business_city', true) : '';
+    $business_state = $meta_source_id ? get_post_meta($meta_source_id, '_business_state', true) : '';
+    $business_zip = $meta_source_id ? get_post_meta($meta_source_id, '_business_zip', true) : '';
+    $business_country = $meta_source_id ? get_post_meta($meta_source_id, '_business_country', true) : '';
+    $business_email = $meta_source_id ? get_post_meta($meta_source_id, '_business_email', true) : '';
+    $business_phone = $meta_source_id ? get_post_meta($meta_source_id, '_business_phone', true) : '';
+    $business_hours = $meta_source_id ? get_post_meta($meta_source_id, '_business_hours', true) : '';
     
     // Format address if we have the components
     $formatted_address = '';
