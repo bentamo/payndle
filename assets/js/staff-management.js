@@ -56,6 +56,25 @@ jQuery(document).ready(function($) {
             const total = $('#staff-service-list input.service-checkbox:visible').length;
             const checked = $('#staff-service-list input.service-checkbox:visible:checked').length;
             $('#staff-service-selectall').prop('checked', total > 0 && checked === total);
+            // Two-way sync: when a checkbox is checked, add a tag; when unchecked, remove the tag
+            try {
+                const $cb = $(this);
+                const id = String($cb.val());
+                // Determine label text fallback
+                let labelText = '';
+                try { labelText = $cb.closest('label').find('span').first().text().trim() || $cb.closest('label').text().trim(); } catch(e) { labelText = id; }
+                if ($cb.is(':checked')) {
+                    if ($('#staff-service-tags').find(`input[type=hidden][value="${id}"]`).length === 0) {
+                        const $tag = $(`<span class="service-tag" data-id="${id}" style="display:inline-flex; align-items:center; gap:8px; padding:6px 8px; border-radius:20px; background:#eef6ff; border:1px solid #cfe6ff;"><span class="tag-label"></span><button type="button" class="tag-remove button" aria-label="Remove service" style="background:transparent; border:none; padding:0; margin:0; font-size:14px; line-height:1;">✕</button></span>`);
+                        $tag.find('.tag-label').text(labelText || id);
+                        const $hidden = $(`<input type="hidden" name="services[]" value="${id}" />`);
+                        $tag.append($hidden);
+                        $('#staff-service-tags').append($tag);
+                    }
+                } else {
+                    $('#staff-service-tags').find(`input[type=hidden][value="${id}"]`).closest('.service-tag').remove();
+                }
+            } catch(e) { /* ignore sync errors */ }
         });
 
         // Clear search and selections when modal opens
@@ -91,11 +110,21 @@ jQuery(document).ready(function($) {
             const $hidden = $(`<input type="hidden" name="services[]" value="${id}" />`);
             $tag.append($hidden);
             $('#staff-service-tags').append($tag);
+            // Also check corresponding checkbox in the checkbox list if present
+            try { $('#staff-service-list input.service-checkbox[value="' + id + '"]').prop('checked', true); } catch(e) {}
         });
 
         // Remove tag handler
         $(document).on('click', '#staff-service-tags .tag-remove', function(){
-            $(this).closest('.service-tag').remove();
+            const $tag = $(this).closest('.service-tag');
+            const id = $tag.data('id');
+            $tag.remove();
+            // Uncheck corresponding checkbox if present
+            try { $('#staff-service-list input.service-checkbox[value="' + id + '"]').prop('checked', false); } catch(e) {}
+            // Update select-all state
+            const total = $('#staff-service-list input.service-checkbox:visible').length;
+            const checked = $('#staff-service-list input.service-checkbox:visible:checked').length;
+            $('#staff-service-selectall').prop('checked', total > 0 && checked === total);
         });
 
         // When opening modal for add, clear existing tags
@@ -270,7 +299,22 @@ jQuery(document).ready(function($) {
     function openStaffModal(staffId = null) {
         const $modal = $('#staff-modal');
         const $form = $('#staff-form');
-    $form[0].reset();
+            // Reset form only when creating a new staff (do not reset when editing to preserve selection)
+            if (!staffId) {
+                $form[0].reset();
+                // Clear Select2 selection if present (for add flow)
+                try { $('#staff-service').val(null).trigger('change'); } catch(e) {}
+                // Clear any tag UI for add
+                $('#staff-service-tags').empty();
+                $('#staff-service-list input.service-checkbox').prop('checked', false);
+                $('#staff-service-selectall').prop('checked', false);
+            } else {
+                // When editing, clear inline errors and tags will be populated after AJAX loads staff data
+                $('#staff-form-errors').hide().empty();
+                $('#staff-service-tags').empty();
+            }
+    // Clear any inline errors when opening
+    $('#staff-form-errors').hide().empty();
     // Clear Select2 selection if present
     try { $('#staff-service').val(null).trigger('change'); } catch(e) {}
 
@@ -307,7 +351,26 @@ jQuery(document).ready(function($) {
                             const total = $('#staff-service-list input.service-checkbox:visible').length;
                             const checked = $('#staff-service-list input.service-checkbox:visible:checked').length;
                             $('#staff-service-selectall').prop('checked', total > 0 && checked === total);
-                        }
+
+                            // Populate tag UI deterministically from server-provided services so Edit always shows assigned roles
+                            try {
+                                // Run on next tick so DOM is fully updated and any checkboxes are available
+                                setTimeout(function(){
+                                    console.debug && console.debug('openStaffModal: populating tags from server services', staff.services);
+                                    $('#staff-service-tags').empty();
+                                    if (staff.services && staff.services.length) {
+                                        staff.services.forEach(function(svc){
+                                            const id = String(svc.id || svc);
+                                            const text = svc.title || svc.name || '';
+                                            createServiceTag(id, text);
+                                        });
+                                    }
+                                    console.debug && console.debug('openStaffModal: tags count', $('#staff-service-tags').find('.service-tag').length);
+                                }, 0);
+                            } catch(e) { /* ignore */ }
+                            // Clear any inline errors when opening
+                            $('#staff-form-errors').hide().empty();
+                            }
                         
                         // avatar preview
                         if (staff.avatar) {
@@ -359,6 +422,65 @@ jQuery(document).ready(function($) {
         if (lastFocusedBeforeModal && typeof lastFocusedBeforeModal.focus === 'function') {
             try { lastFocusedBeforeModal.focus(); } catch(e) {}
         }
+        // Clear inline errors when closing
+        $('#staff-form-errors').hide().empty();
+    }
+
+    // Ensure tags reflect any currently checked checkboxes in the checkbox service list.
+    // This creates missing tags for checked boxes so the tag UI stays in sync.
+    function syncTagsFromCheckboxes() {
+        try {
+            $('#staff-service-list input.service-checkbox:checked').each(function(){
+                const id = String($(this).val());
+                // If a hidden input for this id already exists, skip
+                if ($('#staff-service-tags').find('input[type="hidden"][value="' + id + '"]').length === 0) {
+                    // Try to read a friendly label from the checkbox's label
+                    let text = '';
+                    try {
+                        const $lbl = $(this).closest('label');
+                        if ($lbl.length) {
+                            const span = $lbl.find('span').first().text();
+                            text = (span && span.trim()) ? span.trim() : $lbl.text().trim();
+                        }
+                    } catch(e) { /* ignore */ }
+                    if (!text) text = id;
+                    const $tag = $("<span class=\"service-tag\" data-id=\"" + id + "\" style=\"display:inline-flex; align-items:center; gap:8px; padding:6px 8px; border-radius:20px; background:#eef6ff; border:1px solid #cfe6ff;\"><span class=\"tag-label\"></span><button type=\"button\" class=\"tag-remove button\" aria-label=\"Remove service\" style=\"background:transparent; border:none; padding:0; margin:0; font-size:14px; line-height:1;\">✕</button></span>");
+                    $tag.find('.tag-label').text(text);
+                    const $hidden = $("<input type=\"hidden\" name=\"services[]\" value=\"" + id + "\" />");
+                    $tag.append($hidden);
+                    $('#staff-service-tags').append($tag);
+                }
+            });
+        } catch(e) { /* ignore errors */ }
+    }
+
+    // Helper to create a tag reliably (avoids duplicate HTML duplication across code)
+    function createServiceTag(id, text) {
+        try {
+            if (!id) return;
+            id = String(id);
+            if ($('#staff-service-tags').find('input[type="hidden"][value="' + id + '"]').length) return;
+            if (!text) {
+                try {
+                    const $cb = $('#staff-service-list input.service-checkbox[value="' + id + '"]');
+                    if ($cb.length) {
+                        const $lbl = $cb.closest('label');
+                        if ($lbl.length) {
+                            const span = $lbl.find('span').first().text();
+                            text = (span && span.trim()) ? span.trim() : $lbl.text().trim();
+                        }
+                    }
+                } catch (e) { /* ignore */ }
+            }
+            if (!text) text = id;
+            const $tag = $('<span class="service-tag" data-id="' + id + '" style="display:inline-flex; align-items:center; gap:8px; padding:6px 8px; border-radius:20px; background:#eef6ff; border:1px solid #cfe6ff;"><span class="tag-label"></span><button type="button" class="tag-remove button" aria-label="Remove service" style="background:transparent; border:none; padding:0; margin:0; font-size:14px; line-height:1;">✕</button></span>');
+            $tag.find('.tag-label').text(text);
+            const $hidden = $('<input type="hidden" name="services[]" value="' + id + '" />');
+            $tag.append($hidden);
+            $('#staff-service-tags').append($tag);
+            try { $('#staff-service-list input.service-checkbox[value="' + id + '"]').prop('checked', true); } catch(e) {}
+            $('#staff-service-tags').css('display', 'flex');
+        } catch(e) { /* ignore */ }
     }
 
     // Save (Add/Update)
@@ -375,6 +497,8 @@ jQuery(document).ready(function($) {
         if ($form.data('submitting')) {
             return;
         }
+                                                                        // Ensure tags reflect any checked checkboxes as well
+                                                                        syncTagsFromCheckboxes();
         $form.data('submitting', true);
         $submitBtn.prop('disabled', true);
 
@@ -410,19 +534,25 @@ jQuery(document).ready(function($) {
             errors.push('Please assign at least one service/role to the staff member.');
         }
 
-        // Require at least one contact method (email or phone)
-        if (!emailVal && !phoneVal) {
-            errors.push('Please provide at least one contact method: email or phone.');
-        }
-        
-        if (emailVal && !isValidEmail(emailVal)) {
+        // Require email (server requires email field)
+        if (!emailVal) {
+            errors.push('Email is required.');
+        } else if (emailVal && !isValidEmail(emailVal)) {
             errors.push('Please enter a valid email address.');
         }
         
         // Phone validation relaxed per requirements
         
         if (errors.length > 0) {
-            showPopup('error', errors.join(' '));
+            // Render inline errors inside the form rather than popup
+            const $err = $('#staff-form-errors');
+            $err.html(errors.map(function(e){ return '<div class="staff-error">' + escapeHtml(e) + '</div>'; }).join(''));
+            $err.css({'display':'block','color':'#b00020','background':'#fff0f0','padding':'8px 10px','border-radius':'6px','border':'1px solid #f1b0b0','font-size':'13px','margin-bottom':'8px'});
+            // Focus first invalid field
+            if (!nameVal) { $('#staff-name').focus(); }
+            else if (!emailVal) { $('#staff-email').focus(); }
+            else if (!serviceVal || (Array.isArray(serviceVal) && serviceVal.length === 0)) { $('#staff-service-dropdown').focus(); }
+
             $form.data('submitting', false);
             $submitBtn.prop('disabled', false);
             return;
@@ -459,11 +589,19 @@ jQuery(document).ready(function($) {
             data: payload,
             success: function(response) {
                 if (response && response.success) {
+                    // Clear inline errors and show small success text above form
+                    $('#staff-form-errors').hide().empty();
                     showPopup('success', response.message || (isEdit ? 'Staff updated' : 'Staff added'));
                     closeStaffModal();
                     loadStaffList();
                 } else {
-                    showPopup('error', response && response.message ? response.message : 'Operation failed');
+                    // If server returns validation message, render inline; otherwise show popup
+                    const msg = response && response.message ? response.message : 'Operation failed';
+                    if (msg && /email|required|assign at least one service/i.test(msg)) {
+                        $('#staff-form-errors').html('<div class="staff-error">' + escapeHtml(msg) + '</div>').css({'display':'block','color':'#b00020','background':'#fff0f0','padding':'8px 10px','border-radius':'6px','border':'1px solid #f1b0b0','font-size':'13px','margin-bottom':'8px'});
+                    } else {
+                        showPopup('error', msg);
+                    }
                 }
             },
             error: function(xhr, status, error) {

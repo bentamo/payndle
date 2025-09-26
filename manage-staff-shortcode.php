@@ -27,8 +27,8 @@ if (!function_exists('payndle_render_staff_form')) {
                     <h3 id="staff-modal-title"><?php _e('Add New Staff', 'payndle'); ?></h3>
                     <span class="elite-close staff-close">&times;</span>
                 </div>
-                <div class="elite-modal-body ubf-v3-container">
-                    <form id="staff-form" class="ubf-v3-form" novalidate>
+                <div class="elite-modal-body payndle-staff-container">
+                    <form id="staff-form" class="payndle-staff-form" novalidate>
                         <input type="hidden" id="staff-id" value="">
 
                         <div class="form-row">
@@ -90,6 +90,8 @@ if (!function_exists('payndle_render_staff_form')) {
                         </div>
 
                         <div class="form-actions">
+                            <!-- Inline form error container (will be filled by JS when validation fails) -->
+                            <div id="staff-form-errors" aria-live="polite" style="display:none; margin-bottom:0.75rem;"></div>
                             <button type="button" class="elite-button secondary staff-cancel"><?php _e('Cancel', 'payndle'); ?></button>
                             <button type="submit" class="elite-button primary"><?php _e('Save Staff', 'payndle'); ?></button>
                         </div>
@@ -99,9 +101,9 @@ if (!function_exists('payndle_render_staff_form')) {
         </div>
 
         <style>
-            /* Small UBF v3 adjustments for staff modal */
-            #staff-modal .ubf-v3-container { padding: 16px; }
-            #staff-modal .ubf-v3-form input, #staff-modal .ubf-v3-form select { padding: 10px; border-radius: 10px; border:1px solid #e6eaef; }
+            /* Small adjustments for staff modal (local to staff form) */
+                #staff-modal .payndle-staff-container { padding: 16px; }
+                #staff-modal .payndle-staff-form input, #staff-modal .payndle-staff-form select { padding: 10px; border-radius: 10px; border:1px solid #e6eaef; }
             /* Service checkbox list styling to ensure visibility inside modal */
             #staff-service-list { box-sizing: border-box; width:100%; min-height:54px; max-height:220px; overflow-y:auto; padding:8px; }
             #staff-service-list label { display:flex !important; align-items:center !important; gap:0.6rem !important; padding:6px 4px !important; border-radius:6px !important; color: #112233 !important; }
@@ -663,23 +665,55 @@ function manage_staff_shortcode($atts) {
             staffForm.addEventListener('submit', function(e){
                 e.preventDefault();
                 const id = document.getElementById('staff-id').value || null;
-                const name = document.getElementById('staff-name').value;
-                const email = document.getElementById('staff-email').value;
-                const phone = document.getElementById('staff-phone').value;
-                const status = document.getElementById('staff-status').value || 'active';
-                // Collect selected services from either a select or checkboxes
+                const nameEl = document.getElementById('staff-name');
+                const emailEl = document.getElementById('staff-email');
+                const phoneEl = document.getElementById('staff-phone');
+                const statusEl = document.getElementById('staff-status');
+                const name = nameEl ? (nameEl.value || '') : '';
+                const email = emailEl ? (emailEl.value || '') : '';
+                const phone = phoneEl ? (phoneEl.value || '') : '';
+                const status = statusEl ? (statusEl.value || 'active') : 'active';
+
+                // Collect selected services from common possible locations (checkboxes, hidden inputs, or dropdown)
                 const services = [];
-                const serviceEl = document.getElementById('staff-service');
-                if (serviceEl && serviceEl.tagName && serviceEl.tagName.toLowerCase() === 'select') {
-                    for (let i = 0; i < serviceEl.options.length; i++) {
-                        const opt = serviceEl.options[i];
+                // If a dropdown exists (staff-service-dropdown), prefer its selected value(s)
+                const dropdown = document.getElementById('staff-service-dropdown');
+                if (dropdown && dropdown.tagName && dropdown.tagName.toLowerCase() === 'select') {
+                    for (let i = 0; i < dropdown.options.length; i++) {
+                        const opt = dropdown.options[i];
                         if (opt.selected && opt.value) services.push(opt.value);
                     }
-                } else {
-                    document.querySelectorAll('input[name="services[]"]:checked').forEach(cb => { if (cb && cb.value) services.push(cb.value); });
                 }
+                // Also consider any inputs named services[] (checkboxes, hidden inputs added by UI)
+                document.querySelectorAll('input[name="services[]"]').forEach(function(el){
+                    try {
+                        if (!el) return;
+                        if (el.type && el.type.toLowerCase() === 'checkbox') {
+                            if (el.checked && el.value) services.push(el.value);
+                        } else {
+                            if (el.value) services.push(el.value);
+                        }
+                    } catch (err) { /* ignore */ }
+                });
+
+                // Deduplicate services
+                const uniqueServices = Array.from(new Set(services.map(String))).filter(s => s && s.length);
+
+                // Validate required fields: name, email, service
+                if (!name.trim() || !email.trim() || uniqueServices.length === 0) {
+                    // show the specific message only when fields missing
+                    showMessage('Please fill required fields: service, name and email', 'error');
+                    // Focus first missing input for convenience
+                    if (!name.trim() && nameEl) {
+                        try { nameEl.focus(); } catch(e){}
+                    } else if (!email.trim() && emailEl) {
+                        try { emailEl.focus(); } catch(e){}
+                    }
+                    return;
+                }
+
                 const actionType = id ? 'update_staff' : 'add_staff';
-                const postData = { action: 'manage_staff_public', nonce: '<?php echo wp_create_nonce('staff_management_nonce'); ?>', action_type: actionType, data: JSON.stringify({ id: id, name: name, email: email, phone: phone, status: status, services: services }) };
+                const postData = { action: 'manage_staff_public', nonce: '<?php echo wp_create_nonce('staff_management_nonce'); ?>', action_type: actionType, data: JSON.stringify({ id: id, name: name, email: email, phone: phone, status: status, services: uniqueServices }) };
                 fetch('<?php echo admin_url('admin-ajax.php'); ?>', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' }, body: new URLSearchParams(postData) })
                 .then(r => r.json()).then(resp => { if (resp && resp.success) { showMessage(resp.message || '<?php _e('Saved', 'payndle'); ?>'); closeModal(); loadStaff(); } else showMessage(resp.message || '<?php _e('Could not save', 'payndle'); ?>', 'error'); })
                 .catch(() => showMessage('<?php _e('Server error', 'payndle'); ?>', 'error'));
@@ -930,7 +964,11 @@ function handle_staff_ajax() {
                 $status = isset($data['status']) ? sanitize_text_field($data['status']) : 'active';
                 $services = isset($data['services']) && is_array($data['services']) ? array_map('absint', $data['services']) : array();
 
+                // Server-side required field validation
                 if (empty($name)) throw new Exception(__('Name is required', 'payndle'));
+                if (empty($email)) throw new Exception(__('Email is required', 'payndle'));
+                if (!empty($email) && !is_email($email)) throw new Exception(__('Invalid email address', 'payndle'));
+                if (empty($services) || !is_array($services) || count(array_filter($services)) === 0) throw new Exception(__('Please assign at least one service', 'payndle'));
 
                 // Prevent duplicate staff by email
                 if (!empty($email)) {
@@ -1000,6 +1038,12 @@ function handle_staff_ajax() {
                 $phone = isset($data['phone']) ? sanitize_text_field($data['phone']) : '';
                 $status = isset($data['status']) ? sanitize_text_field($data['status']) : 'active';
                 $services = isset($data['services']) && is_array($data['services']) ? array_map('absint', $data['services']) : array();
+
+                // Server-side required field validation for updates
+                if (empty($name)) throw new Exception(__('Name is required', 'payndle'));
+                if (empty($email)) throw new Exception(__('Email is required', 'payndle'));
+                if (!empty($email) && !is_email($email)) throw new Exception(__('Invalid email address', 'payndle'));
+                if (empty($services) || !is_array($services) || count(array_filter($services)) === 0) throw new Exception(__('Please assign at least one service', 'payndle'));
 
                 // Prevent updating to an email that belongs to another staff record
                 if (!empty($email)) {
