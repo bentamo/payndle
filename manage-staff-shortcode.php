@@ -8,6 +8,32 @@ if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
 
+/**
+ * Helper function to get current business ID
+ */
+function get_current_business_id() {
+    $current_user_id = get_current_user_id();
+    $current_business_id = 0;
+    
+    $user_business = get_posts([
+        'post_type' => 'payndle_business',
+        'posts_per_page' => 1,
+        'meta_query' => [
+            [
+                'key' => '_business_owner_id',
+                'value' => $current_user_id,
+                'compare' => '='
+            ]
+        ]
+    ]);
+    
+    if (!empty($user_business)) {
+        $current_business_id = $user_business[0]->ID;
+    }
+    
+    return $current_business_id;
+}
+
 // Renderer for the shared staff form. Kept inside this file so shortcode is the single source of truth.
 if (!function_exists('payndle_render_staff_form')) {
     function payndle_render_staff_form() {
@@ -824,11 +850,49 @@ function handle_staff_ajax() {
                 $role = isset($data['role']) ? sanitize_text_field($data['role']) : '';
                 $id = isset($data['id']) ? absint($data['id']) : 0;
 
+                $current_business_id = get_current_business_id();
+                if (!$current_business_id) {
+                    throw new Exception(__('No business found. Please create a business profile first.', 'payndle'));
+                }
+
+                // Get business code
+                $business_code = get_post_meta($current_business_id, '_business_code', true);
+                if (!$business_code) {
+                    throw new Exception(__('Invalid business code. Please contact support.', 'payndle'));
+                }
+
+                $meta_query = array(
+                    'relation' => 'AND',
+                    array(
+                        'key' => '_business_code',
+                        'value' => $business_code,
+                        'compare' => '='
+                    )
+                );
+
+                // Add status filter if provided
+                if (!empty($status)) {
+                    $meta_query[] = array(
+                        'key' => 'staff_status',
+                        'value' => $status,
+                        'compare' => '='
+                    );
+                }
+
                 $args = array(
                     'post_type' => 'staff',
                     'posts_per_page' => $per_page,
                     'paged' => $paged,
-                    'post_status' => 'publish'
+                    'post_status' => 'publish',
+                    'meta_query' => $meta_query,
+                    'meta_query' => array(
+                        'relation' => 'AND',
+                        array(
+                            'key' => '_business_id',
+                            'value' => $current_business_id,
+                            'compare' => '='
+                        )
+                    )
                 );
 
                 // If specific ID is requested, override other parameters
@@ -847,30 +911,37 @@ function handle_staff_ajax() {
                 }
 
                 if (!empty($service_id)) {
-                    // staff_services is stored as serialized array; match both string and integer encodings
-                    $service_or = array(
+                    // Add service filter to meta query
+                    $meta_query[] = array(
                         'relation' => 'OR',
                         array(
                             'key' => 'staff_services',
-                            'value' => '"' . $service_id . '"', // serialized string form s:N:"ID"
+                            'value' => '"' . $service_id . '"',
                             'compare' => 'LIKE'
                         ),
                         array(
                             'key' => 'staff_services',
-                            'value' => 'i:' . $service_id . ';', // serialized integer form i:ID;
+                            'value' => 'i:' . $service_id . ';',
                             'compare' => 'LIKE'
                         )
                     );
                     // Legacy: some installs used staff_role text equal to service title
                     $s_post = get_post($service_id);
                     if ($s_post && !empty($s_post->post_title)) {
-                        $service_or[] = array(
-                            'key' => 'staff_role',
-                            'value' => $s_post->post_title,
-                            'compare' => '='
+                        $meta_query[] = array(
+                            'relation' => 'OR',
+                            array(
+                                'key' => 'staff_services',
+                                'value' => serialize(array($service_id)),
+                                'compare' => 'LIKE'
+                            ),
+                            array(
+                                'key' => 'staff_role',
+                                'value' => $s_post->post_title,
+                                'compare' => '='
+                            )
                         );
                     }
-                    $meta_query[] = $service_or;
                 }
                 // If role string provided (non-numeric), also match legacy staff_role exactly
                 if (!empty($role) && !is_numeric($role)) {
@@ -958,6 +1029,11 @@ function handle_staff_ajax() {
                 break;
 
             case 'add_staff':
+                $current_business_id = get_current_business_id();
+                if (!$current_business_id) {
+                    throw new Exception(__('No business found. Please create a business profile first.', 'payndle'));
+                }
+
                 $name = isset($data['name']) ? sanitize_text_field($data['name']) : '';
                 $email = isset($data['email']) ? sanitize_email($data['email']) : '';
                 $phone = isset($data['phone']) ? sanitize_text_field($data['phone']) : '';
@@ -970,13 +1046,24 @@ function handle_staff_ajax() {
                 if (!empty($email) && !is_email($email)) throw new Exception(__('Invalid email address', 'payndle'));
                 if (empty($services) || !is_array($services) || count(array_filter($services)) === 0) throw new Exception(__('Please assign at least one service', 'payndle'));
 
-                // Prevent duplicate staff by email
+                // Prevent duplicate staff by email within the same business
                 if (!empty($email)) {
                     $existing = get_posts(array(
                         'post_type' => 'staff',
                         'post_status' => 'publish',
-                        'meta_key' => 'email',
-                        'meta_value' => $email,
+                        'meta_query' => array(
+                            'relation' => 'AND',
+                            array(
+                                'key' => 'email',
+                                'value' => $email,
+                                'compare' => '='
+                            ),
+                            array(
+                                'key' => '_business_id',
+                                'value' => $current_business_id,
+                                'compare' => '='
+                            )
+                        ),
                         'fields' => 'ids',
                         'numberposts' => 1
                     ));
@@ -1010,6 +1097,28 @@ function handle_staff_ajax() {
                 $post_id = wp_insert_post($post_arr);
                 if (is_wp_error($post_id) || $post_id == 0) throw new Exception(__('Could not create staff', 'payndle'));
 
+                // Get business code
+                $business_code = get_post_meta($current_business_id, '_business_code', true);
+                if (!$business_code) {
+                    throw new Exception(__('Invalid business code. Please contact support.', 'payndle'));
+                }
+
+                // Store business code as primary identifier
+                update_post_meta($post_id, '_business_code', $business_code);
+                
+                // Also store business code in legacy table if needed
+                global $wpdb;
+                $staff_table = $wpdb->prefix . 'staff_members';
+                if ($wpdb->get_var("SHOW TABLES LIKE '$staff_table'") === $staff_table) {
+                    $wpdb->update(
+                        $staff_table,
+                        ['business_code' => $business_code],
+                        ['id' => $post_id],
+                        ['%s'],
+                        ['%d']
+                    );
+                }
+
                 update_post_meta($post_id, 'email', $email);
                 update_post_meta($post_id, 'phone', $phone);
                 // avatar fields (optional)
@@ -1031,7 +1140,38 @@ function handle_staff_ajax() {
                 break;
 
             case 'update_staff':
+                $current_business_id = get_current_business_id();
+                if (!$current_business_id) {
+                    throw new Exception(__('No business found. Please create a business profile first.', 'payndle'));
+                }
+
                 $post_id = isset($data['id']) ? absint($data['id']) : 0;
+                if (!$post_id) {
+                    throw new Exception(__('Staff id missing', 'payndle'));
+                }
+
+                // Get current business code
+                $business_code = get_post_meta($current_business_id, '_business_code', true);
+                if (!$business_code) {
+                    throw new Exception(__('Invalid business code. Please contact support.', 'payndle'));
+                }
+
+                // Verify staff belongs to current business
+                $staff_business_code = get_post_meta($post_id, '_business_code', true);
+                if (!$staff_business_code) {
+                    // Check legacy table
+                    global $wpdb;
+                    $staff_table = $wpdb->prefix . 'staff_members';
+                    if ($wpdb->get_var("SHOW TABLES LIKE '$staff_table'") === $staff_table) {
+                        $staff_business_code = $wpdb->get_var($wpdb->prepare(
+                            "SELECT business_code FROM $staff_table WHERE id = %d",
+                            $post_id
+                        ));
+                    }
+                }
+                if ($staff_business_code !== $business_code) {
+                    throw new Exception(__('Permission denied: This staff member does not belong to your business.', 'payndle'));
+                }
                 if (!$post_id) throw new Exception(__('Staff id missing', 'payndle'));
                 $name = isset($data['name']) ? sanitize_text_field($data['name']) : '';
                 $email = isset($data['email']) ? sanitize_email($data['email']) : '';
@@ -1083,7 +1223,38 @@ function handle_staff_ajax() {
                 break;
 
             case 'delete_staff':
+                $current_business_id = get_current_business_id();
+                if (!$current_business_id) {
+                    throw new Exception(__('No business found. Please create a business profile first.', 'payndle'));
+                }
+
                 $post_id = isset($data['id']) ? absint($data['id']) : 0;
+                if (!$post_id) {
+                    throw new Exception(__('Staff id missing', 'payndle'));
+                }
+
+                // Get current business code
+                $business_code = get_post_meta($current_business_id, '_business_code', true);
+                if (!$business_code) {
+                    throw new Exception(__('Invalid business code. Please contact support.', 'payndle'));
+                }
+
+                // Verify staff belongs to current business
+                $staff_business_code = get_post_meta($post_id, '_business_code', true);
+                if (!$staff_business_code) {
+                    // Check legacy table
+                    global $wpdb;
+                    $staff_table = $wpdb->prefix . 'staff_members';
+                    if ($wpdb->get_var("SHOW TABLES LIKE '$staff_table'") === $staff_table) {
+                        $staff_business_code = $wpdb->get_var($wpdb->prepare(
+                            "SELECT business_code FROM $staff_table WHERE id = %d",
+                            $post_id
+                        ));
+                    }
+                }
+                if ($staff_business_code !== $business_code) {
+                    throw new Exception(__('Permission denied: This staff member does not belong to your business.', 'payndle'));
+                }
                 if (!$post_id) throw new Exception(__('Staff id missing', 'payndle'));
                 // Remove the staff from all service assigned_staff arrays
                 payndle_sync_assigned_staff($post_id, array());
@@ -1234,6 +1405,61 @@ function payndle_rest_upload_avatar(WP_REST_Request $request) {
 
     return new WP_REST_Response(array('id' => $attach_id, 'url' => $movefile['url']), 200);
 }
+
+/**
+ * Migration function to handle existing staff records
+ */
+function migrate_staff_business_ids() {
+    // Only run once
+    if (get_option('staff_business_id_migration_complete')) {
+        return;
+    }
+
+    // Get all businesses first
+    $businesses = get_posts(array(
+        'post_type' => 'payndle_business',
+        'posts_per_page' => -1,
+        'post_status' => 'publish'
+    ));
+
+    if (empty($businesses)) {
+        return; // No businesses to migrate
+    }
+
+    $staff = get_posts(array(
+        'post_type' => 'staff',
+        'posts_per_page' => -1,
+        'post_status' => 'any',
+        'meta_query' => array(
+            array(
+                'key' => 'business_id',
+                'compare' => 'NOT EXISTS'
+            )
+        )
+    ));
+
+    foreach ($staff as $member) {
+        $business_id = get_post_meta($member->ID, '_business_id', true);
+        if (!$business_id) {
+            // Try to find business ID from related services
+            $services = get_post_meta($member->ID, 'staff_services', true);
+            if (!empty($services) && is_array($services)) {
+                foreach ($services as $service_id) {
+                    $service_business_id = get_post_meta($service_id, '_business_id', true);
+                    if ($service_business_id) {
+                        update_post_meta($member->ID, 'business_id', $service_business_id);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    update_option('staff_business_id_migration_complete', true);
+}
+
+// Run migration on plugin update or activation
+add_action('init', 'migrate_staff_business_ids');
 
 
 /**

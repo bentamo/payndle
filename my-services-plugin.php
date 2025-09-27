@@ -933,7 +933,12 @@ function mvp_add_service() {
 
     // Save business_id for new services
     if (!$service_id) {
-        update_post_meta($post_id, '_business_id', $current_business_id);
+            // Get and store business code
+            $business_code = get_post_meta($current_business_id, '_business_code', true);
+            if (!$business_code) {
+                throw new Exception(__('Invalid business code. Please contact support.', 'payndle'));
+            }
+            update_post_meta($post_id, '_business_code', $business_code);
     }
 
     // Persist additional meta fields if provided
@@ -1188,13 +1193,13 @@ function mvp_handle_category() {
         $existing_terms = get_terms(array(
             'taxonomy' => 'service_category',
             'hide_empty' => false,
-            'meta_query' => [
-                [
-                    'key' => '_business_id',
-                    'value' => $current_business_id,
-                    'compare' => '='
-                ]
-            ],
+                'meta_query' => [
+                    [
+                        'key' => '_business_code',
+                        'value' => $business_code,
+                        'compare' => '='
+                    ]
+                ],
             'name' => $name
         ));
 
@@ -1288,13 +1293,13 @@ function mvp_manager_shortcode() {
         'posts_per_page' => -1,
         'orderby' => 'date',
         'order' => 'DESC',
-        'meta_query' => [
-            [
-                'key' => '_business_id',
-                'value' => $current_business_id,
-                'compare' => '='
-            ]
-        ]
+                'meta_query' => [
+                    [
+                        'key' => '_business_code',
+                        'value' => $business_code,
+                        'compare' => '='
+                    ]
+                ]
     ));
 
     // Double-check service ownership and filter out any that don't belong
@@ -1307,13 +1312,13 @@ function mvp_manager_shortcode() {
     $categories = get_terms(array(
         'taxonomy' => 'service_category',
         'hide_empty' => false,
-        'meta_query' => [
-            [
-                'key' => '_business_id',
-                'value' => $current_business_id,
-                'compare' => '='
-            ]
-        ]
+                'meta_query' => [
+                    [
+                        'key' => '_business_code',
+                        'value' => $business_code,
+                        'compare' => '='
+                    ]
+                ]
     ));
 
     // Filter out categories from other businesses (double-check)
