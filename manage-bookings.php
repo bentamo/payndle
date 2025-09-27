@@ -15,7 +15,7 @@ function elite_cuts_manage_bookings_page() {
         return;
     }
     
-    // Get current business ID (required for viewing bookings)
+    // Get current business ID and code
     $current_business_id = 0;
     $current_user_id = get_current_user_id();
     
@@ -34,10 +34,11 @@ function elite_cuts_manage_bookings_page() {
     
     if (!empty($user_business)) {
         $current_business_id = $user_business[0]->ID;
+        $business_code = get_post_meta($current_business_id, '_business_code', true);
     }
     
-    if (!$current_business_id) {
-        echo '<div class="notice notice-error"><p>Error: No business found. Please create a business profile first.</p></div>';
+    if (!$current_business_id || !$business_code) {
+        echo '<div class="notice notice-error"><p>Error: No valid business found. Please create a business profile first.</p></div>';
         return;
     }
 
@@ -61,10 +62,10 @@ function elite_cuts_manage_bookings_page() {
         FROM {$wpdb->prefix}service_bookings b
         LEFT JOIN {$wpdb->prefix}manager_services s ON b.service_id = s.id
         LEFT JOIN {$wpdb->prefix}staff_members st ON b.staff_id = st.id
-        WHERE b.business_id = %d
+        WHERE b.business_code = %s
         ORDER BY b.created_at DESC
         LIMIT 50
-    ", $current_business_id));
+    ", $business_code));
         // Load bookings from the 'service_booking' custom post type and map post meta
         $bookings = [];
 
@@ -76,8 +77,8 @@ function elite_cuts_manage_bookings_page() {
             'order' => 'DESC',
             'meta_query' => [
                 [
-                    'key' => '_business_id',
-                    'value' => $current_business_id,
+                    'key' => '_business_code',
+                    'value' => $business_code,
                     'compare' => '='
                 ]
             ]
@@ -3621,20 +3622,26 @@ function elite_cuts_delete_booking_ajax() {
         wp_send_json_error(['message' => 'Invalid booking id']);
     }
 
+    // Get business code
+    $business_code = get_post_meta($current_business_id, '_business_code', true);
+    if (!$business_code) {
+        wp_send_json_error(['message' => 'Invalid business code. Please contact support.']);
+    }
+
     // Verify booking belongs to current business
-    $booking_business_id = 0;
+    $booking_business_code = '';
     if (get_post_type($id) === 'service_booking') {
-        $booking_business_id = intval(get_post_meta($id, '_business_id', true));
+        $booking_business_code = get_post_meta($id, '_business_code', true);
     } else {
         global $wpdb;
         $booking_table = $wpdb->prefix . 'service_bookings';
-        $booking_business_id = intval($wpdb->get_var($wpdb->prepare(
-            "SELECT business_id FROM $booking_table WHERE id = %d",
+        $booking_business_code = $wpdb->get_var($wpdb->prepare(
+            "SELECT business_code FROM $booking_table WHERE id = %d",
             $id
-        )));
+        ));
     }
 
-    if ($booking_business_id !== $current_business_id) {
+    if ($booking_business_code !== $business_code) {
         wp_send_json_error(['message' => 'Permission denied: Booking does not belong to your business']);
     }
 
@@ -3721,20 +3728,26 @@ function elite_cuts_get_booking_ajax() {
         wp_send_json_error(['message' => 'Invalid booking id']);
     }
 
+    // Get business code
+    $business_code = get_post_meta($current_business_id, '_business_code', true);
+    if (!$business_code) {
+        wp_send_json_error(['message' => 'Invalid business code. Please contact support.']);
+    }
+
     // Verify booking belongs to current business
-    $booking_business_id = 0;
+    $booking_business_code = '';
     if (get_post_type($id) === 'service_booking') {
-        $booking_business_id = intval(get_post_meta($id, '_business_id', true));
+        $booking_business_code = get_post_meta($id, '_business_code', true);
     } else {
         global $wpdb;
         $booking_table = $wpdb->prefix . 'service_bookings';
-        $booking_business_id = intval($wpdb->get_var($wpdb->prepare(
-            "SELECT business_id FROM $booking_table WHERE id = %d",
+        $booking_business_code = $wpdb->get_var($wpdb->prepare(
+            "SELECT business_code FROM $booking_table WHERE id = %d",
             $id
-        )));
+        ));
     }
 
-    if ($booking_business_id !== $current_business_id) {
+    if ($booking_business_code !== $business_code) {
         wp_send_json_error(['message' => 'Permission denied: Booking does not belong to your business']);
     }
 
@@ -3808,20 +3821,26 @@ function elite_cuts_update_booking_ajax() {
         wp_send_json_error(['message' => 'Invalid booking id']);
     }
 
+    // Get business code
+    $business_code = get_post_meta($current_business_id, '_business_code', true);
+    if (!$business_code) {
+        wp_send_json_error(['message' => 'Invalid business code. Please contact support.']);
+    }
+
     // Verify booking belongs to current business
-    $booking_business_id = 0;
+    $booking_business_code = '';
     if (get_post_type($id) === 'service_booking') {
-        $booking_business_id = intval(get_post_meta($id, '_business_id', true));
+        $booking_business_code = get_post_meta($id, '_business_code', true);
     } else {
         global $wpdb;
         $booking_table = $wpdb->prefix . 'service_bookings';
-        $booking_business_id = intval($wpdb->get_var($wpdb->prepare(
-            "SELECT business_id FROM $booking_table WHERE id = %d",
+        $booking_business_code = $wpdb->get_var($wpdb->prepare(
+            "SELECT business_code FROM $booking_table WHERE id = %d",
             $id
-        )));
+        ));
     }
 
-    if ($booking_business_id !== $current_business_id) {
+    if ($booking_business_code !== $business_code) {
         wp_send_json_error(['message' => 'Permission denied: Booking does not belong to your business']);
     }
 
