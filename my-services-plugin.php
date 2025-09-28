@@ -931,14 +931,16 @@ function mvp_add_service() {
         wp_send_json_error(array('message' => $post_id->get_error_message()));
     }
 
-    // Save business_id for new services
+    // Save business_id for new services and optionally store business code
     if (!$service_id) {
-            // Get and store business code
-            $business_code = get_post_meta($current_business_id, '_business_code', true);
-            if (!$business_code) {
-                throw new Exception(__('Invalid business code. Please contact support.', 'payndle'));
-            }
+        // Store the business id on the service so we can query/filter reliably
+        update_post_meta($post_id, '_business_id', $current_business_id);
+
+        // If the business has a business code, keep that as well (optional)
+        $business_code = get_post_meta($current_business_id, '_business_code', true);
+        if ($business_code) {
             update_post_meta($post_id, '_business_code', $business_code);
+        }
     }
 
     // Persist additional meta fields if provided
@@ -1019,6 +1021,28 @@ function mvp_user_services_shortcode($atts) {
         'columns' => 3,   // Number of columns in grid
     ), $atts, 'user_services');
 
+    global $post;
+
+    // Resolve business context for the shortcode (optional attribute override)
+    $resolved_business_id = 0;
+    $short_atts = shortcode_atts(array('business_id' => 0), $atts, 'user_services');
+    if (!empty($short_atts['business_id'])) {
+        $resolved_business_id = intval($short_atts['business_id']);
+    }
+
+    // If not provided via attribute, check if the current page has a landing business meta
+    if (!$resolved_business_id && isset($post->ID)) {
+        $landing_business_id = get_post_meta($post->ID, '_business_id', true);
+        if ($landing_business_id) {
+            $resolved_business_id = intval($landing_business_id);
+        }
+    }
+
+    // If still not resolved and current post is a business post, use it
+    if (!$resolved_business_id && isset($post->ID) && isset($post->post_type) && $post->post_type === 'payndle_business') {
+        $resolved_business_id = intval($post->ID);
+    }
+
     // Build query args
     $args = array(
         'post_type' => 'service',
@@ -1027,6 +1051,17 @@ function mvp_user_services_shortcode($atts) {
         'order' => 'DESC',
         'post_status' => 'publish',
     );
+
+    // If we resolved a business, restrict services to that business
+    if ($resolved_business_id) {
+        $args['meta_query'] = array(
+            array(
+                'key' => '_business_id',
+                'value' => $resolved_business_id,
+                'compare' => '='
+            )
+        );
+    }
 
     // Filter by category if specified
     if (!empty($atts['category'])) {
@@ -1042,11 +1077,21 @@ function mvp_user_services_shortcode($atts) {
     // Get services
     $services = get_posts($args);
     
-    // Get all categories for filter
-    $categories = get_terms(array(
+    // Get categories for filter — if a business is resolved, only show that business's categories
+    $term_query = array(
         'taxonomy' => 'service_category',
         'hide_empty' => true,
-    ));
+    );
+    if ($resolved_business_id) {
+        $term_query['meta_query'] = array(
+            array(
+                'key' => '_business_id',
+                'value' => $resolved_business_id,
+                'compare' => '='
+            )
+        );
+    }
+    $categories = get_terms($term_query);
 
     ob_start(); 
     ?>
@@ -1188,23 +1233,22 @@ function mvp_handle_category() {
             wp_send_json_error('Category name is required.');
         }
         
+
         // Create the term
-        // Check if category with same name exists for this business
+        // Check if a category with the same name exists for this business
         $existing_terms = get_terms(array(
             'taxonomy' => 'service_category',
             'hide_empty' => false,
-                'meta_query' => [
-                    [
-                        'key' => '_business_code',
-                        'value' => $business_code,
-                        'compare' => '='
-                    ]
-                ],
-            'name' => $name
+            'name' => $name,
         ));
 
-        if (!empty($existing_terms)) {
-            wp_send_json_error('A category with this name already exists in your business.');
+        if (!empty($existing_terms) && !is_wp_error($existing_terms)) {
+            foreach ($existing_terms as $et) {
+                $et_business = intval(get_term_meta($et->term_id, '_business_id', true));
+                if ($et_business === $current_business_id) {
+                    wp_send_json_error('A category with this name already exists in your business.');
+                }
+            }
         }
 
         $term = wp_insert_term($name, 'service_category');
@@ -1287,19 +1331,19 @@ function mvp_manager_shortcode() {
         return '<div class="mvp-error-message">Error: No business profile found. Please create a business profile first.</div>';
     }
     
-    // Get all services for this business
+    // Get all services for this business (query by saved _business_id)
     $services = get_posts(array(
         'post_type' => 'service',
         'posts_per_page' => -1,
         'orderby' => 'date',
         'order' => 'DESC',
-                'meta_query' => [
-                    [
-                        'key' => '_business_code',
-                        'value' => $business_code,
-                        'compare' => '='
-                    ]
-                ]
+        'meta_query' => array(
+            array(
+                'key' => '_business_id',
+                'value' => $current_business_id,
+                'compare' => '='
+            )
+        )
     ));
 
     // Double-check service ownership and filter out any that don't belong
@@ -1308,17 +1352,17 @@ function mvp_manager_shortcode() {
         return $service_business_id === $current_business_id;
     });
 
-    // Get categories for this business
+    // Get categories for this business (term meta _business_id)
     $categories = get_terms(array(
         'taxonomy' => 'service_category',
         'hide_empty' => false,
-                'meta_query' => [
-                    [
-                        'key' => '_business_code',
-                        'value' => $business_code,
-                        'compare' => '='
-                    ]
-                ]
+        'meta_query' => array(
+            array(
+                'key' => '_business_id',
+                'value' => $current_business_id,
+                'compare' => '='
+            )
+        )
     ));
 
     // Filter out categories from other businesses (double-check)
