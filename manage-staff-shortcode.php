@@ -11,16 +11,39 @@ if (!defined('ABSPATH')) {
 // Renderer for the shared staff form. Kept inside this file so shortcode is the single source of truth.
 if (!function_exists('payndle_render_staff_form')) {
     function payndle_render_staff_form() {
-        // Fetch published services to populate dropdown
+        // Get current business ID
+        $business_id = payndle_get_current_business_id();
+        
+        // Debug log to verify business ID
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('Current Business ID: ' . $business_id);
+        }
+
+        // Fetch services with proper meta query
         $services = get_posts(array(
             'post_type' => 'service',
             'post_status' => 'publish',
-            'numberposts' => -1
+            'numberposts' => -1,
+            'orderby' => 'title',
+            'order' => 'ASC',
+            'meta_query' => array(
+                array(
+                    'key' => '_business_id',
+                    'value' => $business_id,
+                    'compare' => '='
+                )
+            )
         ));
 
+        // Debug log to verify services query
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('Services Query Result: ' . print_r($services, true));
+        }
+
+        // Render the form
         ob_start();
         ?>
-        <!-- Shared Staff Form -->
+        <!-- Staff Form -->
         <div id="staff-modal" class="elite-modal" style="display: none;">
             <div class="elite-modal-content">
                 <div class="elite-modal-header">
@@ -38,17 +61,29 @@ if (!function_exists('payndle_render_staff_form')) {
                             </div>
                             <div class="form-group">
                                 <label for="staff-service-dropdown"><?php _e('Services', 'payndle'); ?></label>
-                                <div style="display:flex; gap:0.5rem; align-items:center;">
+                                <div class="service-selection-wrapper" style="display:flex; gap:0.5rem; align-items:center;">
                                     <select id="staff-service-dropdown" class="elite-select" style="flex:1;">
-                                        <option value=""><?php echo esc_html_x('Select a service...', 'placeholder', 'payndle'); ?></option>
-                                        <?php foreach ($services as $s) : ?>
-                                            <option value="<?php echo esc_attr($s->ID); ?>"><?php echo esc_html($s->post_title); ?></option>
-                                        <?php endforeach; ?>
+                                        <option value=""><?php _e('Select a service...', 'payndle'); ?></option>
+                                        <?php 
+                                        if (!empty($services)) {
+                                            foreach ($services as $service) {
+                                                $price = get_post_meta($service->ID, '_service_price', true);
+                                                $price_display = !empty($price) ? ' - ₱' . number_format($price, 2) : '';
+                                                printf(
+                                                    '<option value="%d">%s%s</option>',
+                                                    esc_attr($service->ID),
+                                                    esc_html($service->post_title),
+                                                    esc_html($price_display)
+                                                );
+                                            }
+                                        }
+                                        ?>
                                     </select>
-                                    <button type="button" id="staff-service-add" class="button button-secondary" aria-label="<?php _e('Add service', 'payndle'); ?>"><?php _e('Add', 'payndle'); ?></button>
+                                    <button type="button" id="staff-service-add" class="button button-secondary">
+                                        <?php _e('Add', 'payndle'); ?>
+                                    </button>
                                 </div>
-                                <div id="staff-service-tags" style="margin-top:0.5rem; display:flex; flex-wrap:wrap; gap:6px; align-items:center;"></div>
-                                <!-- Hidden inputs for selected services will be appended here as <input type="hidden" name="services[]" value="ID"> -->
+                                <div id="staff-service-tags" class="selected-services" style="margin-top:0.5rem;"></div>
                             </div>
                         </div>
 
@@ -681,7 +716,7 @@ function manage_staff_shortcode($atts) {
                 const actionType = id ? 'update_staff' : 'add_staff';
                 const postData = { action: 'manage_staff_public', nonce: '<?php echo wp_create_nonce('staff_management_nonce'); ?>', action_type: actionType, data: JSON.stringify({ id: id, name: name, email: email, phone: phone, status: status, services: services }) };
                 fetch('<?php echo admin_url('admin-ajax.php'); ?>', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' }, body: new URLSearchParams(postData) })
-                .then(r => r.json()).then(resp => { if (resp && resp.success) { showMessage(resp.message || '<?php _e('Saved', 'payndle'); ?>'); closeModal(); loadStaff(); } else showMessage(resp.message || '<?php _e('Could not save', 'payndle'); ?>', 'error'); })
+                .then r => r.json()).then(resp => { if (resp && resp.success) { showMessage(resp.message || '<?php _e('Saved', 'payndle'); ?>'); closeModal(); loadStaff(); } else showMessage(resp.message || '<?php _e('Could not save', 'payndle'); ?>', 'error'); })
                 .catch(() => showMessage('<?php _e('Server error', 'payndle'); ?>', 'error'));
             });
         }
@@ -759,11 +794,15 @@ function handle_staff_ajax() {
     // Verify nonce
     check_ajax_referer('staff_management_nonce', 'nonce');
 
-    // Check user capabilities
-    // Allow any logged-in user to use the shortcode's staff endpoints (nonce still required).
-    // If you want stricter control, replace this with a capability check like current_user_can('manage_options').
-    if (!is_user_logged_in()) {
-        wp_send_json_error(__('You must be logged in to perform this action', 'payndle'));
+    // Get current business context
+    $business_id = payndle_get_current_business_id();
+    if (!$business_id) {
+        wp_send_json_error(__('Invalid business context', 'payndle'));
+    }
+
+    // Verify business access permission
+    if (!payndle_can_access_business($business_id)) {
+        wp_send_json_error(__('You do not have permission to manage this business', 'payndle'));
     }
 
     $action = isset($_POST['action_type']) ? sanitize_text_field($_POST['action_type']) : '';
@@ -794,7 +833,14 @@ function handle_staff_ajax() {
                     'post_type' => 'staff',
                     'posts_per_page' => $per_page,
                     'paged' => $paged,
-                    'post_status' => 'publish'
+                    'post_status' => 'publish',
+                    'meta_query' => array(
+                        array(
+                            'key' => 'business_id',
+                            'value' => $business_id,
+                            'compare' => '='
+                        )
+                    )
                 );
 
                 // If specific ID is requested, override other parameters
@@ -1300,16 +1346,54 @@ function enqueue_staff_management_assets($hook) {
 add_action('wp_enqueue_scripts', 'enqueue_staff_management_assets');
 
 /**
+ * Check if current user can access/modify business
+ * @param int $business_id Business ID to check
+ * @return bool True if access allowed
+ */
+function payndle_can_access_business($business_id) {
+    if (!is_user_logged_in()) {
+        return false;
+    }
+    
+    $user_id = get_current_user_id();
+    $user_business_id = get_user_meta($user_id, 'business_id', true);
+    
+    // Allow access if user belongs to business
+    if (absint($user_business_id) === absint($business_id)) {
+        return true;
+    }
+    
+    // Check if user is admin/super admin
+    if (current_user_can('manage_options')) {
+        return true;
+    }
+    
+    return false;
+}
+
+/**
  * Keep assigned_staff meta on service posts synchronized.
  * For a given staff_id, ensure only the provided $service_ids include that staff in their assigned_staff meta.
  * If $service_ids is empty, remove the staff from all services.
  */
 function payndle_sync_assigned_staff($staff_id, $service_ids = array()) {
-    $staff_id = absint($staff_id);
-    $service_ids = array_map('absint', (array)$service_ids);
+    $business_id = payndle_get_current_business_id();
+    if (!$business_id) return;
 
-    // Get all published services to iterate (could be narrowed, but safe)
-    $all_services = get_posts(array('post_type' => 'service', 'post_status' => 'publish', 'numberposts' => -1, 'fields' => 'ids'));
+    // Get all published services for this business
+    $all_services = get_posts(array(
+        'post_type' => 'service',
+        'post_status' => 'publish',
+        'numberposts' => -1,
+        'fields' => 'ids',
+        'meta_query' => array(
+            array(
+                'key' => 'business_id',
+                'value' => $business_id,
+                'compare' => '='
+            )
+        )
+    ));
     if (empty($all_services)) return;
 
     foreach ($all_services as $sid) {
@@ -1326,4 +1410,26 @@ function payndle_sync_assigned_staff($staff_id, $service_ids = array()) {
             update_post_meta($sid, 'assigned_staff', $assigned);
         }
     }
+}
+
+/**
+ * Get current business ID from user session or context
+ * @return int Business ID or 0 if not found
+ */
+function payndle_get_current_business_id() {
+    // First check session
+    if (isset($_SESSION['current_business_id'])) {
+        return absint($_SESSION['current_business_id']);
+    }
+    
+    // Check if user is logged in
+    if (!is_user_logged_in()) {
+        return 0;
+    }
+    
+    // Get business ID from user meta
+    $user_id = get_current_user_id();
+    $business_id = get_user_meta($user_id, 'business_id', true);
+    
+    return absint($business_id);
 }

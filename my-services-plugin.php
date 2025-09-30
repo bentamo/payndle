@@ -9,6 +9,57 @@ Shortcode: [manager_add_service]
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
+/**
+ * Helper function to get the current business ID from various contexts
+ * 
+ * @return int The current business ID or 0 if not found
+ */
+function mvp_get_current_business_id() {
+    // First check URL parameter (highest priority)
+    if (isset($_GET['business_id'])) {
+        return intval($_GET['business_id']);
+    }
+    
+    // Then check POST data
+    if (isset($_POST['business_id'])) {
+        return intval($_POST['business_id']);
+    }
+    
+    // Check for session stored business ID
+    if (isset($_SESSION['current_business_id'])) {
+        return intval($_SESSION['current_business_id']);
+    }
+    
+    // If user is logged in, try to get their primary business
+    if (is_user_logged_in()) {
+        $current_user = wp_get_current_user();
+        
+        // Query for businesses where this user is the owner
+        $args = array(
+            'post_type' => 'business',
+            'posts_per_page' => 1,
+            'meta_query' => array(
+                array(
+                    'key' => '_business_owner_id',
+                    'value' => $current_user->ID,
+                    'compare' => '='
+                )
+            )
+        );
+        
+        $business_query = new WP_Query($args);
+        if ($business_query->have_posts()) {
+            $business_query->the_post();
+            $business_id = get_the_ID();
+            wp_reset_postdata();
+            return $business_id;
+        }
+    }
+    
+    // Default to 0 (no business found)
+    return 0;
+}
+
 /* ======================
    REGISTER SERVICE POST TYPE & TAXONOMY
    ====================== */
@@ -764,10 +815,14 @@ function mvp_enqueue_scripts() {
         true
     );
 
-    // Localize script with AJAX URL and nonce
+    // Get current business ID
+    $business_id = mvp_get_current_business_id();
+    
+    // Localize script with AJAX URL, nonce, and business ID
     wp_localize_script('mvp-script', 'mvp_ajax', array(
         'ajax_url' => admin_url('admin-ajax.php'),
         'nonce'    => wp_create_nonce('mvp_nonce'),
+        'business_id' => $business_id,
         'are_you_sure' => __('Are you sure you want to delete this service?', 'service-manager')
     ));
 }
@@ -778,11 +833,14 @@ add_action('wp_enqueue_scripts', 'mvp_enqueue_scripts');
    AJAX: ADD/UPDATE SERVICE
    ====================== */
 function mvp_add_service() {
-    // Debug: log entry and incoming POST for failures (only when WP_DEBUG enabled)
-    if ( defined('WP_DEBUG') && WP_DEBUG ) {
-        file_put_contents(plugin_dir_path(__FILE__) . 'service-debug.log', date('Y-m-d H:i:s') . " - mvp_add_service called\nPOST: " . print_r($_POST, true) . "\n\n", FILE_APPEND);
-    }
     check_ajax_referer('mvp_nonce', 'nonce');
+    
+    $business_id = isset($_POST['business_id']) ? intval($_POST['business_id']) : mvp_get_current_business_id();
+    
+    if ($business_id <= 0) {
+        wp_send_json_error(array('message' => 'Invalid business context'));
+        return;
+    }
 
     $title = sanitize_text_field($_POST['title']);
     $desc  = wp_kses_post($_POST['description']);
@@ -794,13 +852,12 @@ function mvp_add_service() {
     }
 
     $post_data = array(
-        'post_title'   => $title,
+        'post_title' => $title,
         'post_content' => $desc,
-        'post_status'  => 'publish',
-        'post_type'    => 'service',
+        'post_status' => 'publish',
+        'post_type' => 'service'
     );
 
-    // If we have a service ID, update the existing service
     if ($service_id > 0) {
         $post_data['ID'] = $service_id;
         $post_id = wp_update_post($post_data, true);
@@ -809,12 +866,13 @@ function mvp_add_service() {
     }
 
     if (is_wp_error($post_id)) {
-        if ( defined('WP_DEBUG') && WP_DEBUG ) {
-            file_put_contents(plugin_dir_path(__FILE__) . 'service-debug.log', date('Y-m-d H:i:s') . " - wp_error when creating service: " . $post_id->get_error_message() . "\n", FILE_APPEND);
-        }
         wp_send_json_error(array('message' => $post_id->get_error_message()));
+        return;
     }
 
+    // Save business ID with consistent meta key
+    update_post_meta($post_id, '_business_id', $business_id);
+    
     // Persist additional meta fields if provided
     if (isset($_POST['price'])) {
         update_post_meta($post_id, '_service_price', sanitize_text_field($_POST['price']));
@@ -866,9 +924,35 @@ add_action('wp_ajax_mvp_add_service', 'mvp_add_service');
    ====================== */
 function mvp_delete_service() {
     check_ajax_referer('mvp_nonce', 'nonce');
+    
+    // Get business ID from request or current context
+    $business_id = isset($_POST['business_id']) ? intval($_POST['business_id']) : mvp_get_current_business_id();
+    
+    // Validate business ID
+    if ($business_id <= 0) {
+        wp_send_json_error('Invalid business context. Please select a business first.');
+    }
+    
+    // Verify user has access to this business
+    if (is_user_logged_in()) {
+        $current_user = wp_get_current_user();
+        $owner_id = get_post_meta($business_id, '_business_owner_id', true);
+        
+        if ($owner_id != $current_user->ID && !current_user_can('manage_options')) {
+            wp_send_json_error('You do not have permission to manage services for this business.');
+        }
+    } else {
+        wp_send_json_error('You must be logged in to perform this action.');
+    }
 
     $id = intval($_POST['id']);
     if (get_post_type($id) === 'service') {
+        // Verify the service belongs to the current business
+        $service_business_id = get_post_meta($id, '_business_id', true);
+        if ($service_business_id != $business_id) {
+            wp_send_json_error('You do not have permission to delete this service.');
+        }
+        
         wp_delete_post($id, true);
         wp_send_json_success(array('id' => $id));
     }
@@ -887,7 +971,16 @@ function mvp_user_services_shortcode($atts) {
         'category' => '', // Comma-separated category slugs
         'limit' => -1,    // Number of services to show (-1 for all)
         'columns' => 3,   // Number of columns in grid
+        'business_id' => 0, // Specific business ID (optional)
     ), $atts, 'user_services');
+    
+    // Get business ID from attribute or current context
+    $business_id = !empty($atts['business_id']) ? intval($atts['business_id']) : mvp_get_current_business_id();
+    
+    // If no business ID is found, show an error
+    if ($business_id <= 0) {
+        return '<div class="error-message">' . __('No business context found. Please specify a business ID or select a business first.', 'service-manager') . '</div>';
+    }
 
     // Build query args
     $args = array(
@@ -896,6 +989,13 @@ function mvp_user_services_shortcode($atts) {
         'orderby' => 'date',
         'order' => 'DESC',
         'post_status' => 'publish',
+        'meta_query' => array(
+            array(
+                'key' => '_business_id',
+                'value' => $business_id,
+                'compare' => '='
+            )
+        )
     );
 
     // Filter by category if specified
@@ -920,7 +1020,7 @@ function mvp_user_services_shortcode($atts) {
 
     ob_start(); 
     ?>
-    <div class="mvp-services">
+    <div class="mvp-services" data-business-id="<?php echo esc_attr($business_id); ?>">
         <?php if (!empty($categories) && !is_wp_error($categories)): ?>
         <div class="mvp-category-filter">
             <select id="mvp-category-filter" class="mvp-form-control">
@@ -1020,6 +1120,26 @@ add_shortcode('user_services', 'mvp_user_services_shortcode');
 function mvp_handle_category() {
     check_ajax_referer('mvp_nonce', 'nonce');
     
+    // Get business ID from request or current context
+    $business_id = isset($_POST['business_id']) ? intval($_POST['business_id']) : mvp_get_current_business_id();
+    
+    // Validate business ID
+    if ($business_id <= 0) {
+        wp_send_json_error('Invalid business context. Please select a business first.');
+    }
+    
+    // Verify user has access to this business
+    if (is_user_logged_in()) {
+        $current_user = wp_get_current_user();
+        $owner_id = get_post_meta($business_id, '_business_owner_id', true);
+        
+        if ($owner_id != $current_user->ID && !current_user_can('manage_options')) {
+            wp_send_json_error('You do not have permission to manage categories for this business.');
+        }
+    } else {
+        wp_send_json_error('You must be logged in to perform this action.');
+    }
+    
     $action = isset($_POST['action_type']) ? sanitize_text_field($_POST['action_type']) : '';
     $response = array('success' => false);
     
@@ -1075,13 +1195,28 @@ function mvp_manager_shortcode() {
                wp_login_form(array('echo' => false)) .
                '</div>';
     }
+    
+    // Get the current business ID
+    $business_id = mvp_get_current_business_id();
+    
+    // If no business ID is found, show an error
+    if ($business_id <= 0) {
+        return '<div class="error-message">' . __('No business context found. Please select a business first.', 'service-manager') . '</div>';
+    }
 
-    // Get all services
+    // Get services for the current business
     $services = get_posts(array(
         'post_type' => 'service',
         'posts_per_page' => -1,
         'orderby' => 'date',
         'order' => 'DESC',
+        'meta_query' => array(
+            array(
+                'key' => '_business_id',
+                'value' => $business_id,
+                'compare' => '='
+            )
+        )
     ));
 
     // Get all categories
@@ -1091,7 +1226,7 @@ function mvp_manager_shortcode() {
     ));
 
     ob_start(); ?>
-    <div class="mvp-service-manager-card">
+    <div class="mvp-service-manager-card" data-business-id="<?php echo esc_attr($business_id); ?>">
         <div class="mvp-card-header">
             <h2 class="mvp-card-title"><?php _e('Service Manager', 'service-manager'); ?></h2>
             <button type="button" class="mvp-btn mvp-btn-primary" id="mvp-toggle-form">
@@ -1351,11 +1486,12 @@ function mvp_manager_shortcode() {
                 data: {
                     action: 'mvp_add_service',
                     nonce: mvp_ajax.nonce,
+                    business_id: mvp_ajax.business_id || $('.mvp-service-manager-card').data('business-id'),
                     title: $('#mvp-service-title').val(),
                     description: $('#mvp-service-description').val(),
-                        price: $('#mvp-service-price').val(),
-                        duration: $('#mvp-service-duration').val(),
-                        is_featured: $('#mvp-service-featured').is(':checked') ? 1 : 0,
+                    price: $('#mvp-service-price').val(),
+                    duration: $('#mvp-service-duration').val(),
+                    is_featured: $('#mvp-service-featured').is(':checked') ? 1 : 0,
                     categories: $('#mvp-service-categories').val() || [],
                     service_id: $('#mvp-service-id').val()
                 },
@@ -1419,6 +1555,7 @@ function mvp_manager_shortcode() {
                 data: {
                     action: 'mvp_delete_service',
                     nonce: mvp_ajax.nonce,
+                    business_id: mvp_ajax.business_id || $('.mvp-service-manager-card').data('business-id'),
                     id: id
                 },
                 success: function(response) {
@@ -1463,6 +1600,7 @@ function mvp_manager_shortcode() {
                 data: {
                     action: 'mvp_handle_category',
                     nonce: mvp_ajax.nonce,
+                    business_id: mvp_ajax.business_id || $('.mvp-service-manager-card').data('business-id'),
                     action_type: 'add',
                     name: name
                 },
@@ -1502,6 +1640,7 @@ function mvp_manager_shortcode() {
                 data: {
                     action: 'mvp_handle_category',
                     nonce: mvp_ajax.nonce,
+                    business_id: mvp_ajax.business_id || $('.mvp-service-manager-card').data('business-id'),
                     action_type: 'delete',
                     term_id: termId
                 },
@@ -1584,4 +1723,25 @@ if (defined('WP_DEBUG') && WP_DEBUG) {
 }
 
 
-// test
+/* Debug Info: Services Data
+add_action('wp_footer', function() {
+    if (!is_user_logged_in()) return;
+    
+    $business_id = payndle_get_current_business_id();
+    $services = get_posts(array(
+        'post_type' => 'service',
+        'meta_key' => '_business_id',
+        'meta_value' => $business_id,
+        'posts_per_page' => -1
+    ));
+    
+    if (defined('WP_DEBUG') && WP_DEBUG) {
+        echo '<!-- Debug Info:';
+        echo 'Business ID: ' . esc_html($business_id) . "\n";
+        echo 'Services Found: ' . count($services) . "\n";
+        foreach ($services as $service) {
+            echo $service->post_title . ' (ID: ' . $service->ID . ")\n";
+        }
+        echo '-->';
+    }
+}); */
