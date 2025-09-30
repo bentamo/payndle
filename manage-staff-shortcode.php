@@ -8,32 +8,6 @@ if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
 
-/**
- * Helper function to get current business ID
- */
-function get_current_business_id() {
-    $current_user_id = get_current_user_id();
-    $current_business_id = 0;
-    
-    $user_business = get_posts([
-        'post_type' => 'payndle_business',
-        'posts_per_page' => 1,
-        'meta_query' => [
-            [
-                'key' => '_business_owner_id',
-                'value' => $current_user_id,
-                'compare' => '='
-            ]
-        ]
-    ]);
-    
-    if (!empty($user_business)) {
-        $current_business_id = $user_business[0]->ID;
-    }
-    
-    return $current_business_id;
-}
-
 // Renderer for the shared staff form. Kept inside this file so shortcode is the single source of truth.
 if (!function_exists('payndle_render_staff_form')) {
     function payndle_render_staff_form() {
@@ -76,8 +50,8 @@ if (!function_exists('payndle_render_staff_form')) {
                     <h3 id="staff-modal-title"><?php _e('Add New Staff', 'payndle'); ?></h3>
                     <span class="elite-close staff-close">&times;</span>
                 </div>
-                <div class="elite-modal-body payndle-staff-container">
-                    <form id="staff-form" class="payndle-staff-form" novalidate>
+                <div class="elite-modal-body ubf-v3-container">
+                    <form id="staff-form" class="ubf-v3-form" novalidate>
                         <input type="hidden" id="staff-id" value="">
 
                         <div class="form-row">
@@ -151,8 +125,6 @@ if (!function_exists('payndle_render_staff_form')) {
                         </div>
 
                         <div class="form-actions">
-                            <!-- Inline form error container (will be filled by JS when validation fails) -->
-                            <div id="staff-form-errors" aria-live="polite" style="display:none; margin-bottom:0.75rem;"></div>
                             <button type="button" class="elite-button secondary staff-cancel"><?php _e('Cancel', 'payndle'); ?></button>
                             <button type="submit" class="elite-button primary"><?php _e('Save Staff', 'payndle'); ?></button>
                         </div>
@@ -162,9 +134,9 @@ if (!function_exists('payndle_render_staff_form')) {
         </div>
 
         <style>
-            /* Small adjustments for staff modal (local to staff form) */
-                #staff-modal .payndle-staff-container { padding: 16px; }
-                #staff-modal .payndle-staff-form input, #staff-modal .payndle-staff-form select { padding: 10px; border-radius: 10px; border:1px solid #e6eaef; }
+            /* Small UBF v3 adjustments for staff modal */
+            #staff-modal .ubf-v3-container { padding: 16px; }
+            #staff-modal .ubf-v3-form input, #staff-modal .ubf-v3-form select { padding: 10px; border-radius: 10px; border:1px solid #e6eaef; }
             /* Service checkbox list styling to ensure visibility inside modal */
             #staff-service-list { box-sizing: border-box; width:100%; min-height:54px; max-height:220px; overflow-y:auto; padding:8px; }
             #staff-service-list label { display:flex !important; align-items:center !important; gap:0.6rem !important; padding:6px 4px !important; border-radius:6px !important; color: #112233 !important; }
@@ -726,55 +698,23 @@ function manage_staff_shortcode($atts) {
             staffForm.addEventListener('submit', function(e){
                 e.preventDefault();
                 const id = document.getElementById('staff-id').value || null;
-                const nameEl = document.getElementById('staff-name');
-                const emailEl = document.getElementById('staff-email');
-                const phoneEl = document.getElementById('staff-phone');
-                const statusEl = document.getElementById('staff-status');
-                const name = nameEl ? (nameEl.value || '') : '';
-                const email = emailEl ? (emailEl.value || '') : '';
-                const phone = phoneEl ? (phoneEl.value || '') : '';
-                const status = statusEl ? (statusEl.value || 'active') : 'active';
-
-                // Collect selected services from common possible locations (checkboxes, hidden inputs, or dropdown)
+                const name = document.getElementById('staff-name').value;
+                const email = document.getElementById('staff-email').value;
+                const phone = document.getElementById('staff-phone').value;
+                const status = document.getElementById('staff-status').value || 'active';
+                // Collect selected services from either a select or checkboxes
                 const services = [];
-                // If a dropdown exists (staff-service-dropdown), prefer its selected value(s)
-                const dropdown = document.getElementById('staff-service-dropdown');
-                if (dropdown && dropdown.tagName && dropdown.tagName.toLowerCase() === 'select') {
-                    for (let i = 0; i < dropdown.options.length; i++) {
-                        const opt = dropdown.options[i];
+                const serviceEl = document.getElementById('staff-service');
+                if (serviceEl && serviceEl.tagName && serviceEl.tagName.toLowerCase() === 'select') {
+                    for (let i = 0; i < serviceEl.options.length; i++) {
+                        const opt = serviceEl.options[i];
                         if (opt.selected && opt.value) services.push(opt.value);
                     }
+                } else {
+                    document.querySelectorAll('input[name="services[]"]:checked').forEach(cb => { if (cb && cb.value) services.push(cb.value); });
                 }
-                // Also consider any inputs named services[] (checkboxes, hidden inputs added by UI)
-                document.querySelectorAll('input[name="services[]"]').forEach(function(el){
-                    try {
-                        if (!el) return;
-                        if (el.type && el.type.toLowerCase() === 'checkbox') {
-                            if (el.checked && el.value) services.push(el.value);
-                        } else {
-                            if (el.value) services.push(el.value);
-                        }
-                    } catch (err) { /* ignore */ }
-                });
-
-                // Deduplicate services
-                const uniqueServices = Array.from(new Set(services.map(String))).filter(s => s && s.length);
-
-                // Validate required fields: name, email, service
-                if (!name.trim() || !email.trim() || uniqueServices.length === 0) {
-                    // show the specific message only when fields missing
-                    showMessage('Please fill required fields: service, name and email', 'error');
-                    // Focus first missing input for convenience
-                    if (!name.trim() && nameEl) {
-                        try { nameEl.focus(); } catch(e){}
-                    } else if (!email.trim() && emailEl) {
-                        try { emailEl.focus(); } catch(e){}
-                    }
-                    return;
-                }
-
                 const actionType = id ? 'update_staff' : 'add_staff';
-                const postData = { action: 'manage_staff_public', nonce: '<?php echo wp_create_nonce('staff_management_nonce'); ?>', action_type: actionType, data: JSON.stringify({ id: id, name: name, email: email, phone: phone, status: status, services: uniqueServices }) };
+                const postData = { action: 'manage_staff_public', nonce: '<?php echo wp_create_nonce('staff_management_nonce'); ?>', action_type: actionType, data: JSON.stringify({ id: id, name: name, email: email, phone: phone, status: status, services: services }) };
                 fetch('<?php echo admin_url('admin-ajax.php'); ?>', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' }, body: new URLSearchParams(postData) })
                 .then r => r.json()).then(resp => { if (resp && resp.success) { showMessage(resp.message || '<?php _e('Saved', 'payndle'); ?>'); closeModal(); loadStaff(); } else showMessage(resp.message || '<?php _e('Could not save', 'payndle'); ?>', 'error'); })
                 .catch(() => showMessage('<?php _e('Server error', 'payndle'); ?>', 'error'));
@@ -889,35 +829,6 @@ function handle_staff_ajax() {
                 $role = isset($data['role']) ? sanitize_text_field($data['role']) : '';
                 $id = isset($data['id']) ? absint($data['id']) : 0;
 
-                $current_business_id = get_current_business_id();
-                if (!$current_business_id) {
-                    throw new Exception(__('No business found. Please create a business profile first.', 'payndle'));
-                }
-
-                // Get business code
-                $business_code = get_post_meta($current_business_id, '_business_code', true);
-                if (!$business_code) {
-                    throw new Exception(__('Invalid business code. Please contact support.', 'payndle'));
-                }
-
-                $meta_query = array(
-                    'relation' => 'AND',
-                    array(
-                        'key' => '_business_code',
-                        'value' => $business_code,
-                        'compare' => '='
-                    )
-                );
-
-                // Add status filter if provided
-                if (!empty($status)) {
-                    $meta_query[] = array(
-                        'key' => 'staff_status',
-                        'value' => $status,
-                        'compare' => '='
-                    );
-                }
-
                 $args = array(
                     'post_type' => 'staff',
                     'posts_per_page' => $per_page,
@@ -948,37 +859,30 @@ function handle_staff_ajax() {
                 }
 
                 if (!empty($service_id)) {
-                    // Add service filter to meta query
-                    $meta_query[] = array(
+                    // staff_services is stored as serialized array; match both string and integer encodings
+                    $service_or = array(
                         'relation' => 'OR',
                         array(
                             'key' => 'staff_services',
-                            'value' => '"' . $service_id . '"',
+                            'value' => '"' . $service_id . '"', // serialized string form s:N:"ID"
                             'compare' => 'LIKE'
                         ),
                         array(
                             'key' => 'staff_services',
-                            'value' => 'i:' . $service_id . ';',
+                            'value' => 'i:' . $service_id . ';', // serialized integer form i:ID;
                             'compare' => 'LIKE'
                         )
                     );
                     // Legacy: some installs used staff_role text equal to service title
                     $s_post = get_post($service_id);
                     if ($s_post && !empty($s_post->post_title)) {
-                        $meta_query[] = array(
-                            'relation' => 'OR',
-                            array(
-                                'key' => 'staff_services',
-                                'value' => serialize(array($service_id)),
-                                'compare' => 'LIKE'
-                            ),
-                            array(
-                                'key' => 'staff_role',
-                                'value' => $s_post->post_title,
-                                'compare' => '='
-                            )
+                        $service_or[] = array(
+                            'key' => 'staff_role',
+                            'value' => $s_post->post_title,
+                            'compare' => '='
                         );
                     }
+                    $meta_query[] = $service_or;
                 }
                 // If role string provided (non-numeric), also match legacy staff_role exactly
                 if (!empty($role) && !is_numeric($role)) {
@@ -1066,41 +970,21 @@ function handle_staff_ajax() {
                 break;
 
             case 'add_staff':
-                $current_business_id = get_current_business_id();
-                if (!$current_business_id) {
-                    throw new Exception(__('No business found. Please create a business profile first.', 'payndle'));
-                }
-
                 $name = isset($data['name']) ? sanitize_text_field($data['name']) : '';
                 $email = isset($data['email']) ? sanitize_email($data['email']) : '';
                 $phone = isset($data['phone']) ? sanitize_text_field($data['phone']) : '';
                 $status = isset($data['status']) ? sanitize_text_field($data['status']) : 'active';
                 $services = isset($data['services']) && is_array($data['services']) ? array_map('absint', $data['services']) : array();
 
-                // Server-side required field validation
                 if (empty($name)) throw new Exception(__('Name is required', 'payndle'));
-                if (empty($email)) throw new Exception(__('Email is required', 'payndle'));
-                if (!empty($email) && !is_email($email)) throw new Exception(__('Invalid email address', 'payndle'));
-                if (empty($services) || !is_array($services) || count(array_filter($services)) === 0) throw new Exception(__('Please assign at least one service', 'payndle'));
 
-                // Prevent duplicate staff by email within the same business
+                // Prevent duplicate staff by email
                 if (!empty($email)) {
                     $existing = get_posts(array(
                         'post_type' => 'staff',
                         'post_status' => 'publish',
-                        'meta_query' => array(
-                            'relation' => 'AND',
-                            array(
-                                'key' => 'email',
-                                'value' => $email,
-                                'compare' => '='
-                            ),
-                            array(
-                                'key' => '_business_id',
-                                'value' => $current_business_id,
-                                'compare' => '='
-                            )
-                        ),
+                        'meta_key' => 'email',
+                        'meta_value' => $email,
                         'fields' => 'ids',
                         'numberposts' => 1
                     ));
@@ -1134,28 +1018,6 @@ function handle_staff_ajax() {
                 $post_id = wp_insert_post($post_arr);
                 if (is_wp_error($post_id) || $post_id == 0) throw new Exception(__('Could not create staff', 'payndle'));
 
-                // Get business code
-                $business_code = get_post_meta($current_business_id, '_business_code', true);
-                if (!$business_code) {
-                    throw new Exception(__('Invalid business code. Please contact support.', 'payndle'));
-                }
-
-                // Store business code as primary identifier
-                update_post_meta($post_id, '_business_code', $business_code);
-                
-                // Also store business code in legacy table if needed
-                global $wpdb;
-                $staff_table = $wpdb->prefix . 'staff_members';
-                if ($wpdb->get_var("SHOW TABLES LIKE '$staff_table'") === $staff_table) {
-                    $wpdb->update(
-                        $staff_table,
-                        ['business_code' => $business_code],
-                        ['id' => $post_id],
-                        ['%s'],
-                        ['%d']
-                    );
-                }
-
                 update_post_meta($post_id, 'email', $email);
                 update_post_meta($post_id, 'phone', $phone);
                 // avatar fields (optional)
@@ -1177,50 +1039,13 @@ function handle_staff_ajax() {
                 break;
 
             case 'update_staff':
-                $current_business_id = get_current_business_id();
-                if (!$current_business_id) {
-                    throw new Exception(__('No business found. Please create a business profile first.', 'payndle'));
-                }
-
                 $post_id = isset($data['id']) ? absint($data['id']) : 0;
-                if (!$post_id) {
-                    throw new Exception(__('Staff id missing', 'payndle'));
-                }
-
-                // Get current business code
-                $business_code = get_post_meta($current_business_id, '_business_code', true);
-                if (!$business_code) {
-                    throw new Exception(__('Invalid business code. Please contact support.', 'payndle'));
-                }
-
-                // Verify staff belongs to current business
-                $staff_business_code = get_post_meta($post_id, '_business_code', true);
-                if (!$staff_business_code) {
-                    // Check legacy table
-                    global $wpdb;
-                    $staff_table = $wpdb->prefix . 'staff_members';
-                    if ($wpdb->get_var("SHOW TABLES LIKE '$staff_table'") === $staff_table) {
-                        $staff_business_code = $wpdb->get_var($wpdb->prepare(
-                            "SELECT business_code FROM $staff_table WHERE id = %d",
-                            $post_id
-                        ));
-                    }
-                }
-                if ($staff_business_code !== $business_code) {
-                    throw new Exception(__('Permission denied: This staff member does not belong to your business.', 'payndle'));
-                }
                 if (!$post_id) throw new Exception(__('Staff id missing', 'payndle'));
                 $name = isset($data['name']) ? sanitize_text_field($data['name']) : '';
                 $email = isset($data['email']) ? sanitize_email($data['email']) : '';
                 $phone = isset($data['phone']) ? sanitize_text_field($data['phone']) : '';
                 $status = isset($data['status']) ? sanitize_text_field($data['status']) : 'active';
                 $services = isset($data['services']) && is_array($data['services']) ? array_map('absint', $data['services']) : array();
-
-                // Server-side required field validation for updates
-                if (empty($name)) throw new Exception(__('Name is required', 'payndle'));
-                if (empty($email)) throw new Exception(__('Email is required', 'payndle'));
-                if (!empty($email) && !is_email($email)) throw new Exception(__('Invalid email address', 'payndle'));
-                if (empty($services) || !is_array($services) || count(array_filter($services)) === 0) throw new Exception(__('Please assign at least one service', 'payndle'));
 
                 // Prevent updating to an email that belongs to another staff record
                 if (!empty($email)) {
@@ -1260,38 +1085,7 @@ function handle_staff_ajax() {
                 break;
 
             case 'delete_staff':
-                $current_business_id = get_current_business_id();
-                if (!$current_business_id) {
-                    throw new Exception(__('No business found. Please create a business profile first.', 'payndle'));
-                }
-
                 $post_id = isset($data['id']) ? absint($data['id']) : 0;
-                if (!$post_id) {
-                    throw new Exception(__('Staff id missing', 'payndle'));
-                }
-
-                // Get current business code
-                $business_code = get_post_meta($current_business_id, '_business_code', true);
-                if (!$business_code) {
-                    throw new Exception(__('Invalid business code. Please contact support.', 'payndle'));
-                }
-
-                // Verify staff belongs to current business
-                $staff_business_code = get_post_meta($post_id, '_business_code', true);
-                if (!$staff_business_code) {
-                    // Check legacy table
-                    global $wpdb;
-                    $staff_table = $wpdb->prefix . 'staff_members';
-                    if ($wpdb->get_var("SHOW TABLES LIKE '$staff_table'") === $staff_table) {
-                        $staff_business_code = $wpdb->get_var($wpdb->prepare(
-                            "SELECT business_code FROM $staff_table WHERE id = %d",
-                            $post_id
-                        ));
-                    }
-                }
-                if ($staff_business_code !== $business_code) {
-                    throw new Exception(__('Permission denied: This staff member does not belong to your business.', 'payndle'));
-                }
                 if (!$post_id) throw new Exception(__('Staff id missing', 'payndle'));
                 // Remove the staff from all service assigned_staff arrays
                 payndle_sync_assigned_staff($post_id, array());
@@ -1442,61 +1236,6 @@ function payndle_rest_upload_avatar(WP_REST_Request $request) {
 
     return new WP_REST_Response(array('id' => $attach_id, 'url' => $movefile['url']), 200);
 }
-
-/**
- * Migration function to handle existing staff records
- */
-function migrate_staff_business_ids() {
-    // Only run once
-    if (get_option('staff_business_id_migration_complete')) {
-        return;
-    }
-
-    // Get all businesses first
-    $businesses = get_posts(array(
-        'post_type' => 'payndle_business',
-        'posts_per_page' => -1,
-        'post_status' => 'publish'
-    ));
-
-    if (empty($businesses)) {
-        return; // No businesses to migrate
-    }
-
-    $staff = get_posts(array(
-        'post_type' => 'staff',
-        'posts_per_page' => -1,
-        'post_status' => 'any',
-        'meta_query' => array(
-            array(
-                'key' => 'business_id',
-                'compare' => 'NOT EXISTS'
-            )
-        )
-    ));
-
-    foreach ($staff as $member) {
-        $business_id = get_post_meta($member->ID, '_business_id', true);
-        if (!$business_id) {
-            // Try to find business ID from related services
-            $services = get_post_meta($member->ID, 'staff_services', true);
-            if (!empty($services) && is_array($services)) {
-                foreach ($services as $service_id) {
-                    $service_business_id = get_post_meta($service_id, '_business_id', true);
-                    if ($service_business_id) {
-                        update_post_meta($member->ID, 'business_id', $service_business_id);
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    update_option('staff_business_id_migration_complete', true);
-}
-
-// Run migration on plugin update or activation
-add_action('init', 'migrate_staff_business_ids');
 
 
 /**

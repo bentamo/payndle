@@ -14,145 +14,32 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 // Handle form submission
 function save_business_info() {
     check_ajax_referer('business_info_nonce', 'business_info_nonce');
-    $business_id = isset($_POST['business_id']) ? intval($_POST['business_id']) : 0;
 
-    // Validate business post exists and is the expected post type
-    if ( ! $business_id ) {
-        wp_send_json_error('Missing business id');
-    }
-
-    $business_post = get_post( $business_id );
-    if ( ! $business_post || $business_post->post_type !== 'payndle_business' ) {
-        wp_send_json_error('Invalid business');
-    }
-
-    // Capability check: user must be able to edit this specific post or be an admin
-    $current_user_id = get_current_user_id();
-    $owner_id = intval( get_post_meta( $business_id, '_business_owner_id', true ) );
-    if ( $owner_id !== $current_user_id && ! current_user_can( 'manage_options' ) && ! current_user_can( 'edit_post', $business_id ) ) {
+    if ( ! current_user_can('edit_posts') ) {
         wp_send_json_error('Unauthorized');
     }
+
+    $business_id = isset($_POST['business_id']) ? intval($_POST['business_id']) : 0;
     $fields = [
         'business_name', 'business_description', 'business_email', 'business_phone',
         'business_address', 'business_city', 'business_state', 'business_zip',
         'business_country', 'business_website', 'business_hours'
     ];
 
-    // Capture old business title for propagation
-    $old_business_name = $business_id ? get_the_title( $business_id ) : '';
-
     $response = [];
 
-
-    foreach ( $fields as $field ) {
-        if ( isset( $_POST[ $field ] ) ) {
-            // Use textarea sanitizer for larger text fields
-            if ( in_array( $field, array( 'business_description', 'business_hours' ), true ) ) {
-                $value = sanitize_textarea_field( wp_unslash( $_POST[ $field ] ) );
-            } else {
-                $value = sanitize_text_field( wp_unslash( $_POST[ $field ] ) );
-            }
-
+    foreach ($fields as $field) {
+        if ( isset($_POST[$field]) ) {
+            $value = sanitize_text_field($_POST[$field]);
             if ( $field === 'business_name' ) {
-                // Only update the post_title of the validated business post
-                wp_update_post( array(
-                    'ID'         => $business_id,
-                    'post_title' => $value,
-                ) );
+                wp_update_post([
+                    'ID' => $business_id,
+                    'post_title' => $value
+                ]);
             } else {
-                update_post_meta( $business_id, '_' . $field, $value );
+                update_post_meta($business_id, '_' . $field, $value);
             }
-
-            $response[ $field ] = $value;
-        }
-    }
-    // If business_name changed, propagate to connected posts (landing/dashboard/staff)
-    if ( isset( $_POST['business_name'] ) ) {
-        $new_name = sanitize_text_field( wp_unslash( $_POST['business_name'] ) );
-        if ( $old_business_name && $new_name && $old_business_name !== $new_name ) {
-            // helper to recursively replace strings in arrays/objects
-            $recursive_replace = function( $search, $replace, $data ) use ( & $recursive_replace ) {
-                if ( is_array( $data ) ) {
-                    foreach ( $data as $k => $v ) {
-                        $data[ $k ] = $recursive_replace( $search, $replace, $v );
-                    }
-                    return $data;
-                } elseif ( is_object( $data ) ) {
-                    foreach ( $data as $k => $v ) {
-                        $data->$k = $recursive_replace( $search, $replace, $v );
-                    }
-                    return $data;
-                } elseif ( is_string( $data ) ) {
-                    return str_replace( $search, $replace, $data );
-                }
-                return $data;
-            };
-
-            $connected_ids = array();
-            $landing_id = get_post_meta( $business_id, '_business_landing_id', true );
-            if ( $landing_id ) $connected_ids[] = intval( $landing_id );
-            $dashboard_id = get_post_meta( $business_id, '_business_dashboard_id', true );
-            if ( $dashboard_id ) $connected_ids[] = intval( $dashboard_id );
-            $staff_dashboard_id = get_post_meta( $business_id, '_business_staff_dashboard_id', true );
-            if ( $staff_dashboard_id ) $connected_ids[] = intval( $staff_dashboard_id );
-
-            foreach ( $connected_ids as $pid ) {
-                $post = get_post( $pid );
-                if ( ! $post ) continue;
-
-                // Update title formats depending on meta key
-                // For landing pages use "{Name} - Welcome" if that matches existing pattern; otherwise just replace occurrences in title
-                if ( $pid == $landing_id ) {
-                    $new_title = sprintf('%s - Welcome', $new_name);
-                } elseif ( $pid == $dashboard_id ) {
-                    $new_title = sprintf('Manager Dashboard - %s', $new_name);
-                } elseif ( $pid == $staff_dashboard_id ) {
-                    $new_title = sprintf('Staff Dashboard - %s', $new_name);
-                } else {
-                    $new_title = str_replace( $old_business_name, $new_name, $post->post_title );
-                }
-                wp_update_post( array( 'ID' => $pid, 'post_title' => $new_title ) );
-
-                // Replace occurrences in post_content
-                $content = $post->post_content;
-                if ( is_string( $content ) && strpos( $content, $old_business_name ) !== false ) {
-                    $new_content = str_replace( $old_business_name, $new_name, $content );
-                    wp_update_post( array( 'ID' => $pid, 'post_content' => $new_content ) );
-                }
-
-                // Replace occurrences in post meta (including serialized meta)
-                $all_meta = get_post_meta( $pid );
-                if ( ! empty( $all_meta ) ) {
-                    foreach ( $all_meta as $meta_key => $meta_values ) {
-                        foreach ( $meta_values as $meta_value ) {
-                            $orig = $meta_value;
-                            $updated = $meta_value;
-
-                            // If serialized, unserialize and recursively replace
-                            if ( is_string( $meta_value ) && is_serialized( $meta_value ) ) {
-                                $maybe = maybe_unserialize( $meta_value );
-                                $replaced = $recursive_replace( $old_business_name, $new_name, $maybe );
-                                if ( $replaced !== $maybe ) {
-                                    $updated = maybe_serialize( $replaced );
-                                }
-                            } elseif ( is_string( $meta_value ) ) {
-                                if ( strpos( $meta_value, $old_business_name ) !== false ) {
-                                    $updated = str_replace( $old_business_name, $new_name, $meta_value );
-                                }
-                            }
-
-                            if ( $updated !== $orig ) {
-                                // update_post_meta will add or update; ensure we update the specific value by deleting and adding
-                                // delete existing value then add the updated one
-                                delete_post_meta( $pid, $meta_key, $orig );
-                                add_post_meta( $pid, $meta_key, $updated );
-                            }
-                        }
-                    }
-                }
-
-                clean_post_cache( $pid );
-            }
+            $response[$field] = $value;
         }
     }
 
@@ -202,23 +89,6 @@ function manager_dashboard_shortcode() {
     $products_count = intval(get_post_meta($business_id, '_products_count', true) ?: 0);
     $users_count    = intval(get_post_meta($business_id, '_users_count', true) ?: 0);
     $orders_count   = intval(get_post_meta($business_id, '_orders_count', true) ?: 0);
-
-    // Ensure frontend script is enqueued and localized for AJAX
-    if ( function_exists( 'wp_enqueue_script' ) ) {
-        wp_enqueue_script(
-            'manager-dashboard-js',
-            plugin_dir_url(__FILE__) . 'assets/js/manager-dashboard.js',
-            array('jquery'),
-            '1.0.0',
-            true
-        );
-
-        wp_localize_script('manager-dashboard-js', 'managerDashboard', array(
-            'ajax_url' => admin_url('admin-ajax.php'),
-            // Nonce name: this will be sent as business_info_nonce
-            'nonce'    => wp_create_nonce('business_info_nonce'),
-        ));
-    }
 
     ob_start();
     ?>
@@ -434,7 +304,45 @@ function manager_dashboard_shortcode() {
     }
     </style>
 
-    <!-- manager-dashboard.js handles edit/cancel/submit interactions; script enqueued and localized by PHP -->
+    <script>
+    jQuery(document).ready(function($){
+        $('#edit-business-info').on('click', function(){
+            $('#business-info-display').hide();
+            $('#business-info-form').show();
+            $('html,body').animate({ scrollTop: $('#business-info-form').offset().top - 80 }, 300);
+        });
+
+        $('#cancel-edit').on('click', function(e){
+            e.preventDefault();
+            $('#business-info-form').hide();
+            $('#business-info-display').show();
+        });
+
+        $('#business-info-form').on('submit', function(e){
+            e.preventDefault();
+            var $form = $(this);
+            var $btn = $form.find('button[type="submit"]');
+            var data = $form.serialize();
+            var ajaxUrl = (typeof managerDashboard !== 'undefined' && managerDashboard.ajax_url) ? managerDashboard.ajax_url : ajaxurl;
+            var nonce = (typeof managerDashboard !== 'undefined' && managerDashboard.nonce) ? managerDashboard.nonce : '';
+
+            $.ajax({
+                url: ajaxUrl,
+                method: 'POST',
+                data: data + '&action=save_business_info&business_info_nonce=' + encodeURIComponent(nonce),
+                beforeSend: function(){
+                    $btn.prop('disabled', true).data('txt', $btn.text()).text('Saving...');
+                },
+                success: function(resp){
+                    if (resp && resp.success) location.reload();
+                    else alert(resp && resp.data ? resp.data : 'Save failed');
+                },
+                error: function(){ alert('An error occurred.'); },
+                complete: function(){ $btn.prop('disabled', false).text($btn.data('txt') || 'Save Changes'); }
+            });
+        });
+    });
+    </script>
     <?php
     return ob_get_clean();
 }

@@ -10,13 +10,9 @@ jQuery(document).ready(function($) {
         // Smooth transition
         $('#business-info-display').fadeOut(200, function() {
             $('#business-info-form').fadeIn(200);
-            // Scroll to the form if present; otherwise scroll to top
-            var $target = $('#business-info-form');
-            var scrollTop = 0;
-            if ($target.length && $target.offset()) {
-                scrollTop = $target.offset().top - 80;
-            }
-            $('html, body').animate({ scrollTop: scrollTop }, 300);
+            $('html, body').animate({
+                scrollTop: $('.main-content').offset().top - 20
+            }, 300);
         });
     });
 
@@ -47,12 +43,11 @@ jQuery(document).ready(function($) {
         
         // Send AJAX request
         $.ajax({
-            url: typeof managerDashboard !== 'undefined' ? managerDashboard.ajax_url : ajaxurl,
+            url: managerDashboard.ajax_url,
             type: 'POST',
             data: {
                 action: 'save_business_info',
-                // check_ajax_referer expects the nonce to be in the POST field named 'business_info_nonce'
-                business_info_nonce: (typeof managerDashboard !== 'undefined' ? managerDashboard.nonce : $('input[name="business_info_nonce"]').val()),
+                nonce: managerDashboard.nonce,
                 business_id: $('input[name="business_id"]').val(),
                 business_name: $('input[name="business_name"]').val(),
                 business_description: $('textarea[name="business_description"]').val(),
@@ -63,28 +58,22 @@ jQuery(document).ready(function($) {
                 business_state: $('input[name="business_state"]').val(),
                 business_zip: $('input[name="business_zip"]').val(),
                 business_country: $('input[name="business_country"]').val(),
-                business_website: $('input[name="business_website"]').val(),
-                business_hours: $('textarea[name="business_hours"]').val()
+                business_website: $('input[name="business_website"]').val()
             },
             success: function(response) {
-                if (response && response.success) {
+                if (response.success) {
                     // Update the display with new values
                     updateBusinessDisplay(response.data);
-
+                    
                     // Show success message
                     showNotice('Changes saved successfully', 'success');
-
-                    // Switch back to view mode with animation (fade)
-                    $('#business-info-form').fadeOut(200, function() {
-                        $('#business-info-display').fadeIn(200);
-                        // ensure edit button is visible again
-                        $('#edit-business-info').prop('disabled', false).show();
-                        // scroll back to display area
-                        $('html, body').animate({ scrollTop: $('#business-info-display').offset() ? $('#business-info-display').offset().top - 20 : 0 }, 300);
-                    });
+                    
+                    // Switch back to view mode
+                    $('#business-info-form').addClass('hidden');
+                    $('#business-info-display').removeClass('hidden');
+                    $('#edit-business-info').removeClass('hidden');
                 } else {
-                    var msg = (response && response.data) ? response.data : 'Failed to save changes';
-                    showNotice(msg, 'error');
+                    showNotice('Failed to save changes', 'error');
                 }
             },
             error: function() {
@@ -98,40 +87,34 @@ jQuery(document).ready(function($) {
 
     // Update the display with new values
     function updateBusinessDisplay(data) {
-        if (!data) return;
-
-        // Update business name in header and the display card
+        // Update business name in the header
         if (data.business_name) {
-            // header
-            $('.dashboard-header .business-name').text(data.business_name);
-            // display card: find row with label text "Business Name"
-            $('#business-info-display .row:has(.label:contains("Business Name")) .value').text(data.business_name);
+            $('.dashboard-header h1').text(data.business_name + ' Dashboard');
         }
-
-        if (data.business_description !== undefined) {
-            $('#business-info-display .row:has(.label:contains("Description")) .value').text(data.business_description || '');
-        }
-
+        
+        // Update business details
+        if (data.business_name) $('.info-card:nth-child(1) .info-row:has(.info-label:contains("Name")) .info-value').text(data.business_name);
+        if (data.business_description) $('.info-card:nth-child(1) .info-row:has(.info-label:contains("Description")) .info-value').text(data.business_description);
         if (data.business_website) {
-            const hostname = (data.business_website || '').replace(/(https?:\/\/)?(www\.)?/i, '').split('/')[0];
-            var $websiteRow = $('#business-info-display .row:has(.label:contains("Website")) .value');
-            $websiteRow.html('<a href="' + data.business_website + '" target="_blank">' + hostname + '</a>');
+            const hostname = data.business_website.replace(/(https?:\/\/)?(www\.)?/i, '').split('/')[0];
+            $('.info-card:nth-child(1) .info-row:has(.info-label:contains("Website")) .info-value').html(
+                '<a href="' + data.business_website + '" target="_blank" class="text-primary hover:underline">' + 
+                hostname + 
+                '</a>'
+            );
         }
-
-        if (data.business_email !== undefined) {
-            $('#business-info-display .row:has(.label:contains("Email")) .value').text(data.business_email || '\u2014');
-        }
-        if (data.business_phone !== undefined) {
-            $('#business-info-display .row:has(.label:contains("Phone")) .value').text(data.business_phone || '\u2014');
-        }
-
-        if (data.business_address !== undefined || data.business_city !== undefined || data.business_state !== undefined || data.business_zip !== undefined || data.business_country !== undefined) {
-            var addr = data.business_address || '';
-            if (data.business_city) addr += (addr ? ', ' : '') + data.business_city;
-            if (data.business_state) addr += (addr ? ', ' : '') + data.business_state;
-            if (data.business_zip) addr += (addr ? ' ' : '') + data.business_zip;
-            if (data.business_country) addr += (addr ? '<br>' : '') + data.business_country;
-            $('#business-info-display .row:has(.label:contains("Address")) .value').html(addr || '&mdash;');
+        
+        // Update contact information
+        if (data.business_email) $('.info-card:nth-child(2) .info-row:has(.info-label:contains("Email")) .info-value').text(data.business_email);
+        if (data.business_phone) $('.info-card:nth-child(2) .info-row:has(.info-label:contains("Phone")) .info-value').text(data.business_phone);
+        if (data.business_address) {
+            let address = data.business_address;
+            if (data.business_city) address += ', ' + data.business_city;
+            if (data.business_state) address += ', ' + data.business_state;
+            if (data.business_zip) address += ' ' + data.business_zip;
+            if (data.business_country) address += '<br>' + data.business_country;
+            
+            $('.info-card:nth-child(2) .info-row:has(.info-label:contains("Address")) .info-value').html(address);
         }
     }
 

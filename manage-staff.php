@@ -7,120 +7,6 @@
 if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
-// -----------------------------------------------------------------------------
-// Internal helpers (prefixed to avoid collisions). These are implementation
-// details and do not change any public API or function signatures used by
-// other parts of the plugin.
-// -----------------------------------------------------------------------------
-
-/**
- * Return array of published service IDs (ordered by title)
- */
-function ecs_get_published_service_ids() {
-    $services = get_posts(array(
-        'post_type' => 'service',
-        'post_status' => 'publish',
-        'posts_per_page' => -1,
-        'orderby' => 'title',
-        'order' => 'ASC',
-        'fields' => 'ids'
-    ));
-    return is_array($services) ? $services : array();
-}
-
-/**
- * Echo <option> elements for services list (keeps markup centralized)
- */
-function ecs_render_service_options($selected = '') {
-    $services = ecs_get_published_service_ids();
-    foreach ($services as $sid) {
-        $title = get_the_title($sid);
-        echo '<option value="' . esc_attr($sid) . '"' . selected($selected, $sid, false) . '>' . esc_html($title) . '</option>';
-    }
-}
-
-/**
- * Resolve an avatar URL and attachment id for a staff post.
- * Returns array( url|string, id|int )
- */
-function ecs_resolve_avatar($post_id) {
-    $avatar = get_post_meta($post_id, 'staff_avatar', true);
-    $avatar_id = get_post_meta($post_id, 'staff_avatar_id', true);
-
-    if (empty($avatar) && !empty($avatar_id)) {
-        if (function_exists('wp_get_attachment_image_url')) {
-            $resolved = wp_get_attachment_image_url($avatar_id, 'thumbnail');
-        } else {
-            $resolved = wp_get_attachment_url($avatar_id);
-        }
-        if (empty($resolved)) {
-            $resolved = wp_get_attachment_url($avatar_id);
-        }
-        if (!empty($resolved)) {
-            $avatar = $resolved;
-        }
-    }
-
-    if (empty($avatar)) {
-        $thumb_id = function_exists('get_post_thumbnail_id') ? get_post_thumbnail_id($post_id) : 0;
-        if ($thumb_id) {
-            $resolved = function_exists('wp_get_attachment_image_url') ? wp_get_attachment_image_url($thumb_id, 'thumbnail') : wp_get_attachment_url($thumb_id);
-            if (empty($resolved)) { $resolved = wp_get_attachment_url($thumb_id); }
-            if (!empty($resolved)) {
-                $avatar = $resolved;
-                if (empty($avatar_id)) { $avatar_id = $thumb_id; }
-            }
-        }
-    }
-
-    return array($avatar, $avatar_id);
-}
-
-/**
- * Build service items (array of ['id'=>..., 'title'=>...]) from staff_services meta
- */
-function ecs_build_service_items($post_id) {
-    $service_items = array();
-    $services_meta = get_post_meta($post_id, 'staff_services', true) ?: array();
-    if (!empty($services_meta) && is_array($services_meta)) {
-        foreach ($services_meta as $sid) {
-            $s_post = get_post($sid);
-            if ($s_post) $service_items[] = array('id' => $sid, 'title' => $s_post->post_title);
-        }
-    }
-    return $service_items;
-}
-
-/**
- * Parse a variety of duration formats into integer minutes.
- * Accepts numeric minutes, "H:MM", "X hour(s)", and "Y min(s)" strings.
- */
-function ecs_parse_duration_to_minutes($raw_dur) {
-    $minutes = 60;
-    if (empty($raw_dur)) return $minutes;
-    if (is_numeric($raw_dur)) return intval($raw_dur);
-    if (strpos($raw_dur, ':') !== false) {
-        $p = explode(':', $raw_dur);
-        return intval($p[0]) * 60 + intval($p[1] ?? 0);
-    }
-    if (preg_match('/(\d+)\s*hour/i', $raw_dur, $m)) return intval($m[1]) * 60;
-    if (preg_match('/(\d+)\s*min/i', $raw_dur, $m)) return intval($m[1]);
-    return $minutes;
-}
-
-/**
- * Sync a single staff id into assigned_staff meta on given service ids array.
- * This is the same behaviour used in add/update flows and keeps sync logic grouped.
- */
-function ecs_sync_assigned_staff_for_services($post_id, $services) {
-    foreach ((array)$services as $sid) {
-        $assigned = get_post_meta($sid, 'assigned_staff', true) ?: array();
-        if (!in_array($post_id, $assigned)) {
-            $assigned[] = $post_id;
-            update_post_meta($sid, 'assigned_staff', $assigned);
-        }
-    }
-}
 
 function elite_cuts_manage_staff_page() {
     // Check user capabilities
@@ -154,7 +40,18 @@ function elite_cuts_manage_staff_page() {
                             <option value="">All Roles</option>
                             <?php
                             // Populate from Service posts (actual services)
-                            ecs_render_service_options();
+                            $services = get_posts(array(
+                                'post_type' => 'service',
+                                'post_status' => 'publish',
+                                'posts_per_page' => -1,
+                                'orderby' => 'title',
+                                'order' => 'ASC',
+                                'fields' => 'ids'
+                            ));
+                            foreach ($services as $sid) {
+                                $title = get_the_title($sid);
+                                echo '<option value="' . esc_attr($sid) . '">' . esc_html($title) . '</option>';
+                            }
                             ?>
                         </select>
                     </div>
@@ -508,29 +405,25 @@ function handle_manage_staff_ajax() {
     $action_type = sanitize_text_field($_POST['action_type']);
     $data = json_decode(stripslashes($_POST['data']), true);
 
-    // Route to specific handlers while preserving exact behaviour and messages
-    if ($action_type === 'get_staff') {
-        elite_cuts_get_staff($data);
-        return;
+    switch ($action_type) {
+        case 'get_staff':
+            elite_cuts_get_staff($data);
+            break;
+        case 'save_staff_schedule':
+            elite_cuts_save_staff_schedule($data);
+            break;
+        case 'add_staff':
+            elite_cuts_add_staff($data);
+            break;
+        case 'update_staff':
+            elite_cuts_update_staff($data);
+            break;
+        case 'delete_staff':
+            elite_cuts_delete_staff($data);
+            break;
+        default:
+            wp_send_json_error('Invalid action');
     }
-    if ($action_type === 'save_staff_schedule') {
-        elite_cuts_save_staff_schedule($data);
-        return;
-    }
-    if ($action_type === 'add_staff') {
-        elite_cuts_add_staff($data);
-        return;
-    }
-    if ($action_type === 'update_staff') {
-        elite_cuts_update_staff($data);
-        return;
-    }
-    if ($action_type === 'delete_staff') {
-        elite_cuts_delete_staff($data);
-        return;
-    }
-
-    wp_send_json_error('Invalid action');
 }
 add_action('wp_ajax_manage_staff', 'handle_manage_staff_ajax');
 
@@ -543,13 +436,14 @@ function elite_cuts_get_staff($filters = array()) {
         'paged' => isset($filters['paged']) ? intval($filters['paged']) : 1,
     );
 
-    if (!empty($filters['search'])) {
+    if (isset($filters['search']) && !empty($filters['search'])) {
         $args['s'] = sanitize_text_field($filters['search']);
     }
 
-    // Build meta_query conditions based on provided filters
+    // Build meta_query with AND relation; include status and service filters
     $meta_query = array('relation' => 'AND');
-    if (!empty($filters['status'])) {
+
+    if (isset($filters['status']) && !empty($filters['status'])) {
         $meta_query[] = array(
             'key' => 'staff_status',
             'value' => sanitize_text_field($filters['status']),
@@ -557,31 +451,52 @@ function elite_cuts_get_staff($filters = array()) {
         );
     }
 
-    if (!empty($filters['service_id'])) {
+    if (isset($filters['service_id']) && !empty($filters['service_id'])) {
         $service_id = intval($filters['service_id']);
         $service_title = '';
         $s_post = get_post($service_id);
         if ($s_post) { $service_title = $s_post->post_title; }
 
+        // Match either: staff_services serialized array contains ID OR staff_role equals service title (legacy data)
         $service_clause = array('relation' => 'OR');
-        $service_clause[] = array('key' => 'staff_services', 'value' => '"' . $service_id . '"', 'compare' => 'LIKE');
-        $service_clause[] = array('key' => 'staff_services', 'value' => 'i:' . $service_id . ';', 'compare' => 'LIKE');
+        // Case 1: staff_services stored as array of strings => serialized contains "123"
+        $service_clause[] = array(
+            'key' => 'staff_services',
+            'value' => '"' . $service_id . '"',
+            'compare' => 'LIKE'
+        );
+        // Case 2: staff_services stored as array of integers => serialized contains i:123;
+        $service_clause[] = array(
+            'key' => 'staff_services',
+            'value' => 'i:' . $service_id . ';',
+            'compare' => 'LIKE'
+        );
         if (!empty($service_title)) {
-            $service_clause[] = array('key' => 'staff_role', 'value' => $service_title, 'compare' => '=');
+            $service_clause[] = array(
+                'key' => 'staff_role',
+                'value' => $service_title,
+                'compare' => '='
+            );
         }
 
         $meta_query[] = $service_clause;
     }
 
-    if (!empty($filters['role']) && !is_numeric($filters['role'])) {
-        $meta_query[] = array('key' => 'staff_role', 'value' => sanitize_text_field($filters['role']), 'compare' => '=');
+    // If role is provided as a non-numeric string, match legacy staff_role directly
+    if (isset($filters['role']) && !empty($filters['role']) && !is_numeric($filters['role'])) {
+        $meta_query[] = array(
+            'key' => 'staff_role',
+            'value' => sanitize_text_field($filters['role']),
+            'compare' => '='
+        );
     }
 
+    // Only set meta_query if we actually added conditions
     if (count($meta_query) > 1) {
         $args['meta_query'] = $meta_query;
     }
 
-    if (!empty($filters['id'])) {
+    if (isset($filters['id']) && !empty($filters['id'])) {
         $args['p'] = intval($filters['id']);
     }
 
@@ -592,9 +507,45 @@ function elite_cuts_get_staff($filters = array()) {
         while ($query->have_posts()) {
             $query->the_post();
             $post_id = get_the_ID();
+            
+            $avatar = get_post_meta($post_id, 'staff_avatar', true);
+            $avatar_id = get_post_meta($post_id, 'staff_avatar_id', true);
+            // Resolve attachment ID to URL if avatar is empty
+            if (empty($avatar) && !empty($avatar_id)) {
+                if (function_exists('wp_get_attachment_image_url')) {
+                    $resolved = wp_get_attachment_image_url($avatar_id, 'thumbnail');
+                } else {
+                    $resolved = wp_get_attachment_url($avatar_id);
+                }
+                if (empty($resolved)) {
+                    $resolved = wp_get_attachment_url($avatar_id);
+                }
+                if (!empty($resolved)) {
+                    $avatar = $resolved;
+                }
+            }
+            // Fallback to featured image if no avatar meta is set
+            if (empty($avatar)) {
+                $thumb_id = function_exists('get_post_thumbnail_id') ? get_post_thumbnail_id($post_id) : 0;
+                if ($thumb_id) {
+                    $resolved = function_exists('wp_get_attachment_image_url') ? wp_get_attachment_image_url($thumb_id, 'thumbnail') : wp_get_attachment_url($thumb_id);
+                    if (empty($resolved)) { $resolved = wp_get_attachment_url($thumb_id); }
+                    if (!empty($resolved)) {
+                        $avatar = $resolved;
+                        if (empty($avatar_id)) { $avatar_id = $thumb_id; }
+                    }
+                }
+            }
 
-            list($avatar, $avatar_id) = ecs_resolve_avatar($post_id);
-            $service_items = ecs_build_service_items($post_id);
+            // Build service items (id + title) from staff_services meta
+            $service_items = array();
+            $services_meta = get_post_meta($post_id, 'staff_services', true) ?: array();
+            if (!empty($services_meta) && is_array($services_meta)) {
+                foreach ($services_meta as $sid) {
+                    $s_post = get_post($sid);
+                    if ($s_post) $service_items[] = array('id' => $sid, 'title' => $s_post->post_title);
+                }
+            }
 
             $staff[] = array(
                 'id' => $post_id,
@@ -617,48 +568,77 @@ function elite_cuts_get_staff($filters = array()) {
         'total_pages' => $query->max_num_pages,
     );
 
-    wp_send_json_success(array('staff' => $staff, 'pagination' => $pagination));
+    wp_send_json_success(array(
+        'staff' => $staff,
+        'pagination' => $pagination
+    ));
 }
 
 // Add staff function
 function elite_cuts_add_staff($data) {
+    // Server-side validation
     $name = isset($data['name']) ? trim(sanitize_text_field($data['name'])) : '';
     $services = isset($data['services']) && is_array($data['services']) ? array_map('absint', $data['services']) : array();
+    $email = isset($data['email']) ? sanitize_email($data['email']) : '';
+    $phone = isset($data['phone']) ? sanitize_text_field($data['phone']) : '';
     $email = isset($data['email']) ? sanitize_email($data['email']) : '';
     $phone = isset($data['phone']) ? sanitize_text_field($data['phone']) : '';
 
     if (empty($name)) {
         wp_send_json_error(array('message' => 'Staff name is required.'));
     }
+
     if (empty($services)) {
         wp_send_json_error(array('message' => 'Please assign at least one service to the staff member.'));
     }
+
+    // Require at least one contact method
     if (empty($email) && empty($phone)) {
         wp_send_json_error(array('message' => 'Please provide at least one contact method: email or phone.'));
     }
 
-    $post_data = array('post_title' => $name, 'post_type' => 'staff', 'post_status' => 'publish');
+    // Require at least one contact method
+    if (empty($email) && empty($phone)) {
+        wp_send_json_error(array('message' => 'Please provide at least one contact method: email or phone.'));
+    }
+
+    $post_data = array(
+        'post_title' => $name,
+        'post_type' => 'staff',
+        'post_status' => 'publish',
+    );
+
     $post_id = wp_insert_post($post_data);
 
-    if (!$post_id) {
+    if ($post_id) {
+    update_post_meta($post_id, 'staff_email', sanitize_email($data['email']));
+    update_post_meta($post_id, 'staff_phone', sanitize_text_field($data['phone']));
+        update_post_meta($post_id, 'staff_status', sanitize_text_field($data['status']));
+    update_post_meta($post_id, 'staff_role', sanitize_text_field($data['role']));
+    // services from admin form (validated above)
+    update_post_meta($post_id, 'staff_services', $services);
+        
+        if (isset($data['avatar']) && !empty($data['avatar'])) {
+            update_post_meta($post_id, 'staff_avatar', esc_url_raw($data['avatar']));
+        }
+        if (isset($data['avatar_id']) && !empty($data['avatar_id'])) {
+            update_post_meta($post_id, 'staff_avatar_id', intval($data['avatar_id']));
+            set_post_thumbnail($post_id, intval($data['avatar_id']));
+        }
+
+        // Sync assigned_staff on each service post
+        foreach ($services as $sid) {
+            $assigned = get_post_meta($sid, 'assigned_staff', true) ?: array();
+            if (!in_array($post_id, $assigned)) {
+                $assigned[] = $post_id;
+                update_post_meta($sid, 'assigned_staff', $assigned);
+            }
+        }
+
+        wp_send_json_success(array('message' => 'Staff member added successfully', 'id' => $post_id));
+    } else {
         wp_send_json_error('Failed to add staff member');
     }
-
-    update_post_meta($post_id, 'staff_email', $email);
-    update_post_meta($post_id, 'staff_phone', $phone);
-    update_post_meta($post_id, 'staff_status', sanitize_text_field($data['status']));
-    update_post_meta($post_id, 'staff_role', sanitize_text_field($data['role']));
-    update_post_meta($post_id, 'staff_services', $services);
-
-    if (!empty($data['avatar'])) update_post_meta($post_id, 'staff_avatar', esc_url_raw($data['avatar']));
-    if (!empty($data['avatar_id'])) {
-        update_post_meta($post_id, 'staff_avatar_id', intval($data['avatar_id']));
-        set_post_thumbnail($post_id, intval($data['avatar_id']));
-    }
-
-    ecs_sync_assigned_staff_for_services($post_id, $services);
-
-    wp_send_json_success(array('message' => 'Staff member added successfully', 'id' => $post_id));
 }
 
 // Update staff function
@@ -677,42 +657,54 @@ function elite_cuts_update_staff($data) {
         wp_send_json_error(array('message' => 'Please assign at least one service to the staff member.'));
     }
 
-    $post_data = array('ID' => $post_id, 'post_title' => $name);
+    $post_data = array(
+        'ID' => $post_id,
+        'post_title' => $name,
+    );
+
     $result = wp_update_post($post_data);
 
-    if (!$result) {
+    if ($result) {
+        update_post_meta($post_id, 'staff_email', sanitize_email($data['email']));
+        update_post_meta($post_id, 'staff_phone', sanitize_text_field($data['phone']));
+        update_post_meta($post_id, 'staff_status', sanitize_text_field($data['status']));
+        update_post_meta($post_id, 'staff_role', sanitize_text_field($data['role']));
+        // services update
+        $old_services = get_post_meta($post_id, 'staff_services', true) ?: array();
+        $services = isset($data['services']) && is_array($data['services']) ? array_map('absint', $data['services']) : array();
+        
+        if (isset($data['avatar']) && !empty($data['avatar'])) {
+            update_post_meta($post_id, 'staff_avatar', esc_url_raw($data['avatar']));
+        }
+        if (isset($data['avatar_id']) && !empty($data['avatar_id'])) {
+            update_post_meta($post_id, 'staff_avatar_id', intval($data['avatar_id']));
+            set_post_thumbnail($post_id, intval($data['avatar_id']));
+        }
+
+        // Persist services
+        update_post_meta($post_id, 'staff_services', $services);
+
+        // Sync removals from assigned_staff
+        $removed = array_diff($old_services, $services);
+        foreach ($removed as $sid) {
+            $assigned = get_post_meta($sid, 'assigned_staff', true) ?: array();
+            $assigned = array_values(array_filter($assigned, function($v) use ($post_id){ return intval($v) !== intval($post_id); }));
+            update_post_meta($sid, 'assigned_staff', $assigned);
+        }
+        // Sync additions to assigned_staff
+        $added = array_diff($services, $old_services);
+        foreach ($added as $sid) {
+            $assigned = get_post_meta($sid, 'assigned_staff', true) ?: array();
+            if (!in_array($post_id, $assigned)) {
+                $assigned[] = $post_id;
+                update_post_meta($sid, 'assigned_staff', $assigned);
+            }
+        }
+
+        wp_send_json_success(array('message' => 'Staff member updated successfully'));
+    } else {
         wp_send_json_error('Failed to update staff member');
     }
-
-    update_post_meta($post_id, 'staff_email', sanitize_email($data['email']));
-    update_post_meta($post_id, 'staff_phone', sanitize_text_field($data['phone']));
-    update_post_meta($post_id, 'staff_status', sanitize_text_field($data['status']));
-    update_post_meta($post_id, 'staff_role', sanitize_text_field($data['role']));
-
-    $old_services = get_post_meta($post_id, 'staff_services', true) ?: array();
-    $services = isset($data['services']) && is_array($data['services']) ? array_map('absint', $data['services']) : array();
-
-    if (!empty($data['avatar'])) update_post_meta($post_id, 'staff_avatar', esc_url_raw($data['avatar']));
-    if (!empty($data['avatar_id'])) {
-        update_post_meta($post_id, 'staff_avatar_id', intval($data['avatar_id']));
-        set_post_thumbnail($post_id, intval($data['avatar_id']));
-    }
-
-    update_post_meta($post_id, 'staff_services', $services);
-
-    // Sync removals
-    $removed = array_diff($old_services, $services);
-    foreach ($removed as $sid) {
-        $assigned = get_post_meta($sid, 'assigned_staff', true) ?: array();
-        $assigned = array_values(array_filter($assigned, function($v) use ($post_id){ return intval($v) !== intval($post_id); }));
-        update_post_meta($sid, 'assigned_staff', $assigned);
-    }
-
-    // Sync additions
-    $added = array_diff($services, $old_services);
-    ecs_sync_assigned_staff_for_services($post_id, $added);
-
-    wp_send_json_success(array('message' => 'Staff member updated successfully'));
 }
 
 // Delete staff function

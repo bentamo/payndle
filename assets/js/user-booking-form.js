@@ -468,27 +468,18 @@
         }
 
         showMessage(message, type = 'info') {
-            // If there are visible schedule or row errors, avoid showing informational messages
-            try {
-                if (type === 'info') {
-                    if ($('.ubf-schedule-error:visible').length > 0 || $('.ubf-row-error:visible').length > 0) {
-                        return; // do not show positive info when errors are visible
-                    }
-                }
-            } catch (e) { /* ignore guard failures */ }
-
             // Remove existing messages
             $('.booking-message').remove();
-
+            
             const messageHtml = `
                 <div class="booking-message booking-${type}">
                     <i class="fas ${type === 'error' ? 'fa-exclamation-triangle' : 'fa-info-circle'}"></i>
                     ${message}
                 </div>
             `;
-
+            
             this.form.prepend(messageHtml);
-
+            
             // Auto-hide after 5 seconds
             setTimeout(() => {
                 $('.booking-message').fadeOut();
@@ -828,8 +819,6 @@
         // Instead of showing an overlapping modal, write a concise red inline error
         function showConflictModal(conflictsOrItems, existingMap) {
             console.debug('[UBF] showConflictModal called with:', conflictsOrItems, 'existingMap:', existingMap);
-            // Remove any positive informational banners (e.g., 'Slots available') so conflict UI takes precedence
-            try { $('.booking-message.booking-info').remove(); } catch(e){}
             // Clear all per-row errors first
             const $scheduleRoot = $('#ubf-per-service-schedule');
             $scheduleRoot.find('.ubf-row-error').hide().text('');
@@ -1041,11 +1030,7 @@
 
             // persist the last payload on the form so conflict indices can be robustly
             // mapped back to DOM rows even if DOM order changed between requests
-        try { $scheduleForm.data('ubf-last-schedule-payload', { schedule_service_id: svc, schedule_staff_id: staff, preferred_date: date, preferred_time: time }); } catch(e){}
-        // Attach a request token so we can detect & ignore stale responses when multiple
-        // availability requests are in-flight (prevents races when users click Next rapidly)
-        var _ubf_request_token = String(Date.now()) + '-' + Math.random().toString(36).slice(2);
-        try { $scheduleForm.data('ubf-last-schedule-ts', _ubf_request_token); } catch(e){}
+            try { $scheduleForm.data('ubf-last-schedule-payload', { schedule_service_id: svc, schedule_staff_id: staff, preferred_date: date, preferred_time: time }); } catch(e){}
 
             $.ajax({
                 url: userBookingAjax.ajaxurl,
@@ -1053,37 +1038,8 @@
                 data: data,
                 success: function(resp){
                     console.debug('[UBF] check_schedule_availability_v3 response:', resp);
-                    // ignore stale responses from earlier requests
-                    try {
-                        var _cur = $scheduleForm.data('ubf-last-schedule-ts');
-                        if (_cur && _cur !== _ubf_request_token) {
-                            console.debug('[UBF] stale availability response ignored (token mismatch)');
-                            return;
-                        }
-                    } catch(e) { /* ignore token errors */ }
+                    const $scheduleForm = $('#ubf-per-service-schedule').closest('.ubf-v3-form');
                     if (resp && resp.success) {
-                        // Defensive: if server mistakenly returns success but includes conflict arrays,
-                        // treat that as a failure so we don't show positive banners or clear errors.
-                        const hasConflicts = (resp && Array.isArray(resp.conflict_items) && resp.conflict_items.length) || (resp && Array.isArray(resp.conflict_rows) && resp.conflict_rows.length);
-                        if (hasConflicts) {
-                            const conflictItems = resp && resp.conflict_items ? resp.conflict_items : (resp && resp.conflict_rows ? resp.conflict_rows : []);
-                            const existing = resp && resp.conflict_existing ? resp.conflict_existing : {};
-                            try { $scheduleForm.data('ubf-has-schedule-conflict', true); $scheduleForm.data('ubf-schedule-conflicts', conflictItems || []); } catch(e){}
-                            try { showConflictModal(conflictItems, existing); } catch(e){}
-                            try { $scheduleForm.find('.booking-message.booking-info').remove(); } catch(e){}
-                            // Show fallback hint if nothing rendered
-                            try {
-                                const hasGlobal = $('.ubf-schedule-error:visible').length > 0;
-                                const hasRow = $('#ubf-per-service-schedule').find('.ubf-row-error:visible').length > 0;
-                                if (!hasGlobal && !hasRow) {
-                                    const fallbackMsg = (resp && resp.message) ? resp.message : 'One or more selected services conflict with existing bookings. Please review your selected times.';
-                                    const $hint = $scheduleForm.find('.ubf-schedule-error');
-                                    if ($hint.length) { $hint.text(fallbackMsg).show(); }
-                                    else { try { const inst = $scheduleForm.data('ubf-instance'); if (inst && typeof inst.showMessage === 'function') inst.showMessage(fallbackMsg, 'error'); else $scheduleForm.prepend('<div class="booking-message booking-error">' + $('<div>').text(fallbackMsg).html() + '</div>'); } catch(e){} }
-                                }
-                            } catch(e){}
-                            return;
-                        }
                 // Clear any existing schedule error and per-row messages
                 $('.ubf-schedule-error').hide().text('');
                 // clear per-row inline error text and hide
@@ -1094,165 +1050,25 @@
                 try { $scheduleForm.data('ubf-has-schedule-conflict', false); $scheduleForm.data('ubf-schedule-conflicts', []); } catch(e){}
                 // remove any modal we showed
                 $('#ubf-conflict-modal').remove();
-                        // If server provided an informational message while available, surface it
-                        // only when the user is viewing the schedule step (step 3). This avoids
-                        // showing 'Slots available' on unrelated steps.
-                        try {
-                            // Only show informational message if server did NOT return conflicts
-                            const hasConflicts = (resp && Array.isArray(resp.conflict_items) && resp.conflict_items.length) || (resp && Array.isArray(resp.conflict_rows) && resp.conflict_rows.length);
-                            if (resp && resp.message && !hasConflicts) {
-                                const inst = $scheduleForm.data('ubf-instance');
-                                const isOnSchedule = inst && typeof inst.current !== 'undefined' ? (inst.current === 3) : true;
-                                if (isOnSchedule) {
-                                    if (inst && typeof inst.showMessage === 'function') {
-                                        inst.showMessage(resp.message, 'info');
-                                    } else {
-                                        $scheduleForm.prepend('<div class="booking-message booking-info">' + $('<div>').text(resp.message).html() + '</div>');
-                                    }
-                                }
-                            }
-                        } catch(e) { /* ignore message-surface errors */ }
                     } else {
                         // Prefer descriptive conflict items when the server provides them
                         const conflictItems = resp && resp.conflict_items ? resp.conflict_items : (resp && resp.conflict_rows ? resp.conflict_rows : []);
                         const existing = resp && resp.conflict_existing ? resp.conflict_existing : {};
                         console.debug('[UBF] availability conflicts:', conflictItems, 'existing map:', existing);
-
                         // store conflict info on the form so UBFv3.next can block progression
-                        try {
-                            $scheduleForm.data('ubf-has-schedule-conflict', true);
-                            $scheduleForm.data('ubf-schedule-conflicts', conflictItems || []);
-                        } catch (e) { /* ignore */ }
-
+                        try { $scheduleForm.data('ubf-has-schedule-conflict', true); $scheduleForm.data('ubf-schedule-conflicts', conflictItems || []); } catch(e){}
                         // write inline conflict message and mark blocks (showConflictModal handles marking)
-                        try {
-                            showConflictModal(conflictItems, existing);
-                        } catch (e) { /* ignore */ }
-
-                        // Fallback: if showConflictModal didn't render any visible hint, show a concise message so users see feedback
-                        try {
-                            const hasGlobal = $('.ubf-schedule-error:visible').length > 0;
-                            const hasRow = $('#ubf-per-service-schedule').find('.ubf-row-error:visible').length > 0;
-                                if (!hasGlobal && !hasRow) {
-                                // remove any stale informational messages (e.g., 'Slots available') before showing error
-                                try { $scheduleForm.find('.booking-message.booking-info').remove(); } catch(e){}
-                                const fallbackMsg = (resp && resp.message) ? resp.message : 'One or more selected services conflict with existing bookings. Please review your selected times.';
-                                // prefer to show inline global hint if present
-                                const $hint = $scheduleForm.find('.ubf-schedule-error');
-                                if ($hint.length) {
-                                    $hint.text(fallbackMsg).show();
-                                } else {
-                                    try {
-                                        const inst = $scheduleForm.data('ubf-instance');
-                                        if (inst && typeof inst.showMessage === 'function') {
-                                            inst.showMessage(fallbackMsg, 'error');
-                                        } else {
-                                            $scheduleForm.prepend('<div class="booking-message booking-error">' + $('<div>').text(fallbackMsg).html() + '</div>');
-                                        }
-                                    } catch (e) {
-                                        // final fallback: prepend raw message
-                                        try { $scheduleForm.prepend('<div class="booking-message booking-error">' + $('<div>').text(fallbackMsg).html() + '</div>'); } catch (ex) { /* swallow */ }
-                                    }
-                                }
-                            }
-                        } catch (e) { /* swallow fallback errors */ }
+                        try { showConflictModal(conflictItems, existing); } catch(e){}
                     }
                 },
                 error: function(){ /* ignore network failures for now */ }
             });
         }, 450);
 
-        // Immediate per-row availability check (targets a single row when user finishes selecting date+time)
-        function checkSingleRowAvailability($row){
-            try {
-                const $scheduleRoot = $('#ubf-per-service-schedule');
-                const $scheduleForm = $scheduleRoot.closest('.ubf-v3-form');
-                if (!$row || !$row.length) return;
-
-                const s = $row.find('input[name="schedule_service_id[]"]').val() || '';
-                const st = $row.find('input[name="schedule_staff_id[]"]').val() || '';
-                const d = $row.find('.ubf-row-date').val() || '';
-                const t = $row.find('.ubf-row-time').val() || '';
-
-                // If either date or time missing, do not run immediate check
-                if (!d || !t) { return; }
-
-                const payload = {
-                    action: 'check_schedule_availability_v3',
-                    nonce: window.userBookingAjax ? userBookingAjax.nonce : '',
-                    schedule_service_id: [s],
-                    schedule_staff_id: [st],
-                    preferred_date: [d],
-                    preferred_time: [t]
-                };
-
-                try { $scheduleForm.data('ubf-last-schedule-payload', payload); } catch(e){}
-                const _token = String(Date.now()) + '-' + Math.random().toString(36).slice(2);
-                try { $scheduleForm.data('ubf-last-schedule-ts', _token); } catch(e){}
-
-                $.ajax({
-                    url: userBookingAjax.ajaxurl,
-                    method: 'POST',
-                    data: payload,
-                    success: function(resp){
-                        try { var _cur = $scheduleForm.data('ubf-last-schedule-ts'); if (_cur && _cur !== _token) { console.debug('[UBF] stale single-row availability response ignored'); return; } } catch(e){}
-
-                        try { $row.find('.ubf-row-error').hide().text(''); $row.removeClass('error'); } catch(e){}
-
-                        if (resp && resp.success) {
-                            // Defensive: if server returns conflict arrays despite success, treat as failure
-                            const hasConflicts = (resp && Array.isArray(resp.conflict_items) && resp.conflict_items.length) || (resp && Array.isArray(resp.conflict_rows) && resp.conflict_rows.length);
-                            if (hasConflicts) {
-                                const conflictItems = resp && resp.conflict_items ? resp.conflict_items : (resp && resp.conflict_rows ? resp.conflict_rows : []);
-                                const existing = resp && resp.conflict_existing ? resp.conflict_existing : {};
-                                try { $scheduleForm.data('ubf-has-schedule-conflict', true); $scheduleForm.data('ubf-schedule-conflicts', conflictItems || []); } catch(e){}
-                                try { showConflictModal(conflictItems, existing); } catch(e){}
-                                try { $scheduleForm.find('.booking-message.booking-info').remove(); } catch(e){}
-                                const msg = (resp && resp.message) ? resp.message : 'Selected time conflicts with existing bookings. Please choose another time or staff.';
-                                const $hint = $scheduleForm.find('.ubf-schedule-error');
-                                if ($hint.length) { $hint.attr('aria-live','polite').text(msg).show(); }
-                                try { $row.get(0).scrollIntoView({ behavior: 'smooth', block: 'center' }); const $d = $row.find('.ubf-row-date'); if ($d && $d.length) $d.get(0).focus(); } catch(e){}
-                                return;
-                            }
-                            try { $scheduleForm.data('ubf-has-schedule-conflict', false); } catch(e){}
-                            try {
-                                const inst = $scheduleForm.data('ubf-instance');
-                                if (resp && resp.message && inst && typeof inst.current !== 'undefined' && inst.current === 3) {
-                                    if (inst && typeof inst.showMessage === 'function') inst.showMessage(resp.message, 'info');
-                                }
-                            } catch(e){}
-                        } else {
-                            try {
-                                const conflictItems = resp && resp.conflict_items ? resp.conflict_items : (resp && resp.conflict_rows ? resp.conflict_rows : []);
-                                const existing = resp && resp.conflict_existing ? resp.conflict_existing : {};
-                                try { $scheduleForm.data('ubf-has-schedule-conflict', true); $scheduleForm.data('ubf-schedule-conflicts', conflictItems || []); } catch(e){}
-                                showConflictModal(conflictItems, existing);
-                                const msg = (resp && resp.message) ? resp.message : 'Selected time conflicts with existing bookings. Please choose another time or staff.';
-                                // remove any stale informational messages (e.g., 'Slots available') before showing this error
-                                try { $scheduleForm.find('.booking-message.booking-info').remove(); } catch(e){}
-                                const $hint = $scheduleForm.find('.ubf-schedule-error');
-                                if ($hint.length) { $hint.attr('aria-live','polite').text(msg).show(); }
-                                try { $row.get(0).scrollIntoView({ behavior: 'smooth', block: 'center' }); const $d = $row.find('.ubf-row-date'); if ($d && $d.length) $d.get(0).focus(); } catch(e){}
-                            } catch(e){ console.warn('[UBF] single-row conflict handling failed', e); }
-                        }
-                    },
-                    error: function(){ /* ignore network failures for single-row checks */ }
-                });
-            } catch(e){ console.warn('[UBF] checkSingleRowAvailability error', e); }
-        }
-
         // Attach change listeners to per-service schedule container (delegated)
         // Use the actual classes rendered for rows (.ubf-row-date / .ubf-row-time)
         $(document).on('change', '#ubf-per-service-schedule .ubf-row-date, #ubf-per-service-schedule .ubf-row-time', function(){
-            try {
-                const $row = $(this).closest('.ubf-per-service-row');
-                if (!$row || !$row.length) { debouncedCheck(); return; }
-                const dateVal = $row.find('.ubf-row-date').val() || '';
-                const timeVal = $row.find('.ubf-row-time').val() || '';
-                // If both provided, run immediate targeted check for responsiveness; otherwise fall back to debounced full-check
-                if (dateVal && timeVal) { checkSingleRowAvailability($row); }
-                else { debouncedCheck(); }
-            } catch(e){ debouncedCheck(); }
+            debouncedCheck();
         });
 
         // When the service blocks change (service select or staff selection), re-render rows and check availability
@@ -1364,20 +1180,6 @@
                 $scheduleRoot.find('.ubf-schedule-placeholder').remove();
                 // update payment breakdown after rendering schedule rows (in case service selections changed)
                 try { const inst = $scheduleRoot.closest('.ubf-v3-form').data('ubf-instance'); if (inst && typeof inst.updatePaymentBreakdown === 'function') inst.updatePaymentBreakdown(); } catch(e){}
-                // After rendering, proactively validate any rows that already have both date and time selected
-                try {
-                    $scheduleRoot.find('.ubf-per-service-row').each(function(){
-                        try {
-                            const $r = $(this);
-                            const d = $r.find('.ubf-row-date').val() || '';
-                            const t = $r.find('.ubf-row-time').val() || '';
-                            if (d && t) {
-                                // run a targeted check for this row to surface availability immediately
-                                checkSingleRowAvailability($r);
-                            }
-                        } catch(e) { /* ignore per-row */ }
-                    });
-                } catch(e) { /* ignore runImmediateChecks errors */ }
             } else {
                 $scheduleRoot.html('<div class="ubf-schedule-placeholder">Select and configure services in step 1 to set schedules per service.</div>');
             }
@@ -1388,8 +1190,6 @@
     UBFv3.prototype.showConflictModal = function(title, messageOrItems, maybeItems){
         // Prefer using stored conflict indices; fallback to any items passed
         let conflicts = this.form.data('ubf-schedule-conflicts') || [];
-        // Remove any 'info' banners when showing conflict UI
-        try { this.form.find('.booking-message.booking-info').remove(); } catch(e){}
         if ((!conflicts || !conflicts.length) && Array.isArray(messageOrItems)) {
             // try to map items back to indices by matching service labels
             conflicts = messageOrItems.map(function(it){ return it.index; }).filter(function(i){ return typeof i !== 'undefined'; });
@@ -1623,15 +1423,6 @@
     UBFv3.prototype.showMessage = function(message, type){
         type = type || 'info';
         try {
-            // If there are visible schedule or row errors, avoid showing informational messages
-            try {
-                if (type === 'info') {
-                    if (this.form.find('.ubf-schedule-error:visible').length > 0 || this.form.find('.ubf-row-error:visible').length > 0) {
-                        return; // do not show positive info when errors are visible
-                    }
-                }
-            } catch (e) { /* ignore guard failures */ }
-
             // remove any existing messages within this form
             this.form.find('.booking-message').remove();
             const iconClass = (type === 'error') ? 'fa-exclamation-triangle' : 'fa-info-circle';
@@ -1667,32 +1458,6 @@
                 time.push($el.find('.ubf-row-time').val() || '');
             });
 
-            // Fallback: if no per-service rows were rendered (rows length === 0)
-            // build arrays from service blocks using global preferred date/time so the server
-            // receives a meaningful payload and can detect conflicts instead of allowing progression.
-            if ($rows.length === 0) {
-                try {
-                    const $blocks = (this.blocksContainer && this.blocksContainer.length) ? this.blocksContainer.find('.ubf-service-block') : this.form.find('.ubf-service-block');
-                    const globalDate = $('#ubf_preferred_date').val() || $('#preferred_date').val() || '';
-                    const globalTime = $('#ubf_preferred_time').val() || $('#preferred_time').val() || '';
-                    svc.length = 0; staff.length = 0; date.length = 0; time.length = 0;
-                    $blocks.each(function(bi){
-                        const $b = $(this);
-                        const serviceId = $b.find('.ubf-service-select').val() || $b.find('select[name="service_id"]').val() || '';
-                        if (!serviceId) return; // skip empty blocks
-                        let staffId = $b.find('.ubf-staff-input').val() || '';
-                        if (!staffId) {
-                            const $card = $b.find('.ubf-staff-grid .staff-card.selected');
-                            if ($card.length) staffId = String($card.data('id') || '');
-                        }
-                        svc.push(serviceId);
-                        staff.push(staffId);
-                        date.push(globalDate);
-                        time.push(globalTime);
-                    });
-                } catch (e) { console.warn('[UBF] fallback payload build failed', e); }
-            }
-
             const payload = {
                 action: 'check_schedule_availability_v3',
                 nonce: window.userBookingAjax ? userBookingAjax.nonce : '',
@@ -1704,54 +1469,6 @@
 
             // store last payload on the form for robust mapping
             try { this.form.data('ubf-last-schedule-payload', payload); } catch(e){}
-            // attach request token for this forced availability check (so we can ignore stale replies)
-            var _ubf_forced_token = String(Date.now()) + '-' + Math.random().toString(36).slice(2);
-            try { this.form.data('ubf-last-schedule-ts', _ubf_forced_token); } catch(e){}
-
-            // If any row has a date+time selected but no staff chosen, we cannot
-            // reliably confirm availability for that row (server checks are
-            // staff-specific). Block progression and ask the user to select a
-            // preferred staff or clear the date/time so availability can be
-            // accurately verified.
-            try {
-                const missingStaffIndices = [];
-                for (let i = 0; i < (payload.schedule_service_id || []).length; i++) {
-                    const d = String((payload.preferred_date || [])[i] || '').trim();
-                    const t = String((payload.preferred_time || [])[i] || '').trim();
-                    const st = String((payload.schedule_staff_id || [])[i] || '').trim();
-                    if (d && t && !st) missingStaffIndices.push(i);
-                }
-                if (missingStaffIndices.length) {
-                    const msg = 'Please select a preferred staff for each scheduled service that has a date and time so availability can be confirmed.';
-                    try { this.form.find('.ubf-schedule-error').text(msg).show(); } catch(e){}
-                    try { this.showMessage(msg, 'error'); } catch(e){}
-                    $nextBtn.prop('disabled', false).removeClass('loading');
-                    try { this.showStep(3); } catch(e){}
-                    return; // abort AJAX and block progression
-                }
-            } catch (e) { /* if this guard fails, continue with the request as before */ }
-
-            // Validate payload: if a staff is selected for any row, date and time must be provided
-            try {
-                let invalid = false;
-                for (let i = 0; i < payload.schedule_service_id.length; i++) {
-                    const sId = String(payload.schedule_service_id[i] || '').trim();
-                    const st = String(payload.schedule_staff_id[i] || '').trim();
-                    const d = String(payload.preferred_date[i] || '').trim();
-                    const t = String(payload.preferred_time[i] || '').trim();
-                    // if staff specified but no date/time, it's an invalid schedule
-                    if (st && (!d || !t)) { invalid = true; break; }
-                }
-                if (invalid) {
-                    const msg = 'Please provide a date and time for each scheduled service where a staff member is selected.';
-                    try { this.form.find('.ubf-schedule-error').text(msg).show(); } catch(e){}
-                    try { this.showMessage(msg, 'error'); } catch(e){}
-                    $nextBtn.prop('disabled', false).removeClass('loading');
-                    // ensure schedule step visible
-                    try { this.showStep(3); } catch(e){}
-                    return; // abort AJAX
-                }
-            } catch(e) { /* ignore validation errors and continue */ }
 
             // helper to continue client-side validation and progression
             function proceedAfterAvailability() {
@@ -1796,104 +1513,14 @@
                 data: payload,
                 success: function(resp){
                     console.debug('[UBF] forced availability check resp:', resp);
-                    // ignore stale replies
-                    try {
-                        var _cur = self.form.data('ubf-last-schedule-ts');
-                        if (_cur && _cur !== _ubf_forced_token) { console.debug('[UBF] stale forced availability response ignored'); return; }
-                    } catch(e){}
-
                     if (resp && resp.success) {
-                        // Defensive: if server returns conflict arrays with success, treat as failure
-                        const hasConflicts = (resp && Array.isArray(resp.conflict_items) && resp.conflict_items.length) || (resp && Array.isArray(resp.conflict_rows) && resp.conflict_rows.length);
-                        if (hasConflicts) {
-                            const conflictItems = resp && resp.conflict_items ? resp.conflict_items : (resp && resp.conflict_rows ? resp.conflict_rows : []);
-                            const existing = resp && resp.conflict_existing ? resp.conflict_existing : {};
-                            try { self.form.data('ubf-has-schedule-conflict', true); self.form.data('ubf-schedule-conflicts', conflictItems || []); } catch(e){}
-                            try { self.form.find('.booking-message.booking-info').remove(); } catch(e){}
-                            try {
-                                const scheduleHint = self.form.find('.ubf-schedule-error');
-                                const msg = (resp && resp.message) ? resp.message : 'One or more selected services conflict with existing bookings. Please review your selected times.';
-                                if (scheduleHint.length) {
-                                    scheduleHint.attr('aria-live','polite').text(msg).show();
-                                } else {
-                                    try { self.showMessage(msg, 'error'); } catch (e) { self.form.prepend('<div class="booking-message booking-error">'+ $('<div>').text(msg).html() +'</div>'); }
-                                }
-                            } catch(e){}
-                            try { showConflictModal(conflictItems || [], existing || {}); } catch(e){}
-                            try { self.showStep(3); } catch(e){}
-                            return;
-                        }
                         try { self.form.data('ubf-has-schedule-conflict', false); self.form.data('ubf-schedule-conflicts', []); } catch(e){}
-                        // Only show informational message if server did NOT return conflicts
-                        try {
-                            if (resp && resp.message && self && typeof self.current !== 'undefined' && self.current === 3) {
-                                try { self.showMessage(resp.message, 'info'); } catch(e){}
-                            }
-                        } catch(e){}
                         proceedAfterAvailability();
                     } else {
                         const conflictItems = resp && resp.conflict_items ? resp.conflict_items : (resp && resp.conflict_rows ? resp.conflict_rows : []);
                         const existing = resp && resp.conflict_existing ? resp.conflict_existing : {};
-
-                        // Persist conflict flag and indices so other flows can read it
                         try { self.form.data('ubf-has-schedule-conflict', true); self.form.data('ubf-schedule-conflicts', conflictItems || []); } catch(e){}
-
-                        // If server provided a message, show it prominently in the schedule hint area
-                        try {
-                            // remove any stale informational messages (e.g., 'Slots available') before showing error
-                            try { self.form.find('.booking-message.booking-info').remove(); } catch(e){}
-                            const scheduleHint = self.form.find('.ubf-schedule-error');
-                            const msg = (resp && resp.message) ? resp.message : 'One or more selected services conflict with existing bookings. Please review your selected times.';
-                            if (scheduleHint.length) {
-                                scheduleHint.attr('aria-live','polite').text(msg).show();
-                            } else {
-                                try { self.showMessage(msg, 'error'); } catch (e) { self.form.prepend('<div class="booking-message booking-error">'+ $('<div>').text(msg).html() +'</div>'); }
-                            }
-                        } catch(e) { /* ignore */ }
-
-                        // Try to highlight the specific rows indicated by the server
-                        try {
-                            const $rows = self.form.find('#ubf-per-service-schedule .ubf-per-service-row');
-                            if (Array.isArray(conflictItems) && conflictItems.length) {
-                                let firstRowEl = null;
-                                conflictItems.forEach(function(i){
-                                    try {
-                                        const $r = $rows.eq(i);
-                                        if ($r && $r.length) {
-                                            $r.addClass('error');
-                                            const svc = $r.find('.ubf-per-service-label strong').text() || 'Service';
-                                            const staff = $r.find('.ubf-per-service-staff').text() || 'Any staff';
-                                            const d = $r.find('.ubf-row-date').val() || '';
-                                            const t = $r.find('.ubf-row-time').val() || '';
-                                            const existingTxt = (existing && typeof existing[i] !== 'undefined') ? (' (Existing booking #' + existing[i] + ')') : '';
-                                            const primary = svc.trim() + ' – ' + staff.trim() + ' may conflict with existing bookings.' + existingTxt;
-                                            const detail = ((d ? ' ' + d : '') + (t ? ' ' + t : '')).trim();
-                                            const safe = '<div>' + $('<div>').text(primary).html() + '</div>' + (detail ? '<small style="display:block;opacity:0.9;margin-top:4px">' + $('<div>').text(detail).html() + '</small>' : '');
-                                            $r.find('.ubf-row-error').html(safe).show();
-                                            if (!firstRowEl) firstRowEl = $r.get(0);
-                                        }
-                                    } catch(e) { /* ignore per-row failures */ }
-                                });
-                                // Focus and scroll the first problematic row into view to make the error obvious
-                                try {
-                                    if (firstRowEl && typeof firstRowEl.scrollIntoView === 'function') {
-                                        firstRowEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                        // focus the date input if present
-                                        const $first = $(firstRowEl);
-                                        const $date = $first.find('.ubf-row-date');
-                                        if ($date && $date.length) { $date.get(0).focus(); }
-                                    }
-                                } catch(e) { /* ignore scrolling/focus errors */ }
-                            } else {
-                                // When no specific indices given, mark the whole schedule area so user sees there's an issue
-                                self.form.find('#ubf-per-service-schedule').addClass('error');
-                            }
-                        } catch(e) { /* ignore highlight errors */ }
-
-                        // Also call existing modal-based renderer for detailed UX if available
                         try { showConflictModal(conflictItems || [], existing || {}); } catch(e){}
-
-                        // Ensure the schedule step is visible and block progression
                         try { self.showStep(3); } catch(e){}
                     }
                 },
