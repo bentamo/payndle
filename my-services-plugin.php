@@ -833,11 +833,13 @@ function mvp_enqueue_scripts() {
     $business_id = mvp_get_current_business_id();
     
     // Localize script with AJAX URL, nonce, and business ID
+    $business_id = mvp_get_current_business_id();
+
     wp_localize_script('mvp-script', 'mvp_ajax', array(
-        'ajax_url' => admin_url('admin-ajax.php'),
-        'nonce'    => wp_create_nonce('mvp_nonce'),
+        'ajax_url'    => admin_url('admin-ajax.php'),
+        'nonce'       => wp_create_nonce('mvp_nonce'),
         'business_id' => $business_id,
-        'are_you_sure' => __('Are you sure you want to delete this service?', 'service-manager')
+        'are_you_sure' => __('Are you sure you want to delete this service?', 'service-manager'),
     ));
 }
 add_action('wp_enqueue_scripts', 'mvp_enqueue_scripts');
@@ -857,20 +859,21 @@ function mvp_add_service() {
         return;
     }
 
-    $title = sanitize_text_field($_POST['title']);
-    $desc  = wp_kses_post($_POST['description']);
+    $title = isset($_POST['title']) ? sanitize_text_field($_POST['title']) : '';
+    $desc  = isset($_POST['description']) ? wp_kses_post($_POST['description']) : '';
     $service_id = isset($_POST['service_id']) ? intval($_POST['service_id']) : 0;
     $categories = isset($_POST['categories']) ? array_map('intval', (array)$_POST['categories']) : array();
 
     if (empty($title) || empty($desc)) {
         wp_send_json_error(array('message' => 'Title and description are required.'));
+        return;
     }
 
     $post_data = array(
-        'post_title' => $title,
+        'post_title'   => $title,
         'post_content' => $desc,
-        'post_status' => 'publish',
-        'post_type' => 'service'
+        'post_status'  => 'publish',
+        'post_type'    => 'service',
     );
 
     if ($service_id > 0) {
@@ -940,6 +943,25 @@ add_action('wp_ajax_mvp_add_service', 'mvp_add_service');
 function mvp_delete_service() {
     check_ajax_referer('mvp_nonce', 'nonce');
     
+    // Validate business context and permissions (single pass)
+    $business_id = isset($_POST['business_id']) ? intval($_POST['business_id']) : mvp_get_current_business_id();
+    if ($business_id <= 0) {
+        wp_send_json_error('Invalid business context. Please select a business first.');
+        return;
+    }
+
+    if (!is_user_logged_in()) {
+        wp_send_json_error('You must be logged in to perform this action.');
+        return;
+    }
+
+    $current_user = wp_get_current_user();
+    $owner_id = get_post_meta($business_id, '_business_owner_id', true);
+    if ($owner_id != $current_user->ID && !current_user_can('manage_options')) {
+        wp_send_json_error('You do not have permission to manage services for this business.');
+        return;
+    }
+    
     // Get business ID from request or current context
     $business_id = isset($_POST['business_id']) ? intval($_POST['business_id']) : mvp_get_current_business_id();
     
@@ -966,6 +988,7 @@ function mvp_delete_service() {
         $service_business_id = get_post_meta($id, '_business_id', true);
         if ($service_business_id != $business_id) {
             wp_send_json_error('You do not have permission to delete this service.');
+            return;
         }
         
         wp_delete_post($id, true);
@@ -983,11 +1006,19 @@ add_action('wp_ajax_mvp_delete_service', 'mvp_delete_service');
 function mvp_user_services_shortcode($atts) {
     // Parse shortcode attributes
     $atts = shortcode_atts(array(
-        'category' => '', // Comma-separated category slugs
-        'limit' => -1,    // Number of services to show (-1 for all)
-        'columns' => 3,   // Number of columns in grid
-        'business_id' => 0, // Specific business ID (optional)
+        'category'    => '', // Comma-separated category slugs
+        'limit'       => -1, // Number of services to show (-1 for all)
+        'columns'     => 3,  // Number of columns in grid
+        'business_id' => 0,  // Specific business ID (optional)
     ), $atts, 'user_services');
+    
+    // Get business ID from attribute or current context
+    $business_id = !empty($atts['business_id']) ? intval($atts['business_id']) : mvp_get_current_business_id();
+    
+    // If no business ID is found, show an error
+    if ($business_id <= 0) {
+        return '<div class="error-message">' . __('No business context found. Please specify a business ID or select a business first.', 'service-manager') . '</div>';
+    }
     
     // Get business ID from attribute or current context
     $business_id = !empty($atts['business_id']) ? intval($atts['business_id']) : mvp_get_current_business_id();
@@ -999,18 +1030,18 @@ function mvp_user_services_shortcode($atts) {
 
     // Build query args
     $args = array(
-        'post_type' => 'service',
+        'post_type'      => 'service',
         'posts_per_page' => intval($atts['limit']),
-        'orderby' => 'date',
-        'order' => 'DESC',
-        'post_status' => 'publish',
-        'meta_query' => array(
+        'orderby'        => 'date',
+        'order'          => 'DESC',
+        'post_status'    => 'publish',
+        'meta_query'     => array(
             array(
-                'key' => '_business_id',
-                'value' => $business_id,
-                'compare' => '='
-            )
-        )
+                'key'     => '_business_id',
+                'value'   => $business_id,
+                'compare' => '=',
+            ),
+        ),
     );
 
     // Filter by category if specified
@@ -1220,18 +1251,28 @@ function mvp_manager_shortcode() {
     }
 
     // Get services for the current business
+    
+    // Get the current business ID
+    $business_id = mvp_get_current_business_id();
+    
+    // If no business ID is found, show an error
+    if ($business_id <= 0) {
+        return '<div class="error-message">' . __('No business context found. Please select a business first.', 'service-manager') . '</div>';
+    }
+
+    // Get services for the current business
     $services = get_posts(array(
-        'post_type' => 'service',
+        'post_type'      => 'service',
         'posts_per_page' => -1,
-        'orderby' => 'date',
-        'order' => 'DESC',
-        'meta_query' => array(
+        'orderby'        => 'date',
+        'order'          => 'DESC',
+        'meta_query'     => array(
             array(
-                'key' => '_business_id',
-                'value' => $business_id,
-                'compare' => '='
-            )
-        )
+                'key'     => '_business_id',
+                'value'   => $business_id,
+                'compare' => '=',
+            ),
+        ),
     ));
 
     // Get all categories
@@ -1570,7 +1611,7 @@ function mvp_manager_shortcode() {
             $.ajax({
                 url: mvp_ajax.ajax_url,
                 type: 'POST',
-                data: {
+                    data: {
                     action: 'mvp_delete_service',
                     nonce: mvp_ajax.nonce,
                     business_id: mvp_ajax.business_id || $('.mvp-service-manager-card').data('business-id'),
@@ -1741,6 +1782,28 @@ if (defined('WP_DEBUG') && WP_DEBUG) {
 }
 
 
+/* Debug Info: Services Data
+add_action('wp_footer', function() {
+    if (!is_user_logged_in()) return;
+    
+    $business_id = payndle_get_current_business_id();
+    $services = get_posts(array(
+        'post_type' => 'service',
+        'meta_key' => '_business_id',
+        'meta_value' => $business_id,
+        'posts_per_page' => -1
+    ));
+    
+    if (defined('WP_DEBUG') && WP_DEBUG) {
+        echo '<!-- Debug Info:';
+        echo 'Business ID: ' . esc_html($business_id) . "\n";
+        echo 'Services Found: ' . count($services) . "\n";
+        foreach ($services as $service) {
+            echo $service->post_title . ' (ID: ' . $service->ID . ")\n";
+        }
+        echo '-->';
+    }
+}); */
 /* Debug Info: Services Data
 add_action('wp_footer', function() {
     if (!is_user_logged_in()) return;
