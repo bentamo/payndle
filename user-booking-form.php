@@ -351,6 +351,8 @@ class UserBookingForm {
             </div>
         </div>
 
+        <!-- Debug banner removed -->
+
         <?php
         return ob_get_clean();
     }
@@ -1178,16 +1180,7 @@ class UserBookingForm {
      * Handle AJAX booking submission
      */
     public function submit_user_booking_ajax() {
-        // Log all received data for debugging (only when WP_DEBUG enabled)
-        if ( defined('WP_DEBUG') && WP_DEBUG ) {
-            file_put_contents(
-                plugin_dir_path(__FILE__) . 'booking-debug.log', 
-                date('Y-m-d H:i:s') . " - Booking submission started\n" . 
-                "POST data: " . print_r($_POST, true) . "\n" .
-                "Headers: " . print_r(getallheaders(), true) . "\n\n", 
-                FILE_APPEND
-            );
-        }
+        // Debug logging removed: temporary booking-debug.log writes cleaned up.
         
         // Test database structure first
         global $wpdb;
@@ -1198,19 +1191,11 @@ class UserBookingForm {
         if ($columns) {
             $column_names = array_column($columns, 'Field');
             if ( defined('WP_DEBUG') && WP_DEBUG ) {
-                file_put_contents(
-                    plugin_dir_path(__FILE__) . 'booking-debug.log', 
-                    date('Y-m-d H:i:s') . " - Booking table columns: " . implode(', ', $column_names) . "\n", 
-                    FILE_APPEND
-                );
+                // Debug logging removed.
             }
         } else {
             if ( defined('WP_DEBUG') && WP_DEBUG ) {
-                file_put_contents(
-                    plugin_dir_path(__FILE__) . 'booking-debug.log', 
-                    date('Y-m-d H:i:s') . " - Could not describe booking table or table does not exist\n", 
-                    FILE_APPEND
-                );
+                // Debug logging removed.
             }
         }
         
@@ -1218,11 +1203,7 @@ class UserBookingForm {
         $nonce_check = check_ajax_referer('user_booking_nonce', 'nonce', false);
         if (!$nonce_check) {
             if ( defined('WP_DEBUG') && WP_DEBUG ) {
-                file_put_contents(
-                    plugin_dir_path(__FILE__) . 'booking-debug.log', 
-                    date('Y-m-d H:i:s') . " - Nonce verification failed. Nonce received: " . ($_POST['nonce'] ?? 'none') . "\n", 
-                    FILE_APPEND
-                );
+                // Debug logging removed for nonce verification failure.
             }
             
             // For debugging, let's try to continue anyway but log it
@@ -1234,11 +1215,7 @@ class UserBookingForm {
         
         // Check if required POST data exists
         if (!isset($_POST['service_id']) || !isset($_POST['customer_name']) || !isset($_POST['customer_email'])) {
-            file_put_contents(
-                plugin_dir_path(__FILE__) . 'booking-debug.log', 
-                date('Y-m-d H:i:s') . " - Missing required POST data\n", 
-                FILE_APPEND
-            );
+            // Debug logging removed for missing required POST data.
             wp_send_json([
                 'success' => false,
                 'message' => 'Missing required form data. Please fill out all required fields.'
@@ -1248,7 +1225,7 @@ class UserBookingForm {
         // Sanitize and validate input
         $service_id = intval($_POST['service_id']);
         $staff_id = !empty($_POST['staff_id']) ? intval($_POST['staff_id']) : null;
-    error_log('submit_user_booking_v3 received staff_id: ' . print_r($_POST['staff_id'] ?? '(null)', true));
+        // Debug logging removed for received staff_id.
         $customer_name = sanitize_text_field($_POST['customer_name']);
         $customer_email = sanitize_email($_POST['customer_email']);
         $customer_phone = sanitize_text_field($_POST['customer_phone'] ?? '');
@@ -1320,11 +1297,7 @@ class UserBookingForm {
             if ($normt) $preferred_time = $normt;
         }
         
-        file_put_contents(
-            plugin_dir_path(__FILE__) . 'booking-debug.log', 
-            date('Y-m-d H:i:s') . " - Sanitized data: service_id=$service_id, staff_id=$staff_id, customer_name=$customer_name, customer_email=$customer_email\n", 
-            FILE_APPEND
-        );
+        // Debug logging removed for sanitized data.
         
         // Validation
         $errors = [];
@@ -1342,11 +1315,7 @@ class UserBookingForm {
         }
         
         if (!empty($errors)) {
-            file_put_contents(
-                plugin_dir_path(__FILE__) . 'booking-debug.log', 
-                date('Y-m-d H:i:s') . " - Validation errors: " . print_r($errors, true) . "\n", 
-                FILE_APPEND
-            );
+            // Debug logging removed for validation errors.
             wp_send_json([
                 'success' => false,
                 'errors' => $errors
@@ -1358,11 +1327,7 @@ class UserBookingForm {
         
         // Verify services table exists
         if ($wpdb->get_var("SHOW TABLES LIKE '{$services_table}'") != $services_table) {
-            file_put_contents(
-                plugin_dir_path(__FILE__) . 'booking-debug.log', 
-                date('Y-m-d H:i:s') . " - Services table does not exist: $services_table\n", 
-                FILE_APPEND
-            );
+            // Debug logging removed for services table missing.
             wp_send_json([
                 'success' => false,
                 'message' => 'Services system not properly configured. Please contact administrator.'
@@ -1371,11 +1336,7 @@ class UserBookingForm {
         
         // Verify booking table exists
         if ($wpdb->get_var("SHOW TABLES LIKE '{$booking_table}'") != $booking_table) {
-            file_put_contents(
-                plugin_dir_path(__FILE__) . 'booking-debug.log', 
-                date('Y-m-d H:i:s') . " - Booking table does not exist: $booking_table\n", 
-                FILE_APPEND
-            );
+            // Debug logging removed for booking table missing.
             wp_send_json([
                 'success' => false,
                 'message' => 'Booking system not properly configured. Please contact administrator.'
@@ -1394,11 +1355,7 @@ class UserBookingForm {
                 'service_duration' => get_post_meta($service_post->ID, '_service_duration', true),
                 'is_active' => 1
             ];
-            file_put_contents(
-                plugin_dir_path(__FILE__) . 'booking-debug.log', 
-                date('Y-m-d H:i:s') . " - Found CPT service: " . $service->service_name . "\n", 
-                FILE_APPEND
-            );
+            // Debug logging removed for found CPT service.
         } else {
             // Fallback to legacy table
             $service = $wpdb->get_row($wpdb->prepare(
@@ -1407,11 +1364,7 @@ class UserBookingForm {
             ));
 
             if ($wpdb->last_error) {
-                file_put_contents(
-                    plugin_dir_path(__FILE__) . 'booking-debug.log', 
-                    date('Y-m-d H:i:s') . " - Database error when fetching legacy service: " . $wpdb->last_error . "\n", 
-                    FILE_APPEND
-                );
+                // Debug logging removed for database error when fetching legacy service.
                 wp_send_json([
                     'success' => false,
                     'message' => 'Database error occurred. Please try again later.'
@@ -1419,22 +1372,14 @@ class UserBookingForm {
             }
 
             if (!$service) {
-                file_put_contents(
-                    plugin_dir_path(__FILE__) . 'booking-debug.log', 
-                    date('Y-m-d H:i:s') . " - Service not found or inactive. Service ID: $service_id\n", 
-                    FILE_APPEND
-                );
+                // Debug logging removed for service not found.
                 wp_send_json([
                     'success' => false,
                     'message' => 'Selected service is not available. Please choose another service.'
                 ]);
             }
 
-            file_put_contents(
-                plugin_dir_path(__FILE__) . 'booking-debug.log', 
-                date('Y-m-d H:i:s') . " - Found legacy service: " . $service->service_name . "\n", 
-                FILE_APPEND
-            );
+            // Debug logging removed for found legacy service.
         }
         
         // Use basic required columns only
@@ -1466,12 +1411,7 @@ class UserBookingForm {
             $insert_data['created_at'] = current_time('mysql');
         }
         
-        file_put_contents(
-            plugin_dir_path(__FILE__) . 'booking-debug.log', 
-            date('Y-m-d H:i:s') . " - Attempting to insert data: " . print_r($insert_data, true) . "\n" .
-            "Existing columns: " . implode(', ', $existing_columns) . "\n", 
-            FILE_APPEND
-        );
+        // Debug logging removed for attempting to insert data.
         
         // Instead of inserting into a custom table, store booking as a custom post with meta
         $post_title = sprintf('Booking: %s - %s', $customer_name, $service->service_name);
@@ -1499,11 +1439,7 @@ class UserBookingForm {
 
             $conflict_bid = $this->staff_has_overlap($staff_id, $preferred_date, $preferred_time, $duration_minutes);
             if ($conflict_bid) {
-                file_put_contents(
-                    plugin_dir_path(__FILE__) . 'booking-debug.log',
-                    date('Y-m-d H:i:s') . " - Overlap detected for staff_id={$staff_id} date={$preferred_date} time={$preferred_time} conflict_booking_id={$conflict_bid}\n",
-                    FILE_APPEND
-                );
+                // Debug logging removed for overlap detection.
 
                 wp_send_json([
                     'success' => false,
@@ -1515,11 +1451,7 @@ class UserBookingForm {
         $post_id = wp_insert_post($post_data, true);
 
         if (is_wp_error($post_id)) {
-            file_put_contents(
-                plugin_dir_path(__FILE__) . 'booking-debug.log', 
-                date('Y-m-d H:i:s') . " - wp_insert_post error: " . $post_id->get_error_message() . "\n", 
-                FILE_APPEND
-            );
+            // Debug logging removed for wp_insert_post error.
 
             wp_send_json([
                 'success' => false,
@@ -1558,12 +1490,7 @@ class UserBookingForm {
             update_post_meta($post_id, '_' . $key, $value);
         }
 
-        file_put_contents(
-            plugin_dir_path(__FILE__) . 'booking-debug.log', 
-            date('Y-m-d H:i:s') . " - Successfully created booking post with ID: $post_id\n" .
-            "Meta saved: " . print_r($meta_map, true) . "\n",
-            FILE_APPEND
-        );
+        // Debug logging removed for successfully created booking post.
 
         // Send notification email (optional)
         try {
@@ -1577,11 +1504,7 @@ class UserBookingForm {
                 'payment_method' => $payment_method
             ]);
         } catch (Exception $e) {
-            file_put_contents(
-                plugin_dir_path(__FILE__) . 'booking-debug.log', 
-                date('Y-m-d H:i:s') . " - Email notification failed: " . $e->getMessage() . "\n", 
-                FILE_APPEND
-            );
+            // Debug logging removed for email notification failure.
             // Don't fail the booking if email fails
         }
 
@@ -1781,17 +1704,9 @@ class UserBookingForm {
         }
 
         // Debug: log the incoming arrays to help trace alignment/values (only when WP_DEBUG)
-        if ( defined('WP_DEBUG') && WP_DEBUG ) {
-            $dbg = date('Y-m-d H:i:s') . " - submit_user_booking_v3 called\n";
-            $dbg .= "POST keys: " . implode(',', array_keys($_POST)) . "\n";
-            $dbg .= "service_ids: " . print_r($service_ids, true) . "\n";
-            $dbg .= "staff_ids: " . print_r($staff_ids, true) . "\n";
-            $dbg .= "schedule_service_ids: " . print_r($schedule_service_ids, true) . "\n";
-            $dbg .= "schedule_staff_ids: " . print_r($schedule_staff_ids, true) . "\n";
-            $dbg .= "preferred_dates: " . print_r($preferred_dates, true) . "\n";
-            $dbg .= "preferred_times: " . print_r($preferred_times, true) . "\n";
-            file_put_contents(plugin_dir_path(__FILE__) . 'booking-debug.log', $dbg, FILE_APPEND);
-        }
+            if ( defined('WP_DEBUG') && WP_DEBUG ) {
+                // Debug logging removed for submit_user_booking_v3 incoming arrays.
+            }
 
         // Pre-check for overlaps across all requested schedule rows to avoid partial booking creation
         // Also enforce uniqueness across submitted schedule rows (server-side) mirroring frontend checks
@@ -1835,7 +1750,7 @@ class UserBookingForm {
 
                 $conflict_bid = $this->staff_has_overlap($staff_for_index, $date_for_index, $time_for_index, $s_minutes);
                 if ( defined('WP_DEBUG') && WP_DEBUG ) {
-                    file_put_contents(plugin_dir_path(__FILE__) . 'booking-debug.log', date('Y-m-d H:i:s') . " - idx={$index} sid={$sid} staff={$staff_for_index} date={$date_for_index} time={$time_for_index} dur={$s_minutes} conflict_bid=" . print_r($conflict_bid, true) . "\n", FILE_APPEND);
+                    // Debug logging removed for per-index overlap checks.
                 }
                 if ($conflict_bid) {
                     $conflict_rows[] = $index;
@@ -1887,7 +1802,7 @@ class UserBookingForm {
         if (!empty($strict_conflicts)) {
             $strict_conflicts = array_values(array_unique($strict_conflicts));
             if ( defined('WP_DEBUG') && WP_DEBUG ) {
-                file_put_contents(plugin_dir_path(__FILE__) . 'booking-debug.log', date('Y-m-d H:i:s') . " - strict duplicate guard fired indices: " . print_r($strict_conflicts, true) . "\n", FILE_APPEND);
+                // Debug logging removed for strict duplicate guard.
             }
             wp_send_json([
                 'success' => false,
@@ -2032,10 +1947,18 @@ class UserBookingForm {
 
             // server-side overlap check: reuse staff_has_overlap if available
             if (method_exists($this, 'staff_has_overlap')) {
-                // Determine duration: try to read from service meta if possible
-                $duration = 0;
+                // Determine duration: try to read from service meta if possible.
+                // Normalize using duration_to_minutes() so formats like '1:30' or '90 mins' work.
+                $duration = 60; // sensible default
                 if ($svc) {
-                    $duration = intval(get_post_meta($svc, 'service_duration', true)) ?: 0;
+                    $meta_duration = get_post_meta($svc, 'service_duration', true);
+                    if (empty($meta_duration)) {
+                        $meta_duration = get_post_meta($svc, '_service_duration', true);
+                    }
+                    if (!empty($meta_duration)) {
+                        // Use helper to convert various formats to minutes
+                        $duration = intval($this->duration_to_minutes($meta_duration));
+                    }
                 }
                 $overlap = $this->staff_has_overlap($staff, $date, $time, $duration);
                 if ($overlap) {
@@ -2074,14 +1997,20 @@ class UserBookingForm {
             ]);
         }
 
-        if (!empty($conflicts)) {
-            wp_send_json([
+        // If any conflicts (intra-request duplicates or server-detected overlaps)
+        // were detected, return an explicit failure response so the client cannot
+        // mistakenly treat the result as available.
+        if (!empty($strict_conflicts) || !empty($conflicts) || !empty($conflict_items)) {
+            $all_conflict_rows = array_values(array_unique(array_merge($strict_conflicts, $conflicts)));
+            $response = [
                 'success' => false,
-                'message' => 'Some selected slots are already taken',
-                'conflict_rows' => array_values(array_unique($conflicts)),
+                'message' => (!empty($strict_conflicts)) ? 'Duplicate schedule rows detected in your request.' : 'Some selected slots are already taken',
+                'conflict_rows' => $all_conflict_rows,
                 'conflict_items' => $conflict_items,
                 'conflict_existing' => isset($conflict_existing) ? $conflict_existing : array()
-            ]);
+            ];
+            // debug logging removed
+            wp_send_json($response);
         }
 
         wp_send_json(['success' => true, 'message' => 'Slots available']);

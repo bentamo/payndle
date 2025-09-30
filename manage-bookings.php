@@ -15,9 +15,36 @@ function elite_cuts_manage_bookings_page() {
         return;
     }
     
-    // Load bookings directly with PHP
+    // Get current business ID and code
+    $current_business_id = 0;
+    $current_user_id = get_current_user_id();
+    
+    // Try to get business ID from user's owned business
+    $user_business = get_posts([
+        'post_type' => 'payndle_business',
+        'posts_per_page' => 1,
+        'meta_query' => [
+            [
+                'key' => '_business_owner_id',
+                'value' => $current_user_id,
+                'compare' => '='
+            ]
+        ]
+    ]);
+    
+    if (!empty($user_business)) {
+        $current_business_id = $user_business[0]->ID;
+        $business_code = get_post_meta($current_business_id, '_business_code', true);
+    }
+    
+    if (!$current_business_id || !$business_code) {
+        echo '<div class="notice notice-error"><p>Error: No valid business found. Please create a business profile first.</p></div>';
+        return;
+    }
+
+    // Load bookings directly with PHP, filtered by business_id
     global $wpdb;
-    $bookings = $wpdb->get_results("
+    $bookings = $wpdb->get_results($wpdb->prepare("
         SELECT 
             b.id,
             b.service_id,
@@ -35,9 +62,10 @@ function elite_cuts_manage_bookings_page() {
         FROM {$wpdb->prefix}service_bookings b
         LEFT JOIN {$wpdb->prefix}manager_services s ON b.service_id = s.id
         LEFT JOIN {$wpdb->prefix}staff_members st ON b.staff_id = st.id
+        WHERE b.business_code = %s
         ORDER BY b.created_at DESC
         LIMIT 50
-    ");
+    ", $business_code));
         // Load bookings from the 'service_booking' custom post type and map post meta
         $bookings = [];
 
@@ -46,7 +74,14 @@ function elite_cuts_manage_bookings_page() {
             'posts_per_page' => 50,
             'post_status' => 'any',
             'orderby' => 'date',
-            'order' => 'DESC'
+            'order' => 'DESC',
+            'meta_query' => [
+                [
+                    'key' => '_business_code',
+                    'value' => $business_code,
+                    'compare' => '='
+                ]
+            ]
         ];
 
         $query = new WP_Query($args);
@@ -3559,9 +3594,55 @@ function elite_cuts_delete_booking_ajax() {
         wp_send_json_error(['message' => 'Permission denied']);
     }
 
+    // Get current business ID
+    $current_user_id = get_current_user_id();
+    $current_business_id = 0;
+    $user_business = get_posts([
+        'post_type' => 'payndle_business',
+        'posts_per_page' => 1,
+        'meta_query' => [
+            [
+                'key' => '_business_owner_id',
+                'value' => $current_user_id,
+                'compare' => '='
+            ]
+        ]
+    ]);
+    
+    if (!empty($user_business)) {
+        $current_business_id = $user_business[0]->ID;
+    }
+    
+    if (!$current_business_id) {
+        wp_send_json_error(['message' => 'No business found. Please create a business profile first.']);
+    }
+
     $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
     if (!$id) {
         wp_send_json_error(['message' => 'Invalid booking id']);
+    }
+
+    // Get business code
+    $business_code = get_post_meta($current_business_id, '_business_code', true);
+    if (!$business_code) {
+        wp_send_json_error(['message' => 'Invalid business code. Please contact support.']);
+    }
+
+    // Verify booking belongs to current business
+    $booking_business_code = '';
+    if (get_post_type($id) === 'service_booking') {
+        $booking_business_code = get_post_meta($id, '_business_code', true);
+    } else {
+        global $wpdb;
+        $booking_table = $wpdb->prefix . 'service_bookings';
+        $booking_business_code = $wpdb->get_var($wpdb->prepare(
+            "SELECT business_code FROM $booking_table WHERE id = %d",
+            $id
+        ));
+    }
+
+    if ($booking_business_code !== $business_code) {
+        wp_send_json_error(['message' => 'Permission denied: Booking does not belong to your business']);
     }
 
     // Try to delete as CPT first (permanent delete)
@@ -3619,9 +3700,55 @@ function elite_cuts_get_booking_ajax() {
         wp_send_json_error(['message' => 'Permission denied']);
     }
 
+    // Get current business ID
+    $current_user_id = get_current_user_id();
+    $current_business_id = 0;
+    $user_business = get_posts([
+        'post_type' => 'payndle_business',
+        'posts_per_page' => 1,
+        'meta_query' => [
+            [
+                'key' => '_business_owner_id',
+                'value' => $current_user_id,
+                'compare' => '='
+            ]
+        ]
+    ]);
+    
+    if (!empty($user_business)) {
+        $current_business_id = $user_business[0]->ID;
+    }
+    
+    if (!$current_business_id) {
+        wp_send_json_error(['message' => 'No business found. Please create a business profile first.']);
+    }
+
     $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
     if (!$id) {
         wp_send_json_error(['message' => 'Invalid booking id']);
+    }
+
+    // Get business code
+    $business_code = get_post_meta($current_business_id, '_business_code', true);
+    if (!$business_code) {
+        wp_send_json_error(['message' => 'Invalid business code. Please contact support.']);
+    }
+
+    // Verify booking belongs to current business
+    $booking_business_code = '';
+    if (get_post_type($id) === 'service_booking') {
+        $booking_business_code = get_post_meta($id, '_business_code', true);
+    } else {
+        global $wpdb;
+        $booking_table = $wpdb->prefix . 'service_bookings';
+        $booking_business_code = $wpdb->get_var($wpdb->prepare(
+            "SELECT business_code FROM $booking_table WHERE id = %d",
+            $id
+        ));
+    }
+
+    if ($booking_business_code !== $business_code) {
+        wp_send_json_error(['message' => 'Permission denied: Booking does not belong to your business']);
     }
 
     // Try CPT first
@@ -3666,9 +3793,55 @@ function elite_cuts_update_booking_ajax() {
         wp_send_json_error(['message' => 'Permission denied']);
     }
 
+    // Get current business ID
+    $current_user_id = get_current_user_id();
+    $current_business_id = 0;
+    $user_business = get_posts([
+        'post_type' => 'payndle_business',
+        'posts_per_page' => 1,
+        'meta_query' => [
+            [
+                'key' => '_business_owner_id',
+                'value' => $current_user_id,
+                'compare' => '='
+            ]
+        ]
+    ]);
+    
+    if (!empty($user_business)) {
+        $current_business_id = $user_business[0]->ID;
+    }
+    
+    if (!$current_business_id) {
+        wp_send_json_error(['message' => 'No business found. Please create a business profile first.']);
+    }
+
     $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
     if (!$id) {
         wp_send_json_error(['message' => 'Invalid booking id']);
+    }
+
+    // Get business code
+    $business_code = get_post_meta($current_business_id, '_business_code', true);
+    if (!$business_code) {
+        wp_send_json_error(['message' => 'Invalid business code. Please contact support.']);
+    }
+
+    // Verify booking belongs to current business
+    $booking_business_code = '';
+    if (get_post_type($id) === 'service_booking') {
+        $booking_business_code = get_post_meta($id, '_business_code', true);
+    } else {
+        global $wpdb;
+        $booking_table = $wpdb->prefix . 'service_bookings';
+        $booking_business_code = $wpdb->get_var($wpdb->prepare(
+            "SELECT business_code FROM $booking_table WHERE id = %d",
+            $id
+        ));
+    }
+
+    if ($booking_business_code !== $business_code) {
+        wp_send_json_error(['message' => 'Permission denied: Booking does not belong to your business']);
     }
 
     $customer_name = sanitize_text_field($_POST['customer_name'] ?? '');
