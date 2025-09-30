@@ -30,6 +30,30 @@ class BusinessSetup {
     public function init() {
         // Ensure required tables and post types exist
         $this->ensure_business_post_type();
+        // Ensure a business_owner role exists
+        if (!get_role('business_owner')) {
+            add_role('business_owner', 'Business Owner', [
+                'read' => true,
+            ]);
+        }
+        // Hide WP admin bar for business_owner role
+        add_filter('show_admin_bar', [$this, 'maybe_hide_admin_bar']);
+    }
+
+    /**
+     * Disable admin bar for users with the business_owner role
+     */
+    public function maybe_hide_admin_bar($show) {
+        if (!is_user_logged_in()) {
+            return $show;
+        }
+
+        $user = wp_get_current_user();
+        if (!empty($user) && in_array('business_owner', (array) $user->roles, true)) {
+            return false;
+        }
+
+        return $show;
     }
     
     /**
@@ -151,12 +175,68 @@ class BusinessSetup {
     public function submit_business_setup_ajax() {
         check_ajax_referer('business_setup_nonce', 'nonce');
 
-        if (!is_user_logged_in()) {
-            wp_send_json_error(['message' => 'You must be logged in to set up a business.']);
-            return;
-        }
-
         $user_id = get_current_user_id();
+        $creating_user = false;
+
+        // If user is not logged in, allow account creation as part of setup
+        if (!is_user_logged_in()) {
+            $acct_email = isset($_POST['account_email']) ? sanitize_email($_POST['account_email']) : '';
+            $acct_pass = isset($_POST['account_password']) ? $_POST['account_password'] : '';
+            $acct_pass_conf = isset($_POST['account_password_confirm']) ? $_POST['account_password_confirm'] : '';
+
+            // If account fields were provided, attempt to create user; otherwise error
+            if (empty($acct_email) || empty($acct_pass) || empty($acct_pass_conf)) {
+                wp_send_json_error(['message' => 'You must provide account email and password to create an account.']);
+                return;
+            }
+
+            if (!is_email($acct_email)) {
+                wp_send_json_error(['message' => 'Please provide a valid account email.']);
+                return;
+            }
+
+            if ($acct_pass !== $acct_pass_conf) {
+                wp_send_json_error(['message' => 'Passwords do not match.']);
+                return;
+            }
+
+            if (email_exists($acct_email)) {
+                wp_send_json_error(['message' => 'An account with this email already exists. Please login instead.']);
+                return;
+            }
+
+            // Derive a unique username from email local-part
+            $parts = explode('@', $acct_email);
+            $username = sanitize_user($parts[0]);
+            $base = $username;
+            $i = 1;
+            while (username_exists($username)) {
+                $username = $base . $i;
+                $i++;
+            }
+
+            $userdata = [
+                'user_login' => $username,
+                'user_email' => $acct_email,
+                'user_pass' => $acct_pass,
+                'role' => 'business_owner'
+            ];
+
+            $new_user_id = wp_insert_user($userdata);
+            if (is_wp_error($new_user_id)) {
+                wp_send_json_error(['message' => 'Failed to create user account.']);
+                return;
+            }
+
+            // Ensure new business owners do not see the admin bar
+            update_user_meta($new_user_id, 'show_admin_bar_front', 'false');
+
+            // Log the new user in
+            wp_set_current_user($new_user_id);
+            wp_set_auth_cookie($new_user_id);
+            $user_id = $new_user_id;
+            $creating_user = true;
+        }
 
         // Validate required fields
         $required_fields = ['business_name', 'business_type', 'business_email', 'business_phone'];
@@ -456,6 +536,22 @@ class BusinessSetup {
                         <div class="form-group">
                             <label for="business_email" class="form-label">Business Email</label>
                             <input type="email" id="business_email" name="business_email" class="form-input" placeholder="business@example.com" required>
+                        </div>
+                        
+                        <!-- Account creation fields (optional if logged in) -->
+                        <div class="form-group">
+                            <label for="account_email" class="form-label">Account Email (login)</label>
+                            <input type="email" id="account_email" name="account_email" class="form-input" placeholder="you@yourbusiness.com">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="account_password" class="form-label">Account Password</label>
+                            <input type="password" id="account_password" name="account_password" class="form-input" placeholder="Choose a strong password">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="account_password_confirm" class="form-label">Confirm Password</label>
+                            <input type="password" id="account_password_confirm" name="account_password_confirm" class="form-input" placeholder="Confirm password">
                         </div>
                         
                         <div class="form-group">
