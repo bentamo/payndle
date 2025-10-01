@@ -39,9 +39,13 @@ class Payndle_Business_Manager {
         // Add meta boxes for business details
         add_action( 'add_meta_boxes', array( $this, 'add_business_meta_boxes' ) );
         add_action( 'save_post_payndle_business', array( $this, 'save_business_meta' ), 10, 2 );
+    // Ensure landing page exists on any save as well (immediate availability)
+    add_action( 'save_post_payndle_business', array( $this, 'ensure_landing_page' ), 20, 2 );
         
         // Create dashboard when business is published
         add_action( 'publish_payndle_business', array( $this, 'create_business_dashboard' ), 10, 2 );
+        // Ensure landing page is created immediately when business is published
+        add_action( 'publish_payndle_business', array( $this, 'ensure_landing_page' ), 10, 2 );
     }
 
     /**
@@ -110,49 +114,10 @@ class Payndle_Business_Manager {
                 echo '<div style="display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px;">';
                 
                 // Landing Page button
+                // Ensure the landing page exists and is published
+                $this->ensure_landing_page($business->ID, $business);
                 $landing_id = get_post_meta($business->ID, '_business_landing_id', true);
                 $landing_post = $landing_id ? get_post($landing_id) : null;
-                
-                // If landing page doesn't exist or is not published, create it
-                if (!$landing_post || $landing_post->post_status !== 'publish') {
-                    // Create landing page
-                    $landing_title = sprintf( __( '%s - Welcome', 'payndle-business-manager' ), $business->post_title );
-                    $landing_slug = sanitize_title( 'business-landing-' . $business->post_name );
-                    $landing_content = '<!-- wp:uagb/container {"block_id":"pndl-landing","innerContentWidth":"alignfull","backgroundType":"color","backgroundColor":"#f4f4f4","variationSelected":true,"isBlockRootParent":true} -->
-<div class="wp-block-uagb-container uagb-block-pndl-landing alignfull uagb-is-root-container"><!-- wp:shortcode -->
-[business_landing]
-<!-- /wp:shortcode --></div>
-<!-- /wp:uagb/container -->';
-
-                    $landing_data = array(
-                        'post_title'    => $landing_title,
-                        'post_name'     => $landing_slug,
-                        'post_content'  => $landing_content,
-                        'post_status'   => 'publish',
-                        'post_type'     => 'page',
-                        'post_author'   => get_post_field( 'post_author', $business->ID ),
-                        'meta_input'    => array(
-                            '_business_id' => $business->ID
-                        )
-                    );
-
-                    // If we have an existing landing page, update it
-                    if ($landing_id) {
-                        $landing_data['ID'] = $landing_id;
-                        wp_update_post($landing_data);
-                    } else {
-                        // Create new landing page
-                        $landing_id = wp_insert_post($landing_data);
-                        if (!is_wp_error($landing_id)) {
-                            update_post_meta($business->ID, '_business_landing_id', $landing_id);
-                        }
-                    }
-                    
-                    // Force publish status and clear cache
-                    wp_publish_post($landing_id);
-                    clean_post_cache($landing_id);
-                    $landing_post = get_post($landing_id);
-                }
 
                 // Show the landing page button if we have a valid page
                 if ($landing_post && $landing_post->post_status === 'publish') {
@@ -544,8 +509,61 @@ class Payndle_Business_Manager {
                 if ( ! is_wp_error( $staff_dashboard_id ) ) {
                     update_post_meta( $post_id, '_business_staff_dashboard_id', $staff_dashboard_id );
                 }
+
+                // Also ensure a Landing Page is created for this business (immediately on publish)
+                $this->ensure_landing_page( $post_id, $post );
             }
         }
+    }
+
+    /**
+     * Ensure the business landing page exists and is published.
+     * Can be called on publish and from admin list rendering.
+     */
+    public function ensure_landing_page( $post_id, $post ) {
+        if ( ! $post_id || ! $post || ( isset($post->post_type) && $post->post_type !== 'payndle_business' ) ) {
+            return;
+        }
+
+        $landing_id = get_post_meta( $post_id, '_business_landing_id', true );
+        $landing_post = $landing_id ? get_post( $landing_id ) : null;
+
+        if ( $landing_post && $landing_post->post_status === 'publish' ) {
+            return; // already exists
+        }
+
+        $landing_title = sprintf( __( '%s - Welcome', 'payndle-business-manager' ), $post->post_title );
+        $landing_slug  = sanitize_title( 'business-landing-' . $post->post_name );
+        $landing_content = '<!-- wp:uagb/container {"block_id":"pndl-landing","innerContentWidth":"alignfull","backgroundType":"color","backgroundColor":"#f4f4f4","variationSelected":true,"isBlockRootParent":true} -->
+<div class="wp-block-uagb-container uagb-block-pndl-landing alignfull uagb-is-root-container"><!-- wp:shortcode -->
+[business_landing]
+<!-- /wp:shortcode --></div>
+<!-- /wp:uagb/container -->';
+
+        $landing_data = array(
+            'post_title'   => $landing_title,
+            'post_name'    => $landing_slug,
+            'post_content' => $landing_content,
+            'post_status'  => 'publish',
+            'post_type'    => 'page',
+            'post_author'  => get_post_field( 'post_author', $post_id ),
+            'meta_input'   => array( '_business_id' => $post_id ),
+        );
+
+        if ( $landing_id ) {
+            $landing_data['ID'] = $landing_id;
+            $updated_id = wp_update_post( $landing_data );
+            if ( is_wp_error( $updated_id ) ) { return; }
+            $landing_id = $updated_id;
+        } else {
+            $landing_id = wp_insert_post( $landing_data );
+            if ( is_wp_error( $landing_id ) ) { return; }
+            update_post_meta( $post_id, '_business_landing_id', $landing_id );
+        }
+
+        // Ensure publish and refresh cache
+        wp_publish_post( $landing_id );
+        clean_post_cache( $landing_id );
     }
 
     /**
