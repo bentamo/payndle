@@ -9,15 +9,18 @@ if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
 
-function elite_cuts_manage_bookings_page() {
-    // Check user capabilities
-    if (!current_user_can('manage_options')) {
+function elite_cuts_manage_bookings_page($business_id = 0) {
+    // Check user capabilities if no business ID is provided
+    if (empty($business_id) && !current_user_can('manage_options')) {
+        echo '<p>You do not have permission to view these bookings.</p>';
         return;
     }
     
-    // Load bookings directly with PHP
+    // Load bookings based on business ID
     global $wpdb;
-    $bookings = $wpdb->get_results("
+    
+    // Base query for legacy table
+    $query = "
         SELECT 
             b.id,
             b.service_id,
@@ -35,20 +38,125 @@ function elite_cuts_manage_bookings_page() {
         FROM {$wpdb->prefix}service_bookings b
         LEFT JOIN {$wpdb->prefix}manager_services s ON b.service_id = s.id
         LEFT JOIN {$wpdb->prefix}staff_members st ON b.staff_id = st.id
-        ORDER BY b.created_at DESC
-        LIMIT 50
-    ");
+    ";
+    
+    // Add business ID filter if provided
+    if ($business_id > 0) {
+        $query .= $wpdb->prepare("
+            WHERE (s.business_id = %d OR st.business_id = %d OR b.business_id = %d)
+        ", $business_id, $business_id, $business_id);
+    }
+    
+    $query .= " ORDER BY b.created_at DESC LIMIT 50";
+    
+    // Get bookings from legacy table
+    $legacy_bookings = $wpdb->get_results($query);
         // Load bookings from the 'service_booking' custom post type and map post meta
         $bookings = [];
+
+        // Get all service and staff IDs that belong to this business
+        $service_ids = [];
+        $staff_ids = [];
+        
+        if ($business_id > 0) {
+            // Get all services for this business
+            $services = get_posts([
+                'post_type' => 'service',
+                'posts_per_page' => -1,
+                'fields' => 'ids',
+                'meta_query' => [
+                    [
+                        'key' => 'business_id',
+                        'value' => $business_id,
+                        'compare' => '='
+                    ]
+                ]
+            ]);
+            $service_ids = $services ? $services : [0];
+            
+            // Get all staff for this business
+            $staff = get_posts([
+                'post_type' => 'staff',
+                'posts_per_page' => -1,
+                'fields' => 'ids',
+                'meta_query' => [
+                    [
+                        'key' => 'business_id',
+                        'value' => $business_id,
+                        'compare' => '='
+                    ]
+                ]
+            ]);
+            $staff_ids = $staff ? $staff : [0];
+        }
 
         $args = [
             'post_type' => 'service_booking',
             'posts_per_page' => 50,
             'post_status' => 'any',
             'orderby' => 'date',
-            'order' => 'DESC'
+            'order' => 'DESC',
+            'meta_query' => [
+                'relation' => 'OR',
+                // Match by business_id meta directly
+                [
+                    'key' => '_business_id',
+                    'value' => $business_id,
+                    'compare' => '='
+                ],
+                // Or match by service_id that belongs to this business
+                [
+                    'key' => '_service_id',
+                    'value' => $service_ids,
+                    'compare' => 'IN'
+                ],
+                // Or match by staff_id that belongs to this business
+                [
+                    'key' => '_staff_id',
+                    'value' => $staff_ids,
+                    'compare' => 'IN'
+                ]
+            ]
         ];
+        
+        // If no business ID is provided, only show bookings with no business ID (for backward compatibility)
+        if ($business_id <= 0) {
+            $args['meta_query'] = [
+                'relation' => 'OR',
+                [
+                    'key' => '_business_id',
+                    'compare' => 'NOT EXISTS'
+                ],
+                [
+                    'key' => '_business_id',
+                    'value' => ''
+                ]
+            ];
+        }
 
+        // Merge legacy bookings with CPT bookings
+        if (!empty($legacy_bookings)) {
+            foreach ($legacy_bookings as $legacy_booking) {
+                $bookings[] = (object)[
+                    'id' => $legacy_booking->id,
+                    'service_id' => $legacy_booking->service_id,
+                    'staff_id' => $legacy_booking->staff_id,
+                    'customer_name' => $legacy_booking->customer_name,
+                    'customer_email' => $legacy_booking->customer_email,
+                    'customer_phone' => $legacy_booking->customer_phone,
+                    'preferred_date' => $legacy_booking->preferred_date,
+                    'preferred_time' => $legacy_booking->preferred_time,
+                    'booking_status' => $legacy_booking->booking_status,
+                    'created_at' => $legacy_booking->created_at,
+                    'service_name' => $legacy_booking->service_name,
+                    'staff_name' => $legacy_booking->staff_name,
+                    'staff_position' => $legacy_booking->staff_position,
+                    'is_legacy' => true
+                ];
+            }
+        }
+        
+        // Get bookings from custom post type
         $query = new WP_Query($args);
 
         if ($query->have_posts()) {
@@ -103,21 +211,37 @@ function elite_cuts_manage_bookings_page() {
                 // Final fallback to the default label
                 if (empty($staff_name)) { $staff_name = 'Any available staff'; }
 
-                $bookings[] = (object) [
-                    'id' => $id,
-                    'service_id' => $service_id,
-                    'staff_id' => $staff_id,
-                    'customer_name' => $customer_name,
-                    'customer_email' => $customer_email,
-                    'customer_phone' => $customer_phone,
-                    'preferred_date' => $preferred_date,
-                    'preferred_time' => $preferred_time,
-                    'booking_status' => $booking_status,
-                    'created_at' => $created_at,
-                    'service_name' => $service_name,
-                    'staff_name' => $staff_name,
-                    'staff_position' => $staff_position
-                ];
+                // Only add if not already in the array (check by customer, service, date, time)
+                $exists = false;
+                foreach ($bookings as $existing) {
+                    if (isset($existing->customer_email) && isset($existing->service_id) && 
+                        $existing->customer_email === $customer_email && 
+                        $existing->service_id == $service_id && 
+                        $existing->preferred_date === $preferred_date &&
+                        $existing->preferred_time === $preferred_time) {
+                        $exists = true;
+                        break;
+                    }
+                }
+                
+                if (!$exists) {
+                    $bookings[] = (object) [
+                        'id' => $id,
+                        'service_id' => $service_id,
+                        'staff_id' => $staff_id,
+                        'customer_name' => $customer_name,
+                        'customer_email' => $customer_email,
+                        'customer_phone' => $customer_phone,
+                        'preferred_date' => $preferred_date,
+                        'preferred_time' => $preferred_time,
+                        'booking_status' => $booking_status,
+                        'created_at' => $created_at,
+                        'service_name' => $service_name,
+                        'staff_name' => $staff_name,
+                        'staff_position' => $staff_position,
+                        'is_legacy' => false
+                    ];
+                }
             }
             wp_reset_postdata();
         }
@@ -3287,14 +3411,40 @@ add_action('admin_enqueue_scripts', 'elite_cuts_admin_enqueue_scripts');
  * Get services options for the booking form
  */
 function elite_cuts_get_services_options($selected_id = '') {
+    error_log('elite_cuts_get_services_options called with selected_id: ' . $selected_id);
+    
+    // Get current business ID
+    $business_id = 0;
+    if (function_exists('mvp_get_current_business_id')) {
+        $business_id = mvp_get_current_business_id();
+        error_log('Retrieved business_id from mvp_get_current_business_id(): ' . $business_id);
+    } else {
+        error_log('mvp_get_current_business_id() function does not exist');
+    }
+    
     // Get services from the 'service' custom post type
     $args = [
         'post_type' => 'service',
         'posts_per_page' => -1,
         'post_status' => 'publish',
         'orderby' => 'title',
-        'order' => 'ASC'
+        'order' => 'ASC',
+        'meta_query' => []
     ];
+    
+    // Add business ID filter if available
+    if ($business_id > 0) {
+        error_log('Adding _business_id filter: ' . $business_id);
+        $args['meta_query'][] = [
+            'key' => '_business_id',
+            'value' => $business_id,
+            'compare' => '='
+        ];
+    } else {
+        error_log('No business_id available, will fetch all services');
+    }
+    
+    error_log('Service query args: ' . print_r($args, true));
 
     $services = get_posts($args);
     $options = '';
@@ -3381,6 +3531,13 @@ function elite_cuts_get_staff_for_service() {
         error_log("No service ID provided");
         wp_send_json_error('Invalid service');
     }
+    
+    // Get current business ID
+    $business_id = 0;
+    if (function_exists('mvp_get_current_business_id')) {
+        $business_id = mvp_get_current_business_id();
+    }
+    error_log("Current business ID: " . $business_id);
 
     $staff = array();
     
@@ -3404,8 +3561,18 @@ function elite_cuts_get_staff_for_service() {
                 'orderby' => 'title',
                 'order' => 'ASC',
                 'post__in' => $assigned_ids,
-                'fields' => 'ids'
+                'fields' => 'ids',
+                'meta_query' => []
             );
+            
+            // Add business ID filter if available
+            if ($business_id > 0) {
+                $args_assigned['meta_query'][] = [
+                    'key' => '_business_id',
+                    'value' => $business_id,
+                    'compare' => '='
+                ];
+            }
             $q1 = new WP_Query($args_assigned);
             error_log("Assigned staff query found: " . $q1->found_posts . " posts");
             
@@ -3462,6 +3629,15 @@ function elite_cuts_get_staff_for_service() {
         }
         $meta_query[] = $service_or;
 
+        // Add business ID filter to the meta query if available
+        if ($business_id > 0) {
+            $meta_query[] = [
+                'key' => '_business_id',
+                'value' => $business_id,
+                'compare' => '='
+            ];
+        }
+        
         $args = array(
             'post_type' => 'staff',
             'post_status' => 'publish',
@@ -3508,8 +3684,18 @@ function elite_cuts_get_staff_for_service() {
             'posts_per_page' => -1,
             'orderby' => 'title',
             'order' => 'ASC',
-            'fields' => 'ids'
+            'fields' => 'ids',
+            'meta_query' => []
         );
+        
+        // Add business ID filter if available
+        if ($business_id > 0) {
+            $all_staff_args['meta_query'][] = [
+                'key' => '_business_id',
+                'value' => $business_id,
+                'compare' => '='
+            ];
+        }
         
         $all_staff_query = new WP_Query($all_staff_args);
         error_log("All staff query found: " . $all_staff_query->found_posts . " posts");
@@ -3733,27 +3919,54 @@ add_action('wp_ajax_elite_cuts_update_booking', 'elite_cuts_update_booking_ajax'
 
 // Add shortcode for the frontend booking management
 function elite_cuts_manage_bookings_shortcode() {
-    // Check if user is logged in and has the right permissions
-    if (!is_user_logged_in() || !current_user_can('manage_options')) {
-        return '<p>You need to be logged in with the right permissions to view this page.</p>';
+    // Check if user is logged in
+    if (!is_user_logged_in()) {
+        return '<p>You need to be logged in to view this page. <a href="' . wp_login_url(get_permalink()) . '">Login</a></p>';
+    }
+    
+    // Get current user and business ID
+    $current_user = wp_get_current_user();
+    $business_id = 0;
+    
+    // Try to get business ID from user meta or URL parameter
+    if (function_exists('mvp_get_current_business_id')) {
+        $business_id = intval(mvp_get_current_business_id());
+    }
+    
+    // Fallback to URL parameter
+    if (empty($business_id) && !empty($_GET['business_id'])) {
+        $business_id = intval($_GET['business_id']);
+    }
+    
+    // Check if user owns the business or is admin
+    if ($business_id > 0) {
+        $owner_id = get_post_meta($business_id, '_business_owner_id', true);
+        if ($owner_id != $current_user->ID && !current_user_can('manage_options')) {
+            return '<p>You do not have permission to view bookings for this business.</p>';
+        }
+    } elseif (!current_user_can('manage_options')) {
+        // If no business ID and not admin, show error
+        return '<p>No business selected or you do not have permission to view these bookings.</p>';
     }
     
     // Enqueue required scripts and styles for frontend
     wp_enqueue_script('jquery');
+    wp_enqueue_script('elite-manage-bookings', plugin_dir_url(__FILE__) . 'js/elite-manage-bookings.js', array('jquery'), '1.0.0', true);
     wp_enqueue_style('font-awesome', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css');
     wp_enqueue_style('google-fonts', 'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
     
     // Localize script for AJAX
     wp_localize_script('jquery', 'eliteManageBookings', array(
         'ajaxUrl' => admin_url('admin-ajax.php'),
-        'nonce' => wp_create_nonce('manage_bookings_nonce')
+        'nonce' => wp_create_nonce('manage_bookings_nonce'),
+        'businessId' => $business_id
     ));
     
     // Start output buffering to capture the HTML
     ob_start();
     
-    // Call the booking management function
-    elite_cuts_manage_bookings_page();
+    // Call the booking management function with business ID
+    elite_cuts_manage_bookings_page($business_id);
     
     // Return the buffered content
     return ob_get_clean();
