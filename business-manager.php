@@ -118,35 +118,11 @@ class Payndle_Business_Manager {
                     // Create landing page
                     $landing_title = sprintf( __( '%s - Welcome', 'payndle-business-manager' ), $business->post_title );
                     $landing_slug = sanitize_title( 'business-landing-' . $business->post_name );
-                    $landing_content = '<!-- wp:uagb/container {"block_id":"1e2d0d91","innerContentWidth":"alignfull","backgroundType":"color","backgroundColor":"#f4f4f4","variationSelected":true,"isBlockRootParent":true} -->
-<div class="wp-block-uagb-container uagb-block-1e2d0d91 alignfull uagb-is-root-container"><!-- wp:shortcode -->
-[business_header]
+                    $landing_content = '<!-- wp:uagb/container {"block_id":"pndl-landing","innerContentWidth":"alignfull","backgroundType":"color","backgroundColor":"#f4f4f4","variationSelected":true,"isBlockRootParent":true} -->
+<div class="wp-block-uagb-container uagb-block-pndl-landing alignfull uagb-is-root-container"><!-- wp:shortcode -->
+[business_landing]
 <!-- /wp:shortcode --></div>
-<!-- /wp:uagb/container -->
-
-<!-- wp:uagb/container {"block_id":"tl8e4mmk","backgroundType":"color","backgroundColor":"#64c493","topPaddingDesktop":60,"bottomPaddingDesktop":60,"leftPaddingDesktop":60,"rightPaddingDesktop":60,"topPaddingTablet":80,"bottomPaddingTablet":80,"leftPaddingTablet":32,"rightPaddingTablet":32,"topPaddingMobile":64,"bottomPaddingMobile":64,"leftPaddingMobile":24,"rightPaddingMobile":24,"topMarginDesktop":0,"bottomMarginDesktop":0,"leftMarginDesktop":0,"rightMarginDesktop":0,"topMarginTablet":0,"bottomMarginTablet":0,"leftMarginTablet":0,"rightMarginTablet":0,"topMarginMobile":0,"bottomMarginMobile":0,"leftMarginMobile":0,"rightMarginMobile":0,"variationSelected":true,"rowGapDesktop":40,"rowGapTablet":40,"rowGapMobile":40,"columnGapDesktop":0,"columnGapTablet":0,"columnGapMobile":0,"isBlockRootParent":true} -->
-<div class="wp-block-uagb-container uagb-block-tl8e4mmk alignfull uagb-is-root-container"><div class="uagb-container-inner-blocks-wrap"><!-- wp:uagb/advanced-heading {"block_id":"f4d6a079","classMigrate":true,"headingDescToggle":false,"headingAlign":"center"} -->
-<div class="wp-block-uagb-advanced-heading uagb-block-f4d6a079"><h2 class="uagb-heading-text">Our Services</h2></div>
-<!-- /wp:uagb/advanced-heading -->
-
-<!-- wp:shortcode -->
-[user_services]
-<!-- /wp:shortcode -->
-
-<!-- wp:shortcode -->
-[user_booking_form]
-<!-- /wp:shortcode --></div></div>
-<!-- /wp:uagb/container -->
-
-<!-- wp:uagb/container {"block_id":"k0ktjvhi","directionDesktop":"row","alignItemsDesktop":"flex-start","alignItemsTablet":"flex-start","alignItemsMobile":"center","backgroundType":"color","backgroundColor":"var(\u002d\u002dast-global-color-5)","topPaddingDesktop":112,"bottomPaddingDesktop":112,"leftPaddingDesktop":40,"rightPaddingDesktop":40,"topPaddingTablet":80,"bottomPaddingTablet":80,"leftPaddingTablet":32,"rightPaddingTablet":32,"topPaddingMobile":64,"bottomPaddingMobile":64,"leftPaddingMobile":24,"rightPaddingMobile":24,"paddingLink":false,"topMarginDesktop":0,"bottomMarginDesktop":0,"leftMarginDesktop":0,"rightMarginDesktop":0,"topMarginTablet":0,"bottomMarginTablet":0,"leftMarginTablet":0,"rightMarginTablet":0,"topMarginMobile":0,"bottomMarginMobile":0,"leftMarginMobile":0,"rightMarginMobile":0,"variationSelected":true,"rowGapDesktop":0,"rowGapTablet":0,"rowGapMobile":40,"columnGapDesktop":72,"columnGapTablet":40,"columnGapMobile":0,"isBlockRootParent":true} -->
-<div class="wp-block-uagb-container uagb-block-k0ktjvhi alignfull uagb-is-root-container"><div class="uagb-container-inner-blocks-wrap"><!-- wp:shortcode -->
-[contact_us]
-<!-- /wp:shortcode --></div></div>
-<!-- /wp:uagb/container -->
-
-<!-- wp:paragraph -->
-<p></p>
-<!-- /wp:paragraph -->';
+<!-- /wp:uagb/container -->';
 
                     $landing_data = array(
                         'post_title'    => $landing_title,
@@ -448,35 +424,11 @@ class Payndle_Business_Manager {
                 if ($type === 'manager') {
                     $landing_title = sprintf( __( '%s - Welcome', 'payndle-business-manager' ), $post->post_title );
                     $landing_slug = sanitize_title( 'business-landing-' . $post->post_name );
-                    $landing_content = '<!-- wp:uagb/container {"block_id":"1e2d0d91","innerContentWidth":"alignfull","backgroundType":"color","backgroundColor":"#f4f4f4","variationSelected":true,"isBlockRootParent":true} -->
-<div class="wp-block-uagb-container uagb-block-1e2d0d91 alignfull uagb-is-root-container"><!-- wp:shortcode -->
-[business_header]
+                    $landing_content = '<!-- wp:uagb/container {"block_id":"pndl-landing","innerContentWidth":"alignfull","backgroundType":"color","backgroundColor":"#f4f4f4","variationSelected":true,"isBlockRootParent":true} -->
+<div class="wp-block-uagb-container uagb-block-pndl-landing alignfull uagb-is-root-container"><!-- wp:shortcode -->
+[business_landing]
 <!-- /wp:shortcode --></div>
-<!-- /wp:uagb/container -->
-
-<!-- wp:uagb/container {"block_id":"tl8e4mmk","backgroundType":"color","backgroundColor":"#64c493","topPaddingDesktop":60,"bottomPaddingDesktop":60,"leftPaddingDesktop":60,"rightPaddingDesktop":60,"topPaddingTablet":80,"bottomPaddingTablet":80,"leftPaddingTablet":32,"rightPaddingTablet":32,"topPaddingMobile":64,"bottomPaddingMobile":64,"leftPaddingMobile":24,"rightPaddingMobile":24,"topMarginDesktop":0,"bottomMarginDesktop":0,"leftMarginDesktop":0,"rightMarginDesktop":0,"topMarginTablet":0,"bottomMarginTablet":0,"leftMarginTablet":0,"rightMarginTablet":0,"topMarginMobile":0,"bottomMarginMobile":0,"leftMarginMobile":0,"rightMarginMobile":0,"variationSelected":true,"rowGapDesktop":40,"rowGapTablet":40,"rowGapMobile":40,"columnGapDesktop":0,"columnGapTablet":0,"columnGapMobile":0,"isBlockRootParent":true} -->
-<div class="wp-block-uagb-container uagb-block-tl8e4mmk alignfull uagb-is-root-container"><div class="uagb-container-inner-blocks-wrap"><!-- wp:uagb/advanced-heading {"block_id":"f4d6a079","classMigrate":true,"headingDescToggle":false,"headingAlign":"center"} -->
-<div class="wp-block-uagb-advanced-heading uagb-block-f4d6a079"><h2 class="uagb-heading-text">Our Services</h2></div>
-<!-- /wp:uagb/advanced-heading -->
-
-<!-- wp:shortcode -->
-[user_services]
-<!-- /wp:shortcode -->
-
-<!-- wp:shortcode -->
-[user_booking_form]
-<!-- /wp:shortcode --></div></div>
-<!-- /wp:uagb/container -->
-
-<!-- wp:uagb/container {"block_id":"k0ktjvhi","directionDesktop":"row","alignItemsDesktop":"flex-start","alignItemsTablet":"flex-start","alignItemsMobile":"center","backgroundType":"color","backgroundColor":"var(\u002d\u002dast-global-color-5)","topPaddingDesktop":112,"bottomPaddingDesktop":112,"leftPaddingDesktop":40,"rightPaddingDesktop":40,"topPaddingTablet":80,"bottomPaddingTablet":80,"leftPaddingTablet":32,"rightPaddingTablet":32,"topPaddingMobile":64,"bottomPaddingMobile":64,"leftPaddingMobile":24,"rightPaddingMobile":24,"paddingLink":false,"topMarginDesktop":0,"bottomMarginDesktop":0,"leftMarginDesktop":0,"rightMarginDesktop":0,"topMarginTablet":0,"bottomMarginTablet":0,"leftMarginTablet":0,"rightMarginTablet":0,"topMarginMobile":0,"bottomMarginMobile":0,"leftMarginMobile":0,"rightMarginMobile":0,"variationSelected":true,"rowGapDesktop":0,"rowGapTablet":0,"rowGapMobile":40,"columnGapDesktop":72,"columnGapTablet":40,"columnGapMobile":0,"isBlockRootParent":true} -->
-<div class="wp-block-uagb-container uagb-block-k0ktjvhi alignfull uagb-is-root-container"><div class="uagb-container-inner-blocks-wrap"><!-- wp:shortcode -->
-[contact_us]
-<!-- /wp:shortcode --></div></div>
-<!-- /wp:uagb/container -->
-
-<!-- wp:paragraph -->
-<p></p>
-<!-- /wp:paragraph -->';
+<!-- /wp:uagb/container -->';
 
                     $landing_data = array(
                         'post_title'    => $landing_title,
