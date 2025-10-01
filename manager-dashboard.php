@@ -15,11 +15,39 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 function save_business_info() {
     check_ajax_referer('business_info_nonce', 'business_info_nonce');
 
-    if ( ! current_user_can('edit_posts') ) {
+    $current_user_id = get_current_user_id();
+    if (!$current_user_id) {
         wp_send_json_error('Unauthorized');
     }
 
     $business_id = isset($_POST['business_id']) ? intval($_POST['business_id']) : 0;
+    if (!$business_id) {
+        // Fallback: find the user's business (one business per user)
+        $owned = get_posts([
+            'post_type' => 'payndle_business',
+            'post_status' => ['publish','private','draft','pending'],
+            'meta_query' => [[
+                'key' => '_business_owner_id',
+                'value' => $current_user_id,
+                'compare' => '='
+            ]],
+            'numberposts' => 1
+        ]);
+        if (!empty($owned)) {
+            $business_id = $owned[0]->ID;
+        }
+    }
+
+    // Validate business ownership or allow admins
+    $business = $business_id ? get_post($business_id) : null;
+    if (!$business || get_post_type($business) !== 'payndle_business') {
+        wp_send_json_error('Invalid business');
+    }
+
+    $owner_id = intval(get_post_meta($business_id, '_business_owner_id', true));
+    if ($owner_id !== $current_user_id && ! current_user_can('manage_options')) {
+        wp_send_json_error('Unauthorized');
+    }
     $fields = [
         'business_name', 'business_description', 'business_email', 'business_phone',
         'business_address', 'business_city', 'business_state', 'business_zip',
@@ -60,6 +88,24 @@ function manager_dashboard_shortcode() {
     $business_id = isset( $_GET['business_id'] ) ? intval( $_GET['business_id'] ) : 0;
     $business = $business_id ? get_post( $business_id ) : null;
 
+    // Auto-resolve the current user's business if none explicitly provided
+    if ( ! $business ) {
+        $owned = get_posts([
+            'post_type' => 'payndle_business',
+            'post_status' => ['publish','private','draft','pending'],
+            'meta_query' => [[
+                'key' => '_business_owner_id',
+                'value' => $current_user->ID,
+                'compare' => '='
+            ]],
+            'numberposts' => 1
+        ]);
+        if (!empty($owned)) {
+            $business = $owned[0];
+            $business_id = $business->ID;
+        }
+    }
+
     if ( $business ) {
         $owner_id = get_post_meta( $business->ID, '_business_owner_id', true );
         if ( $owner_id != $current_user->ID && ! current_user_can( 'manage_options' ) ) {
@@ -90,8 +136,14 @@ function manager_dashboard_shortcode() {
     $users_count    = intval(get_post_meta($business_id, '_users_count', true) ?: 0);
     $orders_count   = intval(get_post_meta($business_id, '_orders_count', true) ?: 0);
 
-    ob_start();
+        ob_start();
     ?>
+        <script>
+            window.managerDashboard = {
+                ajax_url: '<?php echo esc_js( admin_url('admin-ajax.php') ); ?>',
+                nonce: '<?php echo esc_js( wp_create_nonce('business_info_nonce') ); ?>'
+            };
+        </script>
     <div class="dashboard-wrap">
         <div class="dashboard-inner">
 
