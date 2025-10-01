@@ -124,6 +124,7 @@ jQuery(document).ready(function($) {
         action: (staffManager.ajax_action || 'manage_staff'),
                 nonce: staffManager.nonce,
                 action_type: 'get_staff',
+                business_id: (typeof staffManager.business_id !== 'undefined' ? staffManager.business_id : ''),
                 data: JSON.stringify({
                     paged: currentPage,
                     per_page: perPage,
@@ -286,6 +287,7 @@ jQuery(document).ready(function($) {
                     action: (staffManager.ajax_action || 'manage_staff'),
                     nonce: staffManager.nonce,
                     action_type: 'get_staff',
+                    business_id: (typeof staffManager.business_id !== 'undefined' ? staffManager.business_id : ''),
                     data: JSON.stringify({ id: staffId })
                 },
                 success: function(response) {
@@ -449,6 +451,7 @@ jQuery(document).ready(function($) {
             nonce: (typeof staffManager !== 'undefined' ? staffManager.nonce : ''),
             action_type: actionType,
             staff_id: staffId,
+            business_id: (typeof staffManager.business_id !== 'undefined' ? staffManager.business_id : ''),
             data: JSON.stringify(formData)  // Convert to JSON string as PHP expects
         };
         
@@ -495,6 +498,7 @@ jQuery(document).ready(function($) {
                     action: (staffManager.ajax_action || 'manage_staff'),
                     nonce: staffManager.nonce,
                     action_type: 'delete_staff',
+                    business_id: (typeof staffManager.business_id !== 'undefined' ? staffManager.business_id : ''),
                     data: JSON.stringify({ id: staffId })
                 },
                 success: function(response) {
@@ -756,6 +760,7 @@ jQuery(document).ready(function($) {
             action: (staffManager.ajax_action || 'manage_staff'),
             nonce: staffManager.nonce,
             action_type: 'save_staff_schedule',
+            business_id: (typeof staffManager.business_id !== 'undefined' ? staffManager.business_id : ''),
             data: JSON.stringify({ staff_id: staffId, date: date, start: start, end: end })
         };
 

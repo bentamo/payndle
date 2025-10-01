@@ -8,12 +8,10 @@ if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
 
-function elite_cuts_manage_staff_page() {
-    // Check user capabilities
-    if (!current_user_can('manage_options')) {
-        return;
-    }
-    ?>
+// Shared renderer for the modern Staff UI so admin and frontend shortcodes look identical
+if (!function_exists('elite_cuts_render_staff_ui')) {
+    function elite_cuts_render_staff_ui() {
+        ?>
     <div class="wrap elite-cuts-admin">
         <div class="elite-cuts-header">
             <div class="shop-info">
@@ -360,7 +358,17 @@ function elite_cuts_manage_staff_page() {
     #confirm-modal .modal-body { padding: 1rem; }
     #confirm-modal .close { cursor: pointer; font-size: 1.2rem; color: var(--text-secondary); }
     </style>
-    <?php
+        <?php
+    }
+}
+
+function elite_cuts_manage_staff_page() {
+    // Check user capabilities
+    if (!current_user_can('manage_options')) {
+        return;
+    }
+    // Render the shared UI
+    elite_cuts_render_staff_ui();
 }
 
 // Enqueue admin styles and scripts - now using same enhanced JS as shortcode
@@ -827,5 +835,6 @@ function elite_cuts_manage_staff_shortcode() {
     elite_cuts_manage_staff_page();
     return ob_get_clean();
 }
-add_shortcode('manage_staff', 'elite_cuts_manage_staff_shortcode');
+// Register an admin-only shortcode under a different tag to avoid clashing with the frontend shortcode
+add_shortcode('manage_staff_admin', 'elite_cuts_manage_staff_shortcode');
 ?>
