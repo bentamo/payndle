@@ -77,7 +77,6 @@ require_once 'contact-us-shortcode.php';
 require_once 'test-registration.php';
 require_once 'business-landing-wrapper.php';
 
-=======
 /* Load booking history with error handling
 if (file_exists(__DIR__ . '/booking-history.php')) {
     try {		
