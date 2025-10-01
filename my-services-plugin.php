@@ -30,10 +30,18 @@ function mvp_get_current_business_id() {
         return intval($_SESSION['current_business_id']);
     }
 
+    // If the Payndle helper exists, prefer that for consistent context across the plugin
+    if (function_exists('payndle_get_current_business_id')) {
+        $pid = intval(payndle_get_current_business_id());
+        if ($pid > 0) {
+            return $pid;
+        }
+    }
+
     // If we're on a business single (or on a page that has a _business_id meta), use that context
     global $post;
     if ( isset( $post ) && ! empty( $post ) ) {
-        if ( property_exists( $post, 'post_type' ) && $post->post_type === 'business' ) {
+        if ( property_exists( $post, 'post_type' ) && $post->post_type === 'payndle_business' ) {
             return intval( $post->ID );
         }
 
@@ -50,7 +58,7 @@ function mvp_get_current_business_id() {
 
         // Query for businesses where this user is the owner
         $args = array(
-            'post_type' => 'business',
+            'post_type' => 'payndle_business',
             'posts_per_page' => 1,
             'meta_query' => array(
                 array(
@@ -918,16 +926,23 @@ function mvp_add_service() {
     $is_featured = isset($_POST['is_featured']) && intval($_POST['is_featured']) === 1 ? 1 : 0;
     update_post_meta($post_id, '_is_featured', $is_featured);
 
-    // Set categories if any
+    // Set categories if any (only allow categories owned by this business)
     if (!empty($categories)) {
         $term_ids = array();
-        foreach ($categories as $category_id) {
-            if (term_exists($category_id, 'service_category')) {
-                $term_ids[] = $category_id;
+        foreach ((array)$categories as $category_id) {
+            if (!term_exists((int)$category_id, 'service_category')) {
+                continue;
+            }
+            $owner_bid = intval(get_term_meta((int)$category_id, '_business_id', true));
+            if ($owner_bid === $business_id || current_user_can('manage_options')) {
+                $term_ids[] = (int)$category_id;
             }
         }
         if (!empty($term_ids)) {
-            wp_set_object_terms($post_id, $term_ids, 'service_category');
+            wp_set_object_terms($post_id, array_unique($term_ids), 'service_category');
+        } else {
+            // Clear categories if none allowed
+            wp_set_object_terms($post_id, array(), 'service_category');
         }
     }
 
@@ -1047,10 +1062,17 @@ function mvp_user_services_shortcode($atts) {
     // Get services
     $services = get_posts($args);
     
-    // Get all categories for filter
+    // Get all categories for filter that belong to this business
     $categories = get_terms(array(
         'taxonomy' => 'service_category',
         'hide_empty' => true,
+        'meta_query' => array(
+            array(
+                'key' => '_business_id',
+                'value' => $business_id,
+                'compare' => '='
+            )
+        )
     ));
 
     ob_start(); 
@@ -1190,6 +1212,8 @@ function mvp_handle_category() {
         if (is_wp_error($term)) {
             wp_send_json_error($term->get_error_message());
         }
+        // Link category to this business
+        add_term_meta($term['term_id'], '_business_id', $business_id, true);
         
         $term_data = get_term($term['term_id'], 'service_category');
         $response = array(
@@ -1205,6 +1229,11 @@ function mvp_handle_category() {
         
         if (!$term_id) {
             wp_send_json_error('Invalid category ID.');
+        }
+        // Only allow deleting categories owned by this business
+        $term_business_id = intval(get_term_meta($term_id, '_business_id', true));
+        if ($term_business_id !== $business_id && ! current_user_can('manage_options')) {
+            wp_send_json_error('You do not have permission to delete this category.');
         }
         
         $result = wp_delete_term($term_id, 'service_category');
@@ -1224,6 +1253,13 @@ add_action('wp_ajax_mvp_handle_category', 'mvp_handle_category');
    MANAGER SHORTCODE
    ====================== */
 function mvp_manager_shortcode() {
+    // Accept optional business_id attribute but validate ownership below
+    $atts = func_num_args() > 0 ? func_get_arg(0) : array();
+    if (!is_array($atts)) { $atts = array(); }
+    $atts = shortcode_atts(array(
+        'business_id' => 0,
+    ), $atts, 'manager_add_service');
+
     if (!is_user_logged_in()) {
         return '<div class="mvp-login-required">' . 
                '<p>' . __('Please log in to manage services.', 'service-manager') . '</p>' .
@@ -1232,11 +1268,18 @@ function mvp_manager_shortcode() {
     }
     
     // Get the current business ID
-    $business_id = mvp_get_current_business_id();
+    $business_id = intval($atts['business_id']) ?: mvp_get_current_business_id();
     
     // If no business ID is found, show an error
     if ($business_id <= 0) {
         return '<div class="error-message">' . __('No business context found. Please select a business first.', 'service-manager') . '</div>';
+    }
+
+    // Enforce that only the business owner (or admins) can access this manager
+    $current_user = wp_get_current_user();
+    $owner_id = intval(get_post_meta($business_id, '_business_owner_id', true));
+    if ($owner_id !== intval($current_user->ID) && ! current_user_can('manage_options')) {
+        return '<div class="error-message">' . esc_html__('You do not have permission to manage services for this business.', 'service-manager') . '</div>';
     }
 
     // Get services for the current business
@@ -1254,10 +1297,17 @@ function mvp_manager_shortcode() {
         )
     ));
 
-    // Get all categories
+    // Get categories owned by this business
     $categories = get_terms(array(
         'taxonomy' => 'service_category',
         'hide_empty' => false,
+        'meta_query' => array(
+            array(
+                'key' => '_business_id',
+                'value' => $business_id,
+                'compare' => '='
+            )
+        )
     ));
 
     ob_start(); ?>
