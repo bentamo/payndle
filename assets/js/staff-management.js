@@ -21,6 +21,7 @@ jQuery(document).ready(function($) {
         bindEventListeners();
         initializeAvatarUpload();
         initializeCheckboxServiceList();
+        refreshServicesDropdown();
     }
 
     // Small helper to escape HTML in dynamic strings
@@ -275,6 +276,9 @@ jQuery(document).ready(function($) {
     // Clear Select2 selection if present
     try { $('#staff-service').val(null).trigger('change'); } catch(e) {}
 
+        // Always refresh services for the dropdown and checkbox list when opening
+        refreshServicesDropdown();
+
         if (staffId) {
             $('#staff-modal-title').text('Edit Staff');
             $form.find('button[type="submit"]').text('Update Staff');
@@ -477,6 +481,38 @@ jQuery(document).ready(function($) {
                 // re-enable submit regardless of outcome
                 $form.data('submitting', false);
                 $submitBtn.prop('disabled', false);
+            }
+        });
+    }
+
+    // Fetch services for current business and repopulate the dropdown
+    function refreshServicesDropdown() {
+        if (!$('#staff-service-dropdown').length) return;
+        const $sel = $('#staff-service-dropdown');
+        $sel.prop('disabled', true).html('<option value="">Loading...</option>');
+        $.ajax({
+            url: staffManager.ajax_url,
+            type: 'POST',
+            data: {
+                action: 'manage_staff_services',
+                nonce: staffManager.nonce,
+                business_id: (typeof staffManager.business_id !== 'undefined' ? staffManager.business_id : '')
+            },
+            success: function(response){
+                $sel.empty();
+                $sel.append('<option value="">Select a service...</option>');
+                if (response && response.success && response.data && Array.isArray(response.data.services)) {
+                    response.data.services.forEach(function(s){
+                        const price = (s.price !== null && s.price !== undefined && s.price !== '') ? (' - ₱' + Number(s.price).toFixed(2)) : '';
+                        $sel.append('<option value="' + String(s.id) + '">' + escapeHtml(s.title + price) + '</option>');
+                    });
+                }
+            },
+            error: function(){
+                // leave default state
+            },
+            complete: function(){
+                $sel.prop('disabled', false);
             }
         });
     }
