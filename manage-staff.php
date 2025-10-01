@@ -37,15 +37,22 @@ if (!function_exists('elite_cuts_render_staff_ui')) {
                         <select id="filter-role" class="elite-select">
                             <option value="">All Roles</option>
                             <?php
-                            // Populate from Service posts (actual services)
-                            $services = get_posts(array(
+                            // Populate from Service posts (actual services) scoped to current business
+                            $business_id = function_exists('payndle_get_current_business_id') ? absint(payndle_get_current_business_id()) : 0;
+                            $svc_args = array(
                                 'post_type' => 'service',
                                 'post_status' => 'publish',
                                 'posts_per_page' => -1,
                                 'orderby' => 'title',
                                 'order' => 'ASC',
                                 'fields' => 'ids'
-                            ));
+                            );
+                            if ($business_id > 0) {
+                                $svc_args['meta_query'] = array(
+                                    array('key' => '_business_id', 'value' => $business_id, 'compare' => '=')
+                                );
+                            }
+                            $services = get_posts($svc_args);
                             foreach ($services as $sid) {
                                 $title = get_the_title($sid);
                                 echo '<option value="' . esc_attr($sid) . '">' . esc_html($title) . '</option>';

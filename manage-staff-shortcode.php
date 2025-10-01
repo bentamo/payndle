@@ -9,12 +9,58 @@ if (!defined('ABSPATH')) { exit; }
 // Helper: get current business id (from session or user meta)
 if (!function_exists('payndle_get_current_business_id')) {
     function payndle_get_current_business_id() {
-        if (isset($_SESSION['current_business_id'])) {
+        // Highest priority: explicit request input
+        if (isset($_GET['business_id'])) {
+            return absint($_GET['business_id']);
+        }
+        if (isset($_POST['business_id'])) {
+            return absint($_POST['business_id']);
+        }
+
+        // Session-scoped business (often set by dashboards)
+        if (isset($_SESSION['current_business_id']) && $_SESSION['current_business_id']) {
             return absint($_SESSION['current_business_id']);
         }
-        if (!is_user_logged_in()) { return 0; }
-        $user_id = get_current_user_id();
-        return absint(get_user_meta($user_id, 'business_id', true));
+
+        // Current page context: linked landing or business single
+        global $post;
+        if (!empty($post)) {
+            // If this is a linked landing/page, prefer its _business_id
+            $linked = get_post_meta($post->ID, '_business_id', true);
+            if (!empty($linked)) {
+                return absint($linked);
+            }
+            // If viewing a business post directly
+            if (property_exists($post, 'post_type') && $post->post_type === 'payndle_business') {
+                return absint($post->ID);
+            }
+        }
+
+        // Logged-in owner: user meta or owned business lookup
+        if (is_user_logged_in()) {
+            $user_id = get_current_user_id();
+            $meta_bid = absint(get_user_meta($user_id, 'business_id', true));
+            if ($meta_bid) { return $meta_bid; }
+
+            // Fallback: find a business owned by this user
+            $q = new WP_Query(array(
+                'post_type' => 'payndle_business',
+                'posts_per_page' => 1,
+                'meta_query' => array(
+                    array('key' => '_business_owner_id', 'value' => $user_id, 'compare' => '=')
+                ),
+                'fields' => 'ids',
+            ));
+            if ($q->have_posts()) {
+                $ids = $q->posts;
+                wp_reset_postdata();
+                if (!empty($ids[0])) { return absint($ids[0]); }
+            } else {
+                wp_reset_postdata();
+            }
+        }
+
+        return 0;
     }
 }
 
@@ -249,6 +295,46 @@ function payndle_handle_staff_ajax_front() {
         default:
             wp_send_json_error('Invalid action');
     }
+}
+
+// AJAX: Return services for current business (for refreshing dropdowns)
+add_action('wp_ajax_manage_staff_services', 'payndle_handle_services_list');
+add_action('wp_ajax_nopriv_manage_staff_services', 'payndle_handle_services_list');
+function payndle_handle_services_list() {
+    check_ajax_referer('staff_management_nonce', 'nonce');
+    // Allow only logged-in users for staff management
+    if (!is_user_logged_in()) wp_send_json_error('Unauthorized');
+
+    $business_id = isset($_POST['business_id']) ? absint($_POST['business_id']) : 0;
+    if ($business_id <= 0) {
+        $business_id = function_exists('payndle_get_current_business_id') ? absint(payndle_get_current_business_id()) : 0;
+    }
+    if ($business_id <= 0) {
+        wp_send_json_success(array('services' => array()));
+    }
+
+    $services = get_posts(array(
+        'post_type' => 'service',
+        'post_status' => 'publish',
+        'numberposts' => -1,
+        'orderby' => 'title',
+        'order' => 'ASC',
+        'meta_query' => array(
+            array('key' => '_business_id', 'value' => $business_id, 'compare' => '=')
+        )
+    ));
+
+    $out = array();
+    foreach ($services as $service) {
+        $price = get_post_meta($service->ID, '_service_price', true);
+        $out[] = array(
+            'id' => (int)$service->ID,
+            'title' => $service->post_title,
+            'price' => ($price !== '' && $price !== null) ? (float)$price : null,
+        );
+    }
+
+    wp_send_json_success(array('services' => $out));
 }
 
 // Frontend shortcode: reuse the modern admin UI markup
