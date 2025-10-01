@@ -117,6 +117,16 @@ function mvp_register_service_post_type() {
         'hierarchical' => true,
         'show_admin_column' => true,
         'show_in_rest' => true,
+        // Map taxonomy capabilities so non-admin business owners can create categories via the frontend.
+        // By default, wp_insert_term requires 'manage_terms' (usually 'manage_categories'), which
+        // contributors/authors do not have. Mapping to 'edit_posts' allows them to manage their own taxonomy terms
+        // while our AJAX handler still enforces business ownership.
+        'capabilities' => array(
+            'manage_terms' => 'edit_posts',
+            'edit_terms'   => 'edit_posts',
+            'delete_terms' => 'edit_posts',
+            'assign_terms' => 'edit_posts',
+        ),
     ));
 }
 add_action('init', 'mvp_register_service_post_type');
@@ -1200,6 +1210,14 @@ function mvp_handle_category() {
     $action = isset($_POST['action_type']) ? sanitize_text_field($_POST['action_type']) : '';
     $response = array('success' => false);
     
+    // Helper: temporarily grant minimal cap needed for taxonomy ops
+    if (!function_exists('mvp_temp_grant_edit_posts')) {
+        function mvp_temp_grant_edit_posts($allcaps, $caps, $args, $user) {
+            $allcaps['edit_posts'] = true;
+            return $allcaps;
+        }
+    }
+
     if ($action === 'add') {
         $name = isset($_POST['name']) ? sanitize_text_field($_POST['name']) : '';
         
@@ -1207,20 +1225,67 @@ function mvp_handle_category() {
             wp_send_json_error('Category name is required.');
         }
         
+        // First attempt to insert the term normally
+        // Temporarily grant capability for this operation
+        add_filter('user_has_cap', 'mvp_temp_grant_edit_posts', 10, 4);
         $term = wp_insert_term($name, 'service_category');
         
         if (is_wp_error($term)) {
-            wp_send_json_error($term->get_error_message());
+            // Handle duplicate names gracefully
+            if ($term->get_error_code() === 'term_exists') {
+                $existing_data = $term->get_error_data();
+                $existing_id = is_array($existing_data) && isset($existing_data['term_id'])
+                    ? intval($existing_data['term_id'])
+                    : intval($existing_data);
+                if ($existing_id > 0) {
+                    // If the existing term belongs to this business, reuse it
+                    $existing_bid = intval(get_term_meta($existing_id, '_business_id', true));
+                    if ($existing_bid === $business_id) {
+                        $term_id = $existing_id;
+                    } else {
+                        // Otherwise, create a new term with a unique slug
+                        $base_slug = sanitize_title($name);
+                        $unique_slug = $base_slug . '-' . $business_id;
+                        $term_retry = wp_insert_term($name, 'service_category', array('slug' => $unique_slug));
+                        if (is_wp_error($term_retry)) {
+                            remove_filter('user_has_cap', 'mvp_temp_grant_edit_posts', 10);
+                            wp_send_json_error($term_retry->get_error_message());
+                        }
+                        $term_id = intval($term_retry['term_id']);
+                    }
+                } else {
+                    // Fallback if we can't get the existing ID
+                    $base_slug = sanitize_title($name);
+                    $unique_slug = $base_slug . '-' . $business_id;
+                    $term_retry = wp_insert_term($name, 'service_category', array('slug' => $unique_slug));
+                    if (is_wp_error($term_retry)) {
+                        remove_filter('user_has_cap', 'mvp_temp_grant_edit_posts', 10);
+                        wp_send_json_error($term_retry->get_error_message());
+                    }
+                    $term_id = intval($term_retry['term_id']);
+                }
+            } else {
+                remove_filter('user_has_cap', 'mvp_temp_grant_edit_posts', 10);
+                wp_send_json_error($term->get_error_message());
+            }
+        } else {
+            $term_id = intval($term['term_id']);
         }
-        // Link category to this business
-        add_term_meta($term['term_id'], '_business_id', $business_id, true);
+        // Remove temporary capability grant
+        remove_filter('user_has_cap', 'mvp_temp_grant_edit_posts', 10);
+
+        // Link category to this business (only add if not already set)
+        $existing_bid_meta = get_term_meta($term_id, '_business_id', true);
+        if (empty($existing_bid_meta)) {
+            add_term_meta($term_id, '_business_id', $business_id, true);
+        }
         
-        $term_data = get_term($term['term_id'], 'service_category');
+        $term_data = get_term($term_id, 'service_category');
         $response = array(
             'success' => true,
-            'term_id' => $term['term_id'],
-            'name' => $term_data->name,
-            'slug' => $term_data->slug,
+            'term_id' => $term_id,
+            'name' => $term_data ? $term_data->name : $name,
+            'slug' => $term_data ? $term_data->slug : sanitize_title($name),
             'count' => 0
         );
         
@@ -1236,7 +1301,9 @@ function mvp_handle_category() {
             wp_send_json_error('You do not have permission to delete this category.');
         }
         
+        add_filter('user_has_cap', 'mvp_temp_grant_edit_posts', 10, 4);
         $result = wp_delete_term($term_id, 'service_category');
+        remove_filter('user_has_cap', 'mvp_temp_grant_edit_posts', 10);
         
         if (is_wp_error($result)) {
             wp_send_json_error($result->get_error_message());
@@ -1248,6 +1315,7 @@ function mvp_handle_category() {
     wp_send_json_success($response);
 }
 add_action('wp_ajax_mvp_handle_category', 'mvp_handle_category');
+add_action('wp_ajax_nopriv_mvp_handle_category', 'mvp_handle_category');
 
 /* ======================
    MANAGER SHORTCODE
@@ -1423,7 +1491,7 @@ function mvp_manager_shortcode() {
                 <div class="mvp-add-category">
                     <input type="text" id="mvp-new-category" class="mvp-form-control" 
                            placeholder="<?php esc_attr_e('Add new category', 'service-manager'); ?>">
-                    <button id="mvp-add-category" class="mvp-btn mvp-btn-primary">
+                    <button type="button" id="mvp-add-category" class="mvp-btn mvp-btn-primary">
                         <i class="dashicons dashicons-plus"></i>
                     </button>
                 </div>
@@ -1668,7 +1736,9 @@ function mvp_manager_shortcode() {
         });
 
         // Add Category
-        $('#mvp-add-category').on('click', function() {
+        $('#mvp-add-category').on('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
             var $input = $('#mvp-new-category');
             var name = $input.val().trim();
             
