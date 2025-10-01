@@ -1098,7 +1098,21 @@ class UserBookingForm {
      * Get services options for dropdown
      */
     private function get_services_options($selected_id = '') {
-        // Prefer the 'service' custom post type if available
+        // Prefer the 'service' custom post type if available; scope to current business if detected
+        $business_id = 0;
+        // Resolve via helper if available
+        if (function_exists('mvp_get_current_business_id')) {
+            $business_id = intval(mvp_get_current_business_id());
+        }
+        // Fallback: if current page is linked to a business via meta
+        if ($business_id <= 0) {
+            global $post;
+            if (!empty($post)) {
+                $linked = intval(get_post_meta($post->ID, '_business_id', true));
+                if ($linked > 0) { $business_id = $linked; }
+            }
+        }
+
         $args = [
             'post_type' => 'service',
             'posts_per_page' => -1,
@@ -1106,6 +1120,11 @@ class UserBookingForm {
             'orderby' => 'title',
             'order' => 'ASC'
         ];
+        if ($business_id > 0) {
+            $args['meta_query'] = [
+                [ 'key' => '_business_id', 'value' => $business_id, 'compare' => '=' ]
+            ];
+        }
 
         $services = get_posts($args);
         $options = '';

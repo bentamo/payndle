@@ -24,15 +24,24 @@ if (!defined('ABSPATH')) {
 function payndle_contact_us_shortcode($atts) {
     global $post;
     
-    // Get business information from post meta (matching manager dashboard format)
-    $business_address = get_post_meta($post->ID, '_business_address', true);
-    $business_city = get_post_meta($post->ID, '_business_city', true);
-    $business_state = get_post_meta($post->ID, '_business_state', true);
-    $business_zip = get_post_meta($post->ID, '_business_zip', true);
-    $business_country = get_post_meta($post->ID, '_business_country', true);
-    $business_email = get_post_meta($post->ID, '_business_email', true);
-    $business_phone = get_post_meta($post->ID, '_business_phone', true);
-    $business_hours = get_post_meta($post->ID, '_business_hours', true);
+    // Resolve business context: if current page stores a _business_id, use that business' meta
+    $context_post_id = !empty($post) ? intval($post->ID) : 0;
+    if (!empty($post)) {
+        $linked_business_id = intval(get_post_meta($post->ID, '_business_id', true));
+        if ($linked_business_id > 0) {
+            $context_post_id = $linked_business_id;
+        }
+    }
+    
+    // Get business information from resolved context meta
+    $business_address = get_post_meta($context_post_id, '_business_address', true);
+    $business_city = get_post_meta($context_post_id, '_business_city', true);
+    $business_state = get_post_meta($context_post_id, '_business_state', true);
+    $business_zip = get_post_meta($context_post_id, '_business_zip', true);
+    $business_country = get_post_meta($context_post_id, '_business_country', true);
+    $business_email = get_post_meta($context_post_id, '_business_email', true);
+    $business_phone = get_post_meta($context_post_id, '_business_phone', true);
+    $business_hours = get_post_meta($context_post_id, '_business_hours', true);
     
     // Format address if we have the components
     $formatted_address = '';

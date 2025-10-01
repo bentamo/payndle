@@ -18,17 +18,29 @@ if (!defined('ABSPATH')) {
 function payndle_business_header_shortcode($atts) {
     global $post;
     
-    // First try to get the business name from the post title (how manager dashboard primarily stores it)
-    $business_name = !empty($post->post_title) ? $post->post_title : '';
-    
-    // Then try to get from meta if not found in title
-    if (empty($business_name)) {
-        $business_name = get_post_meta($post->ID, '_business_name', true);
+    // Resolve business context: prefer linked business via meta _business_id if present
+    $context_post = $post;
+    if (!empty($post)) {
+        $linked_business_id = intval(get_post_meta($post->ID, '_business_id', true));
+        if ($linked_business_id > 0) {
+            $maybe = get_post($linked_business_id);
+            if ($maybe && $maybe->post_type === 'payndle_business') {
+                $context_post = $maybe;
+            }
+        }
     }
     
-    // Get other business information from meta
-    $business_description = get_post_meta($post->ID, '_business_description', true);
-    $business_logo = get_post_meta($post->ID, '_business_logo', true);
+    // First try to get the business name from the post title
+    $business_name = (!empty($context_post) && !empty($context_post->post_title)) ? $context_post->post_title : '';
+    
+    // Then try to get from meta if not found in title
+    if (empty($business_name) && !empty($context_post)) {
+        $business_name = get_post_meta($context_post->ID, '_business_name', true);
+    }
+    
+    // Get other business information from meta (based on resolved context)
+    $business_description = !empty($context_post) ? get_post_meta($context_post->ID, '_business_description', true) : '';
+    $business_logo = !empty($context_post) ? get_post_meta($context_post->ID, '_business_logo', true) : '';
     
     // Set default values if empty
     $default_name = !empty($business_name) ? $business_name : 'Business Name';
