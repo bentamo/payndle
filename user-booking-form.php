@@ -1996,6 +1996,18 @@ class UserBookingForm {
             // Save meta for this booking; use per-index schedule if provided
             $date_for_index = $preferred_dates[$index] ?? '';
             $time_for_index = $preferred_times[$index] ?? '';
+            
+            // Get business ID from service or staff
+            $business_id = 0;
+            if ($service_id) {
+                $business_id = get_post_meta($service_id, 'business_id', true);
+            }
+            if (empty($business_id) && $validated_staff_id) {
+                $business_id = get_post_meta($validated_staff_id, 'business_id', true);
+            }
+            if (empty($business_id) && function_exists('mvp_get_current_business_id')) {
+                $business_id = mvp_get_current_business_id();
+            }
 
             update_post_meta($post_id, '_service_id', $service_id);
             update_post_meta($post_id, '_customer_name', $customer_name);
@@ -2004,6 +2016,9 @@ class UserBookingForm {
             if ($date_for_index) update_post_meta($post_id, '_preferred_date', $date_for_index);
             if ($time_for_index) update_post_meta($post_id, '_preferred_time', $time_for_index);
             update_post_meta($post_id, '_payment_method', $payment_method);
+            if ($business_id) {
+                update_post_meta($post_id, '_business_id', $business_id);
+            }
             // Persist a safe staff id and the staff name snapshot so the admin UI can always display a reliable label
             // Persist staff id (required)
             update_post_meta($post_id, '_staff_id', $validated_staff_id);
