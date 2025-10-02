@@ -631,8 +631,9 @@ class UserBookingForm {
      * Get staff options for dropdown
      */
     private function get_staff_options() {
-        // Keep initial dropdown minimal; JS will populate based on selected service
-        return '<option value="">Any available staff member</option>';
+        // Initial placeholder only; actual staff are populated via JS after selecting a service
+        // Staff selection is required, so avoid suggesting an implicit fallback
+        return '<option value="">Select a staff member</option>';
     }
 
     /**
@@ -852,7 +853,7 @@ class UserBookingForm {
                     <div class="form-section staff-selection">
                         <h3 class="section-title">
                             <i class="fas fa-user-tie"></i>
-                            Preferred Staff Member
+                            Preferred Staff Member <span class="required">*</span>
                         </h3>
                         <input type="hidden" id="staff_id" name="staff_id" value="">
                         <div id="staff-grid" class="staff-grid" aria-live="polite">
@@ -860,7 +861,7 @@ class UserBookingForm {
                         </div>
                         <div class="staff-note">
                             <i class="fas fa-info-circle"></i>
-                            <span>Leave blank to be assigned to any available staff member</span>
+                            <span>Please select a staff member for your service</span>
                         </div>
                     </div>
                     
@@ -1359,6 +1360,10 @@ class UserBookingForm {
         if ($service_id <= 0) {
             $errors['service_id'] = 'Please select a service';
         }
+        // Enforce staff selection in legacy form
+        if (empty($staff_id) || intval($staff_id) <= 0) {
+            $errors['staff_id'] = 'Please select a staff member';
+        }
         
         if (!empty($errors)) {
             file_put_contents(
@@ -1799,6 +1804,36 @@ class UserBookingForm {
             wp_send_json(['success' => false, 'message' => 'Missing required fields']);
         }
 
+        // Enforce: require a staff selection for each selected service (align with schedule arrays if present)
+        $missing_staff_indices = array();
+        if ($use_schedule_arrays) {
+            foreach ($schedule_service_ids as $i => $svc_id) {
+                $svc_id = absint($svc_id);
+                if ($svc_id <= 0) { continue; }
+                $stf = isset($schedule_staff_ids[$i]) ? absint($schedule_staff_ids[$i]) : 0;
+                if ($stf <= 0) { $missing_staff_indices[] = $i; }
+            }
+        } else {
+            foreach ($service_ids as $i => $svc_id) {
+                $svc_id = absint($svc_id);
+                if ($svc_id <= 0) { continue; }
+                $stf = isset($staff_ids[$i]) ? absint($staff_ids[$i]) : 0;
+                if ($stf <= 0) { $missing_staff_indices[] = $i; }
+            }
+        }
+
+        if (!empty($missing_staff_indices)) {
+            $errors = array(
+                'staff_required' => 'Please select a staff member for each chosen service.'
+            );
+            wp_send_json(array(
+                'success' => false,
+                'message' => 'Staff selection is required for each service',
+                'errors' => $errors,
+                'missing_staff_rows' => array_values(array_unique($missing_staff_indices))
+            ));
+        }
+
         // Debug: log the incoming arrays to help trace alignment/values (only when WP_DEBUG)
         if ( defined('WP_DEBUG') && WP_DEBUG ) {
             $dbg = date('Y-m-d H:i:s') . " - submit_user_booking_v3 called\n";
@@ -1927,23 +1962,21 @@ class UserBookingForm {
 
             $staff_id = $use_schedule_arrays ? (isset($schedule_staff_ids[$index]) && $schedule_staff_ids[$index] ? intval($schedule_staff_ids[$index]) : 0) : (isset($staff_ids[$index]) && $staff_ids[$index] ? intval($staff_ids[$index]) : 0);
 
-            // Validate staff id: ensure it references a staff CPT. If not, treat as "Any available staff" and do not persist a wrong post id
+            // Validate staff id: ensure it references a staff CPT; staff is required
             $validated_staff_id = 0;
             $staff_name_to_save = '';
             if ($staff_id) {
                 $maybe = get_post(intval($staff_id));
-                // Accept the id as staff if it's not a booking/service post and it's not trashed.
-                if ($maybe && isset($maybe->post_type) && $maybe->post_status !== 'trash' && !in_array($maybe->post_type, array('service_booking','service'))) {
+                // Accept the id as staff if it's a published staff post (and not trashed)
+                if ($maybe && isset($maybe->post_type) && $maybe->post_type === 'staff' && $maybe->post_status !== 'trash') {
                     $validated_staff_id = intval($staff_id);
                     $staff_name_to_save = get_the_title($validated_staff_id);
                 } else {
-                    // Invalid staff reference (could be a booking id or legacy id). Don't save as staff_id.
-                    $validated_staff_id = 0;
-                    $staff_name_to_save = 'Any available staff';
+                    // invalid staff reference
+                    wp_send_json(['success' => false, 'message' => 'Invalid staff selection detected. Please reselect a staff member.']);
                 }
             } else {
-                $validated_staff_id = 0;
-                $staff_name_to_save = 'Any available staff';
+                wp_send_json(['success' => false, 'message' => 'Please select a staff member for each service.']);
             }
             $post_id = wp_insert_post([
                 'post_type' => 'service_booking',
@@ -1972,12 +2005,8 @@ class UserBookingForm {
             if ($time_for_index) update_post_meta($post_id, '_preferred_time', $time_for_index);
             update_post_meta($post_id, '_payment_method', $payment_method);
             // Persist a safe staff id and the staff name snapshot so the admin UI can always display a reliable label
-            if ($validated_staff_id) {
-                update_post_meta($post_id, '_staff_id', $validated_staff_id);
-            } else {
-                // ensure meta is cleared for no-selection
-                update_post_meta($post_id, '_staff_id', 0);
-            }
+            // Persist staff id (required)
+            update_post_meta($post_id, '_staff_id', $validated_staff_id);
             // Always save the staff name snapshot (so admin view remains consistent even if staff CPT is later removed)
             update_post_meta($post_id, '_staff_name', sanitize_text_field($staff_name_to_save));
 
