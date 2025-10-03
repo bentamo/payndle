@@ -63,8 +63,10 @@ function payndle_business_landing_wrapper_shortcode($atts) {
         .payndle-landing-h2 { font-weight: 700; font-size: 28px; margin: 0 0 16px; text-align:center; }
         .payndle-landing-divider { width: 80px; height: 4px; background: #64C493; margin: 0 auto 24px; border-radius:2px; }
         .payndle-landing-sub { color:#4A5568; text-align:center; margin: 0 0 24px; }
-        .payndle-landing-hero { background:#F8FAFC; padding-top: 12px; padding-bottom: 12px; }
-        .payndle-landing-services { background:#FFFFFF: #fff; }
+        /* Header / hero: green background and white text */
+        .payndle-landing-hero { background:#64C493; color:#fff; padding-top: 12px; padding-bottom: 12px; }
+        .payndle-landing-hero .payndle-landing-sub { color: #fff; }
+        .payndle-landing-services { background:#fff; }
         .payndle-landing-booking { background:#64C493; color: #fff; }
         .payndle-landing-contact { background:#0C1930; color:#fff; }
         .payndle-landing-contact .payndle-landing-h2 { color:#fff; }
