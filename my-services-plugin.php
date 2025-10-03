@@ -1380,225 +1380,193 @@ function mvp_manager_shortcode() {
 
     ob_start(); ?>
     <div class="mvp-service-manager-card" data-business-id="<?php echo esc_attr($business_id); ?>">
-        <div class="mvp-card-header">
-            <h2 class="mvp-card-title"><?php _e('Service Manager', 'service-manager'); ?></h2>
-            <button type="button" class="mvp-btn mvp-btn-primary" id="mvp-toggle-form">
-                <span class="dashicons dashicons-plus"></span> <?php _e('Add New Service', 'service-manager'); ?>
-            </button>
-        </div>
-        
-        <div class="mvp-card-body">
-            <!-- Add/Edit Form -->
-            <div class="mvp-form-container ubf-v3-container" id="mvp-form-container" style="display: none;">
-                <form id="mvp-service-form" class="ubf-v3-form">
-                    <input type="hidden" name="action" value="mvp_add_service">
-                    <?php wp_nonce_field('mvp_nonce', 'mvp_nonce'); ?>
-                    <input type="hidden" name="service_id" id="mvp-service-id" value="">
-                    <!-- Ensure the manager form always submits the current business context -->
-                    <input type="hidden" name="business_id" id="mvp-business-id" value="<?php echo esc_attr($business_id); ?>">
-                    
-                    <div class="mvp-form-group">
-                        <label for="mvp-service-title"><?php _e('Service Title', 'service-manager'); ?> *</label>
-                        <input type="text" id="mvp-service-title" name="title" class="mvp-form-control" required>
-                    </div>
-                    
-                    <div class="mvp-form-group">
-                        <label for="mvp-service-description"><?php _e('Description', 'service-manager'); ?> *</label>
-                        <textarea id="mvp-service-description" name="description" class="mvp-form-control" rows="5" required></textarea>
-                    </div>
-                    
-                    <div class="mvp-form-group">
-                        <label for="mvp-service-price"><?php _e('Price', 'service-manager'); ?></label>
-                        <input type="text" id="mvp-service-price" name="price" class="mvp-form-control" placeholder="e.g. 1200.00">
-                    </div>
-
-                    <div class="mvp-form-group">
-                        <label for="mvp-service-duration"><?php _e('Duration', 'service-manager'); ?></label>
-                        <input type="text" id="mvp-service-duration" name="duration" class="mvp-form-control" placeholder="e.g. 30 mins">
-                    </div>
-
-                    <div class="mvp-form-group">
-                        <label for="mvp-service-featured">
-                            <input type="checkbox" id="mvp-service-featured" name="is_featured" value="1"> <?php _e('Mark as featured', 'service-manager'); ?>
-                        </label>
-                    </div>
-                    
-                    <div class="mvp-form-group">
-                        <label for="mvp-service-categories"><?php _e('Categories', 'service-manager'); ?></label>
-                        <select id="mvp-service-categories" name="categories[]" class="mvp-form-control" multiple="multiple">
-                            <?php if (!empty($categories) && !is_wp_error($categories)): ?>
-                                <?php foreach ($categories as $category): ?>
-                                    <option value="<?php echo esc_attr($category->term_id); ?>">
-                                        <?php echo esc_html($category->name); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="mvp-form-actions">
-                    <button type="submit" class="mvp-btn mvp-btn-primary" id="mvp-submit-btn">
-                        <?php _e('Save Service', 'service-manager'); ?>
-                    </button>
-                    <button type="button" class="mvp-btn mvp-btn-secondary" id="mvp-cancel-edit">
-                        <?php _e('Cancel', 'service-manager'); ?>
-                    </button>
-                </div>
-                </form>
+        <div class="mvp-card-header" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+            <div>
+                <h2 class="mvp-card-title"><?php _e('Service Manager', 'service-manager'); ?></h2>
+                <p style="margin:4px 0 0;color:var(--text-muted);font-size:13px;"><?php _e('Manage services, categories and availability for your business.', 'service-manager'); ?></p>
             </div>
-
-            <style>
-                /* Tiny UBF v3 tweaks for service manager form */
-                #mvp-form-container.ubf-v3-container { padding: 16px; }
-                #mvp-form-container .ubf-v3-form .mvp-form-control { padding: 10px; border:1px solid #e6eaef; border-radius:10px; }
-                
-                /* Service category badges */
-                .service-item-categories {
-                    display: flex;
-                    flex-wrap: wrap;
-                    gap: 4px;
-                    margin: 8px 16px 0;
-                }
-                
-                .service-category-badge {
-                    display: inline-block;
-                    background-color: #e9f5f0;
-                    color: #2e7d5f;
-                    font-size: 11px;
-                    font-weight: 500;
-                    padding: 2px 8px;
-                    border-radius: 10px;
-                    white-space: nowrap;
-                    border: 1px solid #d1e7dd;
-                }
-                
-                .service-item {
-                    padding-bottom: 16px;
-                }
-                
-                .service-item-content {
-                    margin-top: 12px;
-                }
-            </style>
-
-        <!-- Category Management -->
-        <div class="mvp-category-management">
-            <h3><?php _e('Manage Categories', 'service-manager'); ?></h3>
-            <div class="mvp-section">
-                <h3 class="mvp-section-title"><?php _e('Categories', 'service-manager'); ?></h3>
-                
-                <div class="mvp-add-category">
-                    <input type="text" id="mvp-new-category" class="mvp-form-control" 
-                           placeholder="<?php esc_attr_e('Add new category', 'service-manager'); ?>">
-                    <button type="button" id="mvp-add-category" class="mvp-btn mvp-btn-primary">
-                        <i class="dashicons dashicons-plus"></i>
-                    </button>
-                </div>
-                
-                <ul class="mvp-category-list">
-                    <?php foreach ($categories as $category): ?>
-                        <li>
-                            <span><?php echo esc_html($category->name); ?></span>
-                            <div class="mvp-category-actions">
-                                <button class="mvp-delete-category mvp-btn mvp-btn-sm mvp-btn-text" 
-                                        data-id="<?php echo $category->term_id; ?>"
-                                        title="<?php esc_attr_e('Delete', 'service-manager'); ?>">
-                                    <i class="dashicons dashicons-trash"></i>
-                                </button>
-                            </div>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <button type="button" class="mvp-btn mvp-btn-primary" id="mvp-toggle-form">
+                    <span class="dashicons dashicons-plus"></span> <?php _e('Add New Service', 'service-manager'); ?>
+                </button>
             </div>
         </div>
 
-        <!-- Services List -->
-        <div class="mvp-services-list">
-            <h3><?php _e('Your Services', 'service-manager'); ?></h3>
-            
-            <?php if ($services): ?>
-                <div class="mvp-service-filters">
-                    <select id="mvp-filter-category" class="mvp-form-control" style="width: 250px; display: inline-block;">
-                        <option value=""><?php _e('All Categories', 'service-manager'); ?></option>
-                        <?php if (!empty($categories) && !is_wp_error($categories)): ?>
-                            <?php foreach ($categories as $category): ?>
-                                <option value="<?php echo esc_attr($category->term_id); ?>">
-                                    <?php echo esc_html($category->name); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </select>
-                    <input type="text" id="mvp-search-services" class="mvp-form-control" 
-                           style="width: 250px; display: inline-block; margin-left: 10px;" 
-                           placeholder="<?php esc_attr_e('Search services...', 'service-manager'); ?>">
-                </div>
+        <div class="mvp-card-body" style="padding:18px 20px;">
+            <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;">
+                <!-- Left: Controls -->
+                <div class="mvp-manager-sidebar" style="flex:0 0 320px;max-width:320px;">
+                    <!-- Add/Edit Form (collapsed by default) -->
+                    <div class="mvp-form-container ubf-v3-container" id="mvp-form-container" style="display: none;">
+                        <form id="mvp-service-form" class="ubf-v3-form">
+                            <input type="hidden" name="action" value="mvp_add_service">
+                            <?php wp_nonce_field('mvp_nonce', 'mvp_nonce'); ?>
+                            <input type="hidden" name="service_id" id="mvp-service-id" value="">
+                            <input type="hidden" name="business_id" id="mvp-business-id" value="<?php echo esc_attr($business_id); ?>">
 
-                <div id="mvp-service-list" class="mvp-service-grid">
-                    <?php foreach ($services as $service): 
-                        $service_cats = get_the_terms($service->ID, 'service_category');
-                        $category_ids = array();
-                        $category_names = array();
-                        
-                        if (!empty($service_cats) && !is_wp_error($service_cats)) {
-                            foreach ($service_cats as $cat) {
-                                $category_ids[] = $cat->term_id;
-                                $category_names[] = $cat->name;
-                            }
-                        }
-                        
-                        $price = get_post_meta($service->ID, '_service_price', true);
-                        $duration = get_post_meta($service->ID, '_service_duration', true);
-                    ?>
-                        <div class="service-item" 
-                             data-id="<?php echo $service->ID; ?>"
-                             data-categories='<?php echo json_encode($category_ids); ?>'>
-                            <div class="service-item-header">
-                                <h3 class="service-item-title"><?php echo esc_html($service->post_title); ?></h3>
-                                <div class="service-item-actions">
-                                    <button class="mvp-edit-service mvp-btn mvp-btn-sm mvp-btn-outline" 
-                                            data-id="<?php echo $service->ID; ?>"
-                                            data-title="<?php echo esc_attr($service->post_title); ?>"
-                                            data-description="<?php echo esc_attr($service->post_content); ?>"
-                                            data-price="<?php echo esc_attr($price); ?>"
-                                            data-duration="<?php echo esc_attr($duration); ?>"
-                                            data-categories='<?php echo json_encode($category_ids); ?>'>
-                                        <?php _e('Edit', 'service-manager'); ?>
-                                    </button>
-                                    <button class="mvp-delete mvp-btn mvp-btn-sm mvp-btn-danger" 
-                                            data-id="<?php echo $service->ID; ?>">
-                                        <?php _e('Delete', 'service-manager'); ?>
-                                    </button>
+                            <div class="mvp-form-group">
+                                <label for="mvp-service-title"><?php _e('Service Title', 'service-manager'); ?> *</label>
+                                <input type="text" id="mvp-service-title" name="title" class="mvp-form-control" required>
+                            </div>
+
+                            <div class="mvp-form-group">
+                                <label for="mvp-service-description"><?php _e('Description', 'service-manager'); ?> *</label>
+                                <textarea id="mvp-service-description" name="description" class="mvp-form-control" rows="4" required></textarea>
+                            </div>
+
+                            <div style="display:flex;gap:8px;">
+                                <div style="flex:1;">
+                                    <label for="mvp-service-price"><?php _e('Price', 'service-manager'); ?></label>
+                                    <input type="text" id="mvp-service-price" name="price" class="mvp-form-control" placeholder="e.g. 1200.00">
+                                </div>
+                                <div style="flex:1;">
+                                    <label for="mvp-service-duration"><?php _e('Duration', 'service-manager'); ?></label>
+                                    <input type="text" id="mvp-service-duration" name="duration" class="mvp-form-control" placeholder="e.g. 30 mins">
                                 </div>
                             </div>
-                            <?php if (!empty($category_names)): ?>
-                                <div class="service-item-categories">
-                                    <?php foreach ($category_names as $cat_name): ?>
-                                        <span class="service-category-badge"><?php echo esc_html($cat_name); ?></span>
-                                    <?php endforeach; ?>
-                                </div>
-                            <?php endif; ?>
-                            <div class="service-item-content">
-                                <?php echo wp_trim_words(wp_strip_all_tags($service->post_content), 20, '...'); ?>
+
+                            <div class="mvp-form-group" style="margin-top:8px;">
+                                <label for="mvp-service-categories"><?php _e('Categories', 'service-manager'); ?></label>
+                                <select id="mvp-service-categories" name="categories[]" class="mvp-form-control" multiple="multiple" style="width:100%;">
+                                    <?php if (!empty($categories) && !is_wp_error($categories)): ?>
+                                        <?php foreach ($categories as $category): ?>
+                                            <option value="<?php echo esc_attr($category->term_id); ?>"><?php echo esc_html($category->name); ?></option>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </select>
                             </div>
-                            <div class="service-item-meta">
-                                <?php if ($price): ?>
-                                    <span class="service-item-price"><?php echo esc_html($price); ?></span>
-                                <?php endif; ?>
-                                <?php if ($duration): ?>
-                                    <span class="service-item-duration"><?php echo esc_html($duration); ?></span>
-                                <?php endif; ?>
+
+                            <div style="display:flex;gap:8px;margin-top:12px;align-items:center;">
+                                <label style="margin:0;">
+                                    <input type="checkbox" id="mvp-service-featured" name="is_featured" value="1"> <?php _e('Featured', 'service-manager'); ?>
+                                </label>
                             </div>
+
+                            <div class="mvp-form-actions" style="margin-top:12px;display:flex;gap:8px;">
+                                <button type="submit" class="mvp-btn mvp-btn-primary" id="mvp-submit-btn"><?php _e('Save Service', 'service-manager'); ?></button>
+                                <button type="button" class="mvp-btn mvp-btn-secondary" id="mvp-cancel-edit"><?php _e('Cancel', 'service-manager'); ?></button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Compact category manager -->
+                    <div class="mvp-section" style="margin-top:18px;padding:12px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-white);">
+                        <h4 class="mvp-section-title"><?php _e('Categories', 'service-manager'); ?></h4>
+                        <div class="mvp-add-category" style="display:flex;gap:8px;margin-top:8px;">
+                            <input type="text" id="mvp-new-category" class="mvp-form-control" placeholder="<?php esc_attr_e('Add new category', 'service-manager'); ?>">
+                            <button type="button" id="mvp-add-category" class="mvp-btn mvp-btn-primary"><i class="dashicons dashicons-plus"></i></button>
                         </div>
-                    <?php endforeach; ?>
+
+                        <ul class="mvp-category-list" style="list-style:none;padding:0;margin:12px 0 0;max-height:220px;overflow:auto;">
+                            <?php foreach ($categories as $category): ?>
+                                <li style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f1f5f9;">
+                                    <span><?php echo esc_html($category->name); ?></span>
+                                    <div class="mvp-category-actions">
+                                        <button class="mvp-delete-category mvp-btn mvp-btn-sm mvp-btn-text" data-id="<?php echo $category->term_id; ?>" title="<?php esc_attr_e('Delete', 'service-manager'); ?>">
+                                            <i class="dashicons dashicons-trash"></i>
+                                        </button>
+                                    </div>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
                 </div>
-            <?php else: ?>
-                <div class="mvp-no-services">
-                    <p><?php _e('No services found. Add your first service using the form above.', 'service-manager'); ?></p>
+
+                <!-- Right: Filters + Grid -->
+                <div style="flex:1;min-width:300px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;">
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <select id="mvp-filter-category" class="mvp-form-control" style="width:220px;">
+                                <option value=""><?php _e('All Categories', 'service-manager'); ?></option>
+                                <?php if (!empty($categories) && !is_wp_error($categories)): ?>
+                                    <?php foreach ($categories as $category): ?>
+                                        <option value="<?php echo esc_attr($category->term_id); ?>"><?php echo esc_html($category->name); ?></option>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </select>
+                            <input type="text" id="mvp-search-services" class="mvp-form-control" placeholder="<?php esc_attr_e('Search services...', 'service-manager'); ?>" style="width:260px;">
+                        </div>
+                        <div style="color:var(--text-muted);font-size:13px;"><?php echo sprintf(esc_html__('%d services', 'service-manager'), count($services)); ?></div>
+                    </div>
+
+                    <?php if ($services): ?>
+                        <div id="mvp-service-list" class="mvp-service-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;">
+                            <?php foreach ($services as $service): 
+                                $service_cats = get_the_terms($service->ID, 'service_category');
+                                $category_ids = array();
+                                $category_names = array();
+                                
+                                if (!empty($service_cats) && !is_wp_error($service_cats)) {
+                                    foreach ($service_cats as $cat) {
+                                        $category_ids[] = $cat->term_id;
+                                        $category_names[] = $cat->name;
+                                    }
+                                }
+                                
+                                $price = get_post_meta($service->ID, '_service_price', true);
+                                $duration = get_post_meta($service->ID, '_service_duration', true);
+                            ?>
+                                <div class="service-item" data-id="<?php echo $service->ID; ?>" data-categories='<?php echo json_encode($category_ids); ?>' style="background:var(--bg-white);border:1px solid var(--border-color);border-radius:10px;padding:0;overflow:visible;min-height:320px;">
+                                    <div style="display:flex;flex-direction:column;height:100%;min-height:320px;">
+                                        <!-- Use a two-column layout: description (flexible) + meta (fixed width) -->
+                                        <div style="padding:10px 14px 12px 14px;display:grid;grid-template-columns:1fr 80px;gap:12px;align-items:start;flex:1;">
+                                            <div style="min-width:0;">
+                                                <h3 class="service-item-title mvp-service-title" style="margin:0 0 6px;font-size:16px;line-height:1.25;overflow-wrap:break-word;white-space:normal;">
+                                                    <?php echo esc_html($service->post_title); ?>
+                                                </h3>
+
+                                                <?php if (!empty($category_names)): ?>
+                                                    <div class="service-item-categories" style="margin-bottom:8px;display:flex;flex-wrap:wrap;gap:6px;">
+                                                        <?php foreach ($category_names as $cat_name): ?>
+                                                            <span class="service-category-badge" style="padding:4px 8px;font-size:12px;border-radius:12px;"><?php echo esc_html($cat_name); ?></span>
+                                                        <?php endforeach; ?>
+                                                    </div>
+                                                <?php endif; ?>
+
+                                                <div class="service-item-content mvp-service-content" style="color:var(--text-muted);font-size:14px;margin-bottom:12px;white-space:normal;line-height:1.6;max-height:none;overflow:visible;display:block;-webkit-line-clamp:unset;-webkit-box-orient:unset;">
+                                                    <?php echo nl2br(esc_html(wp_strip_all_tags($service->post_content))); ?>
+                                                </div>
+                                            </div>
+
+                                            <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;width:80px;flex:0 0 80px;">
+                                                <div style="text-align:right;color:var(--text-body);font-weight:600;">
+                                                    <?php if ($price): ?>
+                                                        <div class="service-item-price" style="font-weight:700;color:var(--primary-green);font-size:15px;">₱<?php echo esc_html($price); ?></div>
+                                                    <?php endif; ?>
+                                                    <?php if ($duration): ?>
+                                                        <div class="service-item-duration" style="font-size:12px;color:var(--text-muted);margin-top:4px;"><?php echo esc_html($duration); ?></div>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div style="padding:8px 12px;border-top:1px solid var(--border-color);display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                                            <div style="display:flex;gap:8px;align-items:center;">
+                                                <button class="mvp-edit-service mvp-btn mvp-btn-sm mvp-btn-outline" 
+                                                        data-id="<?php echo $service->ID; ?>"
+                                                        data-title="<?php echo esc_attr($service->post_title); ?>"
+                                                        data-description="<?php echo esc_attr($service->post_content); ?>"
+                                                        data-price="<?php echo esc_attr($price); ?>"
+                                                        data-duration="<?php echo esc_attr($duration); ?>"
+                                                        data-categories='<?php echo json_encode($category_ids); ?>'><?php _e('Edit', 'service-manager'); ?></button>
+                                                <button class="mvp-delete mvp-btn mvp-btn-sm mvp-btn-danger" data-id="<?php echo $service->ID; ?>"><?php _e('Delete', 'service-manager'); ?></button>
+                                            </div>
+                                            <div style="color:var(--text-muted);font-size:12px;">
+                                                <span><?php echo sprintf('%s', ''); ?></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <div class="mvp-no-services" style="padding:20px;border:1px dashed var(--border-color);border-radius:8px;text-align:center;color:var(--text-muted);">
+                            <p><?php _e('No services found. Add your first service using the form on the left.', 'service-manager'); ?></p>
+                        </div>
+                    <?php endif; ?>
                 </div>
-            <?php endif; ?>
+            </div>
         </div>
-    </div>
 
     <script>
     jQuery(document).ready(function($) {
@@ -1615,6 +1583,8 @@ function mvp_manager_shortcode() {
             $('#mvp-service-form')[0].reset();
             $('#mvp-service-id').val('');
             $('#mvp-submit-btn').text('<?php echo esc_js(__('Add Service', 'service-manager')); ?>');
+            // focus title after opening
+            setTimeout(function(){ $('#mvp-service-title').focus(); }, 320);
         });
 
         // Cancel edit
@@ -1624,24 +1594,20 @@ function mvp_manager_shortcode() {
             $('#mvp-service-id').val('');
         });
 
-        // Add/Edit Service
+        // Add/Edit Service (AJAX)
         $('#mvp-service-form').on('submit', function(e) {
             e.preventDefault();
-            
             var $form = $(this);
             var $submitBtn = $form.find('button[type="submit"]');
             var originalText = $submitBtn.html();
-            
-            // Show loading state
             $submitBtn.prop('disabled', true).html('<span class="mvp-loading"></span> ' + $submitBtn.text());
-            
+
             $.ajax({
                 url: mvp_ajax.ajax_url,
                 type: 'POST',
                 data: {
                     action: 'mvp_add_service',
                     nonce: mvp_ajax.nonce,
-                    // Prefer explicit business_id from the form, then localized value, then markup fallback
                     business_id: $('#mvp-business-id').val() || mvp_ajax.business_id || $('.mvp-service-manager-card').data('business-id'),
                     title: $('#mvp-service-title').val(),
                     description: $('#mvp-service-description').val(),
@@ -1653,7 +1619,7 @@ function mvp_manager_shortcode() {
                 },
                 success: function(response) {
                     if (response.success) {
-                        location.reload(); // Reload to show updated list
+                        location.reload();
                     } else {
                         alert(response.data || '<?php echo esc_js(__('An error occurred. Please try again.', 'service-manager')); ?>');
                     }
@@ -1667,48 +1633,40 @@ function mvp_manager_shortcode() {
             });
         });
 
-        // Edit Service
+        // Edit Service: populate form and open
         $(document).on('click', '.mvp-edit-service', function() {
-            var $card = $(this).closest('.service-item');
-            var id = $card.data('id');
-            var title = $(this).data('title');
-            var description = $(this).data('description');
-            var price = $(this).data('price');
-            var duration = $(this).data('duration');
-            var categories = $(this).data('categories') || [];
-            
+            var $btn = $(this);
+            var id = $btn.data('id');
+            var title = $btn.data('title');
+            var description = $btn.data('description');
+            var price = $btn.data('price');
+            var duration = $btn.data('duration');
+            var categories = $btn.data('categories') || [];
+
             $('#mvp-service-id').val(id);
             $('#mvp-service-title').val(title);
             $('#mvp-service-description').val(description);
             $('#mvp-service-price').val(price);
             $('#mvp-service-duration').val(duration);
             $('#mvp-service-categories').val(categories).trigger('change');
-            
+
             $('#mvp-form-container').slideDown();
-            $('html, body').animate({
-                scrollTop: $('#mvp-form-container').offset().top - 20
-            }, 500);
-            
             $('#mvp-submit-btn').text('<?php echo esc_js(__('Update Service', 'service-manager')); ?>');
+            setTimeout(function(){ $('#mvp-service-title').focus(); }, 200);
         });
 
         // Delete Service
         $(document).on('click', '.mvp-delete', function() {
-            if (!confirm(mvp_ajax.are_you_sure)) {
-                return false;
-            }
-            
+            if (!confirm(mvp_ajax.are_you_sure)) { return false; }
             var $button = $(this);
             var id = $button.data('id');
-            
             if (!id) return;
-            
             $button.prop('disabled', true).html('<span class="mvp-loading"></span>');
-            
+
             $.ajax({
                 url: mvp_ajax.ajax_url,
                 type: 'POST',
-                    data: {
+                data: {
                     action: 'mvp_delete_service',
                     nonce: mvp_ajax.nonce,
                     business_id: mvp_ajax.business_id || $('.mvp-service-manager-card').data('business-id'),
@@ -1716,13 +1674,7 @@ function mvp_manager_shortcode() {
                 },
                 success: function(response) {
                     if (response.success) {
-                        $button.closest('.service-item').fadeOut(300, function() {
-                            $(this).remove();
-                            // If no services left, show message
-                            if ($('#mvp-service-list .service-item').length === 0) {
-                                $('#mvp-service-list').html('<div class="mvp-no-services"><p><?php echo esc_js(__('No services found. Add your first service using the form above.', 'service-manager')); ?></p></div>');
-                            }
-                        });
+                        $button.closest('.service-item').fadeOut(300, function() { $(this).remove(); });
                     } else {
                         alert('<?php echo esc_js(__('Failed to delete service. Please try again.', 'service-manager')); ?>');
                         $button.prop('disabled', false).text('<?php echo esc_js(__('Delete', 'service-manager')); ?>');
@@ -1738,20 +1690,11 @@ function mvp_manager_shortcode() {
         // Add Category
         $('#mvp-add-category').on('click', function(e) {
             e.preventDefault();
-            e.stopPropagation();
             var $input = $('#mvp-new-category');
             var name = $input.val().trim();
-            
-            if (!name) {
-                alert('<?php echo esc_js(__('Please enter a category name.', 'service-manager')); ?>');
-                return;
-            }
-            
-            var $button = $(this);
-            var originalText = $button.html();
-            
+            if (!name) { alert('<?php echo esc_js(__('Please enter a category name.', 'service-manager')); ?>'); return; }
+            var $button = $(this); var originalText = $button.html();
             $button.prop('disabled', true).html('<span class="mvp-loading"></span>');
-            
             $.ajax({
                 url: mvp_ajax.ajax_url,
                 type: 'POST',
@@ -1763,110 +1706,52 @@ function mvp_manager_shortcode() {
                     name: name
                 },
                 success: function(response) {
-                    if (response.success) {
-                        location.reload(); // Reload to update category lists
-                    } else {
-                        alert(response.data || '<?php echo esc_js(__('Failed to add category. Please try again.', 'service-manager')); ?>');
-                    }
+                    if (response.success) { location.reload(); } else { alert(response.data || '<?php echo esc_js(__('Failed to add category. Please try again.', 'service-manager')); ?>'); }
                 },
-                error: function() {
-                    alert('<?php echo esc_js(__('An error occurred. Please try again.', 'service-manager')); ?>');
-                },
-                complete: function() {
-                    $button.prop('disabled', false).html(originalText);
-                }
+                error: function() { alert('<?php echo esc_js(__('An error occurred. Please try again.', 'service-manager')); ?>'); },
+                complete: function() { $button.prop('disabled', false).html(originalText); }
             });
         });
 
         // Delete Category
         $(document).on('click', '.mvp-delete-category', function() {
-            if (!confirm('<?php echo esc_js(__('Are you sure you want to delete this category? This will not delete the services in this category.', 'service-manager')); ?>')) {
-                return false;
-            }
-            
-            var $button = $(this);
-            var $li = $button.closest('li');
-            var termId = $button.data('id');
-            
-            if (!termId) return;
-            
-            $button.prop('disabled', true).html('<span class="mvp-loading"></span>');
-            
+            if (!confirm('<?php echo esc_js(__('Are you sure you want to delete this category? This will not delete the services in this category.', 'service-manager')); ?>')) { return false; }
+            var $button = $(this); var $li = $button.closest('li'); var termId = $button.data('id');
+            if (!termId) return; $button.prop('disabled', true).html('<span class="mvp-loading"></span>');
             $.ajax({
                 url: mvp_ajax.ajax_url,
                 type: 'POST',
-                data: {
-                    action: 'mvp_handle_category',
-                    nonce: mvp_ajax.nonce,
-                    business_id: mvp_ajax.business_id || $('.mvp-service-manager-card').data('business-id'),
-                    action_type: 'delete',
-                    term_id: termId
-                },
-                success: function(response) {
-                    if (response.success) {
-                        $li.fadeOut(300, function() {
-                            $(this).remove();
-                        });
-                        
-                        // Remove from all select2 dropdowns
-                        $('select').each(function() {
-                            $(this).find('option[value="' + termId + '"]').remove();
-                            $(this).trigger('change');
-                        });
-                    } else {
-                        alert('<?php echo esc_js(__('Failed to delete category. Please try again.', 'service-manager')); ?>');
-                        $button.prop('disabled', false).text('<?php echo esc_js(__('Delete', 'service-manager')); ?>');
-                    }
-                },
-                error: function() {
-                    alert('<?php echo esc_js(__('An error occurred. Please try again.', 'service-manager')); ?>');
-                    $button.prop('disabled', false).text('<?php echo esc_js(__('Delete', 'service-manager')); ?>');
-                }
+                data: { action: 'mvp_handle_category', nonce: mvp_ajax.nonce, business_id: mvp_ajax.business_id || $('.mvp-service-manager-card').data('business-id'), action_type: 'delete', term_id: termId },
+                success: function(response) { if (response.success) { $li.fadeOut(300, function(){ $(this).remove(); }); $('select').each(function(){ $(this).find('option[value="'+termId+'"]').remove(); $(this).trigger('change'); }); } else { alert('<?php echo esc_js(__('Failed to delete category. Please try again.', 'service-manager')); ?>'); $button.prop('disabled', false).text('<?php echo esc_js(__('Delete', 'service-manager')); ?>'); } },
+                error: function() { alert('<?php echo esc_js(__('An error occurred. Please try again.', 'service-manager')); ?>'); $button.prop('disabled', false).text('<?php echo esc_js(__('Delete', 'service-manager')); ?>'); }
             });
         });
 
         // Filter services by category
         $('#mvp-filter-category').on('change', function() {
             var categoryId = $(this).val();
-            
             $('.service-item').each(function() {
                 var $item = $(this);
                 var itemCategories = $item.data('categories') || [];
-                
-                if (!categoryId || itemCategories.includes(parseInt(categoryId))) {
-                    $item.show();
-                } else {
-                    $item.hide();
-                }
+                if (!categoryId || itemCategories.includes(parseInt(categoryId))) { $item.show(); } else { $item.hide(); }
             });
         });
 
-        // Search services
+        // Search services (works with multiple title/content class names)
         var searchTimer;
         $('#mvp-search-services').on('input', function() {
             clearTimeout(searchTimer);
             var $input = $(this);
-            
             searchTimer = setTimeout(function() {
                 var searchTerm = $input.val().toLowerCase();
-                
-                if (!searchTerm) {
-                    $('.service-item').show();
-                    return;
-                }
-                
+                if (!searchTerm) { $('.service-item').show(); return; }
                 $('.service-item').each(function() {
                     var $item = $(this);
-                    var title = $item.find('.mvp-service-title').text().toLowerCase();
-                    var content = $item.find('.mvp-service-content').text().toLowerCase();
-                    
-                    if (title.includes(searchTerm) || content.includes(searchTerm)) {
-                        $item.show();
-                    } else {
-                        $item.hide();
-                    }
+                    var title = $item.find('.service-item-title, .mvp-service-title').first().text().toLowerCase();
+                    var content = $item.find('.service-item-content, .mvp-service-content').first().text().toLowerCase();
+                    if (title.includes(searchTerm) || content.includes(searchTerm)) { $item.show(); } else { $item.hide(); }
                 });
-            }, 300);
+            }, 260);
         });
     });
     </script>
