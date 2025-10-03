@@ -64,8 +64,8 @@ function payndle_business_landing_wrapper_shortcode($atts) {
         .payndle-landing-divider { width: 80px; height: 4px; background: #64C493; margin: 0 auto 24px; border-radius:2px; }
         .payndle-landing-sub { color:#4A5568; text-align:center; margin: 0 0 24px; }
         .payndle-landing-hero { background:#F8FAFC; padding-top: 12px; padding-bottom: 12px; }
-        .payndle-landing-services { background:#ffffff; }
-        .payndle-landing-booking { background:#F8FAFC; }
+        .payndle-landing-services { background:#FFFFFF: #fff; }
+        .payndle-landing-booking { background:#64C493; color: #fff; }
         .payndle-landing-contact { background:#0C1930; color:#fff; }
         .payndle-landing-contact .payndle-landing-h2 { color:#fff; }
     </style>
@@ -102,7 +102,7 @@ function payndle_business_landing_wrapper_shortcode($atts) {
             <div class="payndle-landing-container">
                 <h2 class="payndle-landing-h2">Contact Us</h2>
                 <div class="payndle-landing-divider"></div>
-                <?php echo do_shortcode('[contact_us]'); ?>
+                <?php echo do_shortcode('[contact_us show_heading="false"]'); ?>
             </div>
         </section>
         <?php endif; ?>

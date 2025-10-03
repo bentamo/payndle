@@ -57,6 +57,7 @@ function payndle_contact_us_shortcode($atts) {
     $atts = shortcode_atts(
         array(
             'heading' => 'Contact Us',
+            'show_heading' => 'true', // set to 'false' to suppress the heading when embedding inside another section
             'address' => $formatted_address ?: '123 Business Street, City, Country',
             'email' => $business_email ?: 'contact@example.com',
             'phone' => $business_phone ?: '+1 (555) 123-4567',
@@ -217,9 +218,11 @@ function payndle_contact_us_shortcode($atts) {
     </style>
     
     <section class="contact-section">
+        <?php if ($atts['show_heading'] !== 'false'): ?>
         <div class="section-heading">
             <h2><?php echo $heading; ?></h2>
         </div>
+        <?php endif; ?>
         
         <div class="contact-container">
             <!-- Address -->
