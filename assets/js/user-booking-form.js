@@ -330,6 +330,22 @@
                     isValid = false;
                 }
             });
+
+            // Require staff selection for legacy form
+            const legacyStaffHidden = this.form.find('#staff_id');
+            if (legacyStaffHidden.length) {
+                const staffVal = String(legacyStaffHidden.val() || '').trim();
+                if (!staffVal) {
+                    isValid = false;
+                    try {
+                        const grid = this.form.find('#staff-grid');
+                        grid.addClass('error');
+                        // display a message near staff grid
+                        const note = grid.next('.staff-note');
+                        if (note && note.length) { note.addClass('error').append('<div class="form-error show">Please select a staff member</div>'); }
+                    } catch(e) { /* ignore */ }
+                }
+            }
             
             // Validate non-required fields if they have values
             this.form.find('input:not([required]), textarea').each((i, field) => {
@@ -388,7 +404,7 @@
             formData.append('preferred_date', this.form.find('#preferred_date').val() || '');
             formData.append('preferred_time', this.form.find('#preferred_time').val() || '');
             formData.append('message', this.form.find('#booking_message').val() || '');
-            // Preferred staff (optional)
+            // Preferred staff (required)
             formData.append('staff_id', this.form.find('#staff_id').val() || '');
             formData.append('schedule_key', this.form.find('input[name="schedule_key[]"]').val() || ''); // Add schedule_key to form data
             
@@ -1554,6 +1570,23 @@
             }
         } catch(e) { /* ignore data access errors */ }
 
+        // Require staff selection per service block before proceeding from steps 1 or 3
+        if (this.current === 1 || this.current === 3) {
+            const $blocks = this.blocksContainer ? this.blocksContainer.find('.ubf-service-block') : this.form.find('.ubf-service-block');
+            let missing = [];
+            $blocks.each(function(idx){
+                const svc = $(this).find('.ubf-service-select').val() || '';
+                const stf = $(this).find('.ubf-staff-input').val() || '';
+                if (svc && !stf) { missing.push(idx); }
+            });
+            if (missing.length) {
+                const err = this.form.find('.ubf-schedule-error');
+                if (err.length) { err.text('Please select a staff member for each chosen service.').show(); }
+                this.showMessage('Please select a staff member for each chosen service.', 'error');
+                return; // block progression
+            }
+        }
+
         const scheduleOK = this.validateSchedule();
         if (!scheduleOK) return; // don't proceed
 
@@ -1602,6 +1635,21 @@
         const service = this.form.find('#ubf_service_id').val() || '';
         if (!name || !email || !service){
             this.showMessage('Please fill required fields: service, name and email', 'error');
+            return;
+        }
+
+        // Require staff selection per service block before submitting
+        const $blocks = this.blocksContainer ? this.blocksContainer.find('.ubf-service-block') : this.form.find('.ubf-service-block');
+        let missing = [];
+        $blocks.each(function(idx){
+            const svc = $(this).find('.ubf-service-select').val() || '';
+            const stf = $(this).find('.ubf-staff-input').val() || '';
+            if (svc && !stf) { missing.push(idx); }
+        });
+        if (missing.length) {
+            this.showMessage('Please select a staff member for each chosen service.', 'error');
+            // jump back to step 1 to correct
+            try { this.showStep(1); } catch(e){}
             return;
         }
 
