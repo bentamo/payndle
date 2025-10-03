@@ -30,30 +30,6 @@ class BusinessSetup {
     public function init() {
         // Ensure required tables and post types exist
         $this->ensure_business_post_type();
-        // Ensure a business_owner role exists
-        if (!get_role('business_owner')) {
-            add_role('business_owner', 'Business Owner', [
-                'read' => true,
-            ]);
-        }
-        // Hide WP admin bar for business_owner role
-        add_filter('show_admin_bar', [$this, 'maybe_hide_admin_bar']);
-    }
-
-    /**
-     * Disable admin bar for users with the business_owner role
-     */
-    public function maybe_hide_admin_bar($show) {
-        if (!is_user_logged_in()) {
-            return $show;
-        }
-
-        $user = wp_get_current_user();
-        if (!empty($user) && in_array('business_owner', (array) $user->roles, true)) {
-            return false;
-        }
-
-        return $show;
     }
     
     /**
@@ -79,6 +55,7 @@ class BusinessSetup {
     public function enqueue_assets() {
         // Always enqueue on admin pages and when shortcode might be used
         if (is_admin() || is_page() || is_single() || $_GET['page'] ?? false) {
+            $needs_account = !is_user_logged_in();
             
             // Enqueue Google Fonts
             wp_enqueue_style('google-fonts-business', 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap', [], null);
@@ -99,14 +76,19 @@ class BusinessSetup {
                 'business-setup-js',
                 plugin_dir_url(__FILE__) . 'assets/js/business-setup-new.js',
                 ['jquery'],
-                '11.0.0', // Progress bar and completion UI
+                '11.0.3', // Add fixed manager dashboard redirect URL
                 true
             );
             
             // Localize script for AJAX
             wp_localize_script('business-setup-js', 'businessSetupAjax', [
                 'ajaxurl' => admin_url('admin-ajax.php'),
+                'adminPostUrl' => admin_url('admin-post.php'),
                 'nonce' => wp_create_nonce('business_setup_nonce'),
+                'needsAccount' => $needs_account,
+                'totalSteps' => $needs_account ? 4 : 3,
+                // Resolve from option or page with [manager_dashboard] shortcode; fallback to /manager-dashboard/
+                'managerDashboardUrl' => $this->resolve_manager_dashboard_url(),
                 'messages' => [
                     'success' => 'Your business has been set up successfully! You can now add services and staff.',
                     'error' => 'Something went wrong. Please try again.',
@@ -116,6 +98,45 @@ class BusinessSetup {
                 ]
             ]);
         }
+    }
+
+    /**
+     * Determine the Manager Dashboard URL.
+     * Priority: site option 'payndle_manager_dashboard_url' > page containing [manager_dashboard] > home_url('/manager-dashboard/')
+     * Filterable via 'payndle_manager_dashboard_url'.
+     */
+    private function resolve_manager_dashboard_url() {
+        // 1) Site-configurable option
+        $configured = get_option('payndle_manager_dashboard_url');
+        if (!empty($configured)) {
+            $url = esc_url_raw($configured);
+            return apply_filters('payndle_manager_dashboard_url', $url);
+        }
+
+        // 2) Try to find a published page that contains the [manager_dashboard] shortcode
+        $page_url = '';
+        $q = new WP_Query([
+            'post_type'      => 'page',
+            'post_status'    => 'publish',
+            'posts_per_page' => 50,
+            'fields'         => 'ids',
+        ]);
+        if ($q->have_posts()) {
+            foreach ($q->posts as $pid) {
+                $content = get_post_field('post_content', $pid);
+                if ($content && function_exists('has_shortcode') && has_shortcode($content, 'manager_dashboard')) {
+                    $page_url = get_permalink($pid);
+                    break;
+                }
+            }
+        }
+        if (!empty($page_url)) {
+            return apply_filters('payndle_manager_dashboard_url', $page_url);
+        }
+
+        // 3) Fallback to a conventional path
+        $fallback = home_url('/manager-dashboard/');
+        return apply_filters('payndle_manager_dashboard_url', $fallback);
     }
     
     /**
@@ -176,66 +197,45 @@ class BusinessSetup {
         check_ajax_referer('business_setup_nonce', 'nonce');
 
         $user_id = get_current_user_id();
-        $creating_user = false;
-
-        // If user is not logged in, allow account creation as part of setup
+        // Allow account creation inline when user is not logged in
         if (!is_user_logged_in()) {
-            $acct_email = isset($_POST['account_email']) ? sanitize_email($_POST['account_email']) : '';
-            $acct_pass = isset($_POST['account_password']) ? $_POST['account_password'] : '';
-            $acct_pass_conf = isset($_POST['account_password_confirm']) ? $_POST['account_password_confirm'] : '';
+            $account_email = isset($_POST['account_email']) ? sanitize_email($_POST['account_email']) : '';
+            $account_password = isset($_POST['account_password']) ? (string) $_POST['account_password'] : '';
+            $account_password_confirm = isset($_POST['account_password_confirm']) ? (string) $_POST['account_password_confirm'] : '';
 
-            // If account fields were provided, attempt to create user; otherwise error
-            if (empty($acct_email) || empty($acct_pass) || empty($acct_pass_conf)) {
-                wp_send_json_error(['message' => 'You must provide account email and password to create an account.']);
+            if (empty($account_email) || empty($account_password) || empty($account_password_confirm)) {
+                wp_send_json_error(['message' => 'Please create an account to continue.']);
                 return;
             }
-
-            if (!is_email($acct_email)) {
-                wp_send_json_error(['message' => 'Please provide a valid account email.']);
+            if (!is_email($account_email)) {
+                wp_send_json_error(['message' => 'Please enter a valid account email.']);
                 return;
             }
-
-            if ($acct_pass !== $acct_pass_conf) {
+            if ($account_password !== $account_password_confirm) {
                 wp_send_json_error(['message' => 'Passwords do not match.']);
                 return;
             }
-
-            if (email_exists($acct_email)) {
-                wp_send_json_error(['message' => 'An account with this email already exists. Please login instead.']);
+            if (email_exists($account_email)) {
+                wp_send_json_error(['message' => 'This email is already registered. Please sign in.']);
                 return;
             }
-
-            // Derive a unique username from email local-part
-            $parts = explode('@', $acct_email);
-            $username = sanitize_user($parts[0]);
-            $base = $username;
+            // Generate a unique username from email
+            $username = sanitize_user(current(explode('@', $account_email)));
+            $base = $username ?: 'user';
             $i = 1;
-            while (username_exists($username)) {
+            while (empty($username) || username_exists($username)) {
                 $username = $base . $i;
                 $i++;
             }
-
-            $userdata = [
-                'user_login' => $username,
-                'user_email' => $acct_email,
-                'user_pass' => $acct_pass,
-                'role' => 'business_owner'
-            ];
-
-            $new_user_id = wp_insert_user($userdata);
+            $new_user_id = wp_create_user($username, $account_password, $account_email);
             if (is_wp_error($new_user_id)) {
-                wp_send_json_error(['message' => 'Failed to create user account.']);
+                wp_send_json_error(['message' => 'Failed to create account.']);
                 return;
             }
-
-            // Ensure new business owners do not see the admin bar
-            update_user_meta($new_user_id, 'show_admin_bar_front', 'false');
-
-            // Log the new user in
-            wp_set_current_user($new_user_id);
-            wp_set_auth_cookie($new_user_id);
-            $user_id = $new_user_id;
-            $creating_user = true;
+            $user_id = intval($new_user_id);
+            // Authenticate user into session
+            wp_set_current_user($user_id);
+            wp_set_auth_cookie($user_id, true);
         }
 
         // Validate required fields
@@ -468,10 +468,25 @@ class BusinessSetup {
                     <div class="progress-fill"></div>
                 </div>
                 <div class="step-indicators">
+                    <?php $needs_account = !is_user_logged_in(); ?>
                     <div class="step active" data-step="1">
                         <div class="step-number">1</div>
                         <div class="step-label">Business Info</div>
                     </div>
+                    <?php if ($needs_account): ?>
+                    <div class="step" data-step="2">
+                        <div class="step-number">2</div>
+                        <div class="step-label">Create Account</div>
+                    </div>
+                    <div class="step" data-step="3">
+                        <div class="step-number">3</div>
+                        <div class="step-label">Contact Details</div>
+                    </div>
+                    <div class="step" data-step="4">
+                        <div class="step-number">4</div>
+                        <div class="step-label">Additional Info</div>
+                    </div>
+                    <?php else: ?>
                     <div class="step" data-step="2">
                         <div class="step-number">2</div>
                         <div class="step-label">Contact Details</div>
@@ -480,6 +495,7 @@ class BusinessSetup {
                         <div class="step-number">3</div>
                         <div class="step-label">Additional Info</div>
                     </div>
+                    <?php endif; ?>
                 </div>
             </div>
             
@@ -525,8 +541,33 @@ class BusinessSetup {
                     </div>
                 </div>
                 
-                <!-- Step 2: Contact Information -->
+                <?php if ($needs_account): ?>
+                <!-- Step 2: Account Creation -->
                 <div class="form-step ubf-form-step" data-step="2">
+                    <div class="step-header">
+                        <h2>Create Your Account</h2>
+                        <p>Set up your login so you can manage your business</p>
+                    </div>
+                    <div class="form-section">
+                        <div class="form-group">
+                            <label for="account_email" class="form-label">Email (for login)</label>
+                            <input type="email" id="account_email" name="account_email" class="form-input" placeholder="you@example.com" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="account_password" class="form-label">Password</label>
+                            <input type="password" id="account_password" name="account_password" class="form-input" minlength="6" placeholder="Create a password" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="account_password_confirm" class="form-label">Confirm Password</label>
+                            <input type="password" id="account_password_confirm" name="account_password_confirm" class="form-input" minlength="6" placeholder="Re-enter your password" required>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
+                
+                <!-- Step 2 or 3: Contact Information -->
+                <?php $contact_step = $needs_account ? 3 : 2; ?>
+                <div class="form-step ubf-form-step" data-step="<?php echo esc_attr($contact_step); ?>">
                     <div class="step-header">
                         <h2>Contact Information</h2>
                         <p>How can customers reach you?</p>
@@ -536,22 +577,6 @@ class BusinessSetup {
                         <div class="form-group">
                             <label for="business_email" class="form-label">Business Email</label>
                             <input type="email" id="business_email" name="business_email" class="form-input" placeholder="business@example.com" required>
-                        </div>
-                        
-                        <!-- Account creation fields (optional if logged in) -->
-                        <div class="form-group">
-                            <label for="account_email" class="form-label">Account Email (login)</label>
-                            <input type="email" id="account_email" name="account_email" class="form-input" placeholder="you@yourbusiness.com">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="account_password" class="form-label">Account Password</label>
-                            <input type="password" id="account_password" name="account_password" class="form-input" placeholder="Choose a strong password">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="account_password_confirm" class="form-label">Confirm Password</label>
-                            <input type="password" id="account_password_confirm" name="account_password_confirm" class="form-input" placeholder="Confirm password">
                         </div>
                         
                         <div class="form-group">
@@ -566,8 +591,9 @@ class BusinessSetup {
                     </div>
                 </div>
                 
-                <!-- Step 3: Additional Details -->
-                <div class="form-step" data-step="3">
+                <!-- Step 3 or 4: Additional Details -->
+                <?php $additional_step = $needs_account ? 4 : 3; ?>
+                <div class="form-step" data-step="<?php echo esc_attr($additional_step); ?>">
                     <div class="step-header">
                         <h2>Additional Details</h2>
                         <p>Help customers find you and understand your business better</p>

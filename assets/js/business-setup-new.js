@@ -2,7 +2,14 @@ jQuery(document).ready(function($) {
     console.log('Business Setup JS Loaded');
     
     var currentStep = 1;
-    var totalSteps = 3;
+    var totalSteps = (function() {
+        // Prefer localized total if present; else compute from DOM
+        if (typeof businessSetupAjax !== 'undefined' && businessSetupAjax && businessSetupAjax.totalSteps) {
+            return businessSetupAjax.totalSteps;
+        }
+        var domCount = $('.form-step').length;
+        return (domCount && domCount > 0) ? domCount : 3;
+    })();
     
     function showStep(stepNumber) {
         console.log('Showing step: ' + stepNumber);
@@ -249,7 +256,9 @@ jQuery(document).ready(function($) {
             success: function(response) {
                 console.log('Form submitted successfully:', response);
                 if (response.success) {
-                    showCompletionUI();
+                    // Pass business_id for redirect
+                    var bid = response.data && response.data.business_id ? response.data.business_id : null;
+                    showCompletionUI(bid);
                 } else {
                     showErrorUI(response.data.message || 'Setup failed. Please try again.');
                 }
@@ -261,7 +270,7 @@ jQuery(document).ready(function($) {
         });
     }
     
-    function showCompletionUI() {
+    function showCompletionUI(businessId) {
         $('.business-setup-container').html(`
             <div class="completion-ui">
                 <div class="success-icon">
@@ -275,15 +284,25 @@ jQuery(document).ready(function($) {
                     <li><i class="fa fa-calendar"></i> Start accepting bookings</li>
                 </ul>
                 <div class="action-buttons">
-                    <button class="btn btn-primary" onclick="window.location.href='/manage-services'">
-                        <i class="fa fa-cogs"></i> Manage Services
-                    </button>
-                    <button class="btn btn-secondary" onclick="window.location.href='/dashboard'">
+                    <button class="btn btn-primary btn-go-dashboard">
                         <i class="fa fa-dashboard"></i> Go to Dashboard
                     </button>
                 </div>
             </div>
         `);
+
+        // Wire up redirect to dynamic manager dashboard using handler
+        var $btn = $('.btn-go-dashboard');
+        $btn.on('click', function() {
+            var base = (window.businessSetupAjax && businessSetupAjax.managerDashboardUrl) ? businessSetupAjax.managerDashboardUrl : '/manager-dashboard/';
+            if (businessId) {
+                var url = new URL(base, window.location.origin);
+                url.searchParams.set('business_id', businessId);
+                window.location.href = url.toString();
+            } else {
+                window.location.href = base;
+            }
+        });
     }
     
     function showErrorUI(message) {
