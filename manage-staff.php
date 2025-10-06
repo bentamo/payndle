@@ -13,18 +13,19 @@ if (!function_exists('elite_cuts_render_staff_ui')) {
     function elite_cuts_render_staff_ui() {
         ?>
     <div class="wrap elite-cuts-admin">
-        <div class="elite-cuts-header">
-            <div class="shop-info">
-                <h1 class="shop-name">Elite Cuts Barbershop</h1>
-                <p class="shop-slogan">Precision Cuts & Grooming</p>
+        <div class="elite-cuts-header modern-header">
+            <div class="header-left">
+                <!-- Compact brand / icon area removed business name and description per request -->
+                <div class="brand">
+                    <div class="brand-icon" aria-hidden="true">🧑‍🔧</div>
+                    <div class="brand-meta">
+                        <div class="brand-title">Manage Staff</div>
+                        <div class="brand-sub">Add, edit and schedule staff members</div>
+                    </div>
+                </div>
             </div>
             <div class="header-actions">
-                <h1 class="elite-cuts-title">
-                    <i class="fas fa-user-friends"></i> Manage Staff
-                </h1>
-                <button id="add-staff-btn" class="elite-button primary">
-                    <i class="fas fa-plus"></i> New Staff
-                </button>
+                <button class="elite-button" id="new-staff-btn">+ New Staff</button>
             </div>
         </div>
 
@@ -229,8 +230,13 @@ if (!function_exists('elite_cuts_render_staff_ui')) {
 
         .elite-cuts-admin { background: var(--bg-secondary); color: var(--text-primary); padding: 1.5rem; font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; min-height: 100vh; line-height: 1.6; }
         .elite-cuts-header { background: var(--card-bg); padding: 1.25rem 1.5rem; border-radius: var(--radius); margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow); border-left: 4px solid var(--accent); }
-        .shop-name { color: var(--accent); margin: 0 0 0.25rem 0; font-size: 1.5rem; font-weight: 700; font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; letter-spacing: 0.2px; }
-        .shop-slogan { color: var(--text-secondary); margin: 0; font-size: 0.875rem; font-weight: 400; }
+    .elite-cuts-header { background: var(--card-bg); padding: 1.25rem 1.5rem; border-radius: var(--radius); margin-bottom: 1.5rem; box-shadow: var(--shadow); border-left: 4px solid var(--accent); }
+    /* Modern compact header layout */
+    .elite-cuts-header.modern-header { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding: 0.75rem 1rem; }
+    .elite-cuts-header .brand { display:flex; align-items:center; gap:0.75rem; }
+    .brand-icon { width:48px; height:48px; border-radius:10px; background: linear-gradient(180deg, rgba(100,196,147,0.12), rgba(79,176,122,0.06)); display:flex; align-items:center; justify-content:center; font-size:1.25rem; }
+    .brand-title { font-size:1.125rem; font-weight:700; color:var(--text-primary); }
+    .brand-sub { font-size:0.85rem; color:var(--text-secondary); }
 
     /* Table, avatar and action-button overrides were moved to assets/css/staff-management.css */
 

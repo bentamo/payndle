@@ -205,8 +205,17 @@ function mvp_enqueue_scripts() {
             --text-color: var(--text-body);
         }
         
-        /* Customer-facing Services Grid */
-        .mvp-services {
+    /* Customer-facing Services Grid */
+    /* Modern compact header styles (shared with admin pages) */
+    .elite-cuts-header { background: var(--bg-white); padding: 1rem; border-radius: var(--border-radius); margin-bottom: 1rem; box-shadow: var(--box-shadow); border-left: 4px solid var(--primary-green); }
+    .elite-cuts-header.modern-header { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding: 0.6rem 0.9rem; }
+    .elite-cuts-header .brand { display:flex; align-items:center; gap:0.75rem; }
+    .elite-cuts-header .brand-icon, .brand-icon { width:46px; height:46px; border-radius:10px; background: linear-gradient(180deg, rgba(100,196,147,0.12), rgba(79,176,122,0.06)); display:flex; align-items:center; justify-content:center; font-size:18px; }
+    .brand-title { font-size:1.05rem; font-weight:700; color:var(--text-dark); }
+    .brand-sub { font-size:0.85rem; color:var(--text-muted); margin-top:2px; }
+    .header-actions { margin-left:auto; }
+
+    .mvp-services {
             max-width: 1200px;
             margin: 0 auto;
             padding: 1.25rem 1rem;
@@ -478,6 +487,22 @@ function mvp_enqueue_scripts() {
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
+        /* Ensure the Cancel button (edit form) has readable white text */
+        #mvp-cancel-edit,
+        button#mvp-cancel-edit,
+        .mvp-btn-secondary#mvp-cancel-edit {
+            color: #ffffff !important;
+        }
+
+        /* Force service/item price text to primary green (higher specificity to override inline styles) */
+        .wrap.elite-cuts-admin .service-item .service-item-price,
+        .wrap.elite-cuts-admin .service-item .mvp-service-price,
+        .mvp-service-manager-card .service-item-price,
+        .mvp-service-manager-card .mvp-service-price {
+            color: var(--primary-green) !important;
+            font-weight: 700 !important;
+        }
+
         /* Outline Button */
         .mvp-btn-outline {
             background-color: transparent;
@@ -647,7 +672,7 @@ function mvp_enqueue_scripts() {
         
         .service-item:hover {
             border-color: var(--primary-green);
-            box-shadow: 0 4px 12px rgba(100, 196, 147, 0.1);
+            box-shadow: 0 4px 12px rgba(16, 255, 132, 0.88);
         }
         
         .service-item-header {
@@ -1379,15 +1404,19 @@ function mvp_manager_shortcode() {
     ));
 
     ob_start(); ?>
+    <div class="wrap elite-cuts-admin">
     <div class="mvp-service-manager-card" data-business-id="<?php echo esc_attr($business_id); ?>">
-        <div class="mvp-card-header" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-            <div>
-                <h2 class="mvp-card-title"><?php _e('Service Manager', 'service-manager'); ?></h2>
-                <p style="margin:4px 0 0;color:var(--text-muted);font-size:13px;"><?php _e('Manage services, categories and availability for your business.', 'service-manager'); ?></p>
+        <div class="elite-cuts-header modern-header">
+            <div class="brand">
+                <div class="brand-icon" aria-hidden="true">🛠️</div>
+                <div>
+                    <div class="brand-title"><?php _e('Service Manager', 'service-manager'); ?></div>
+                    <div class="brand-sub"><?php _e('Manage services, categories and availability for your business.', 'service-manager'); ?></div>
+                </div>
             </div>
-            <div style="display:flex;align-items:center;gap:8px;">
-                <button type="button" class="mvp-btn mvp-btn-primary" id="mvp-toggle-form">
-                    <span class="dashicons dashicons-plus"></span> <?php _e('Add New Service', 'service-manager'); ?>
+            <div class="header-actions">
+                <button type="button" class="elite-button" id="mvp-toggle-form">
+                    <?php _e('+ Add Service', 'service-manager'); ?>
                 </button>
             </div>
         </div>
@@ -1567,6 +1596,8 @@ function mvp_manager_shortcode() {
                 </div>
             </div>
         </div>
+    </div>
+    </div>
 
     <script>
     jQuery(document).ready(function($) {
