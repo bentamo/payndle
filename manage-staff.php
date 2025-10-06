@@ -25,7 +25,7 @@ if (!function_exists('elite_cuts_render_staff_ui')) {
                 </div>
             </div>
             <div class="header-actions">
-                <button class="elite-button" id="new-staff-btn">+ New Staff</button>
+                <button class="elite-button" id="add-staff-btn">+ New Staff</button>
             </div>
         </div>
 
