@@ -281,18 +281,19 @@ function elite_cuts_manage_bookings_page($business_id = 0) {
     
     ?>
     <div class="wrap elite-cuts-admin">
-        <div class="elite-cuts-header">
-            <div class="shop-info">
-                <h1 class="shop-name">Elite Cuts Barbershop</h1>
-                <p class="shop-slogan">Precision Cuts & Grooming</p>
+        <div class="elite-cuts-header modern-header">
+            <div class="header-left">
+                <!-- Compact brand area: business name/description removed per request -->
+                <div class="brand">
+                    <div class="brand-icon" aria-hidden="true">📅</div>
+                    <div class="brand-meta">
+                        <div class="brand-title">Bookings</div>
+                        <div class="brand-sub">View and manage customer appointments</div>
+                    </div>
+                </div>
             </div>
             <div class="header-actions">
-                <h1 class="elite-cuts-title">
-                    Manage Bookings
-                </h1>
-                <button id="add-booking-btn" class="elite-button primary">
-                    New Booking
-                </button>
+                <button id="add-booking-btn" class="elite-button">+ New Booking</button>
             </div>
         </div>
 
@@ -760,12 +761,18 @@ function elite_cuts_manage_bookings_page($business_id = 0) {
             padding: 1.25rem 1.5rem;
             border-radius: var(--radius);
             margin-bottom: 1.5rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
             box-shadow: var(--shadow);
             border-left: 4px solid var(--accent);
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
         }
+        /* Modern compact header variant (used by modern-header class) */
+        .elite-cuts-header.modern-header { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding: 0.75rem 1rem; }
+        .elite-cuts-header .brand { display:flex; align-items:center; gap:0.75rem; }
+        .brand-icon { width:48px; height:48px; border-radius:10px; background: linear-gradient(180deg, rgba(100,196,147,0.12), rgba(79,176,122,0.06)); display:flex; align-items:center; justify-content:center; font-size:1.25rem; }
+        .brand-title { font-size:1.125rem; font-weight:700; color:var(--text-primary); }
+        .brand-sub { font-size:0.85rem; color:var(--text-secondary); }
 
         .shop-name {
             color: var(--accent);
