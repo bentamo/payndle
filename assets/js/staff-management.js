@@ -212,9 +212,6 @@ jQuery(document).ready(function($) {
                         <button class="button button-small edit-staff" data-id="${member.id}" title="Edit">
                             <span class="dashicons dashicons-edit"></span>
                         </button>
-                        <button class="button button-small schedule-staff" data-id="${member.id}" title="Assign Schedule">
-                            <span class="dashicons dashicons-calendar"></span>
-                        </button>
                         <button class="button button-small delete-staff" data-id="${member.id}" title="Delete">
                             <span class="dashicons dashicons-trash"></span>
                         </button>
@@ -756,70 +753,8 @@ jQuery(document).ready(function($) {
         $('.last-page').on('click', function(e) { e.preventDefault(); if (currentPage < totalPages) { currentPage = totalPages; loadStaffList(); } });
     }
 
-    // Open schedule modal for staff
-    function openScheduleModal(staffId) {
-        $('#schedule-staff-id').val(staffId);
-        $('#schedule-date').val('');
-        $('#schedule-start').val('');
-        $('#schedule-end').val('');
-        $('#schedule-modal').css('display', 'flex');
-        $('body').css('overflow', 'hidden');
-    }
 
-    // Close schedule modal
-    function closeScheduleModal() {
-        $('#schedule-modal').hide();
-        $('body').css('overflow', '');
-    }
-
-    // Wire schedule modal buttons
-    $(document).on('click', '.schedule-cancel, .schedule-close', function(){ closeScheduleModal(); });
-    $(document).on('click', '#schedule-modal', function(e){ if (e.target === this) closeScheduleModal(); });
-    $(document).on('submit', '#schedule-form', function(e){
-        e.preventDefault();
-        const staffId = $('#schedule-staff-id').val();
-        const date = $('#schedule-date').val();
-        const start = $('#schedule-start').val();
-        const end = $('#schedule-end').val();
-
-        if (!staffId || !date || !start || !end) {
-            showPopup('error', 'Please provide date, start and end times');
-            return;
-        }
-        // Basic time ordering check
-        if (start >= end) {
-            showPopup('error', 'End time must be after start time');
-            return;
-        }
-
-        const payload = {
-            action: (staffManager.ajax_action || 'manage_staff'),
-            nonce: staffManager.nonce,
-            action_type: 'save_staff_schedule',
-            business_id: (typeof staffManager.business_id !== 'undefined' ? staffManager.business_id : ''),
-            data: JSON.stringify({ staff_id: staffId, date: date, start: start, end: end })
-        };
-
-        $.ajax({
-            url: staffManager.ajax_url,
-            type: 'POST',
-            data: payload,
-            success: function(resp){
-                if (resp && resp.success) {
-                    showPopup('success', resp.data && resp.data.message ? resp.data.message : 'Schedule saved');
-                    closeScheduleModal();
-                } else {
-                    const msg = resp && resp.data && resp.data.message ? resp.data.message : (resp && resp.message ? resp.message : 'Failed to save schedule');
-                    showPopup('error', msg);
-                }
-            },
-            error: function(xhr, status, err){
-                let m = 'Error saving schedule';
-                if (xhr && xhr.responseJSON && xhr.responseJSON.message) m = xhr.responseJSON.message;
-                showPopup('error', m);
-            }
-        });
-    });
+    // Schedule functionality removed
 
     // Simple focus trap within the staff modal
     function enableFocusTrap($modal){

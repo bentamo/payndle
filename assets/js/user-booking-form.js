@@ -1633,9 +1633,8 @@
         const name = this.form.find('#ubf_customer_name').val() || '';
         const email = this.form.find('#ubf_customer_email').val() || '';
         const service = this.form.find('#ubf_service_id').val() || '';
-        if (!name || !email || !service){
-            this.showMessage('Please fill required fields: service, name and email', 'error');
-            return;
+        if (!name || !email || !service) {
+            return; // Prevent form submission without showing error popup
         }
 
         // Require staff selection per service block before submitting
