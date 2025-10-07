@@ -196,7 +196,15 @@ function payndle_handle_staff_ajax_front() {
                 'posts_per_page' => isset($data['per_page']) ? absint($data['per_page']) : 10,
                 'paged' => isset($data['paged']) ? absint($data['paged']) : 1,
             );
-            if (!empty($data['search'])) { $args['s'] = sanitize_text_field($data['search']); }
+            
+            // If a specific staff ID is provided, fetch only that staff member
+            if (!empty($data['id'])) {
+                $args['p'] = absint($data['id']);
+                $args['posts_per_page'] = 1;
+                $args['paged'] = 1;
+            } elseif (!empty($data['search'])) {
+                $args['s'] = sanitize_text_field($data['search']);
+            }
 
             // Optional status filter
             $meta_query = array('relation' => 'AND');
