@@ -860,6 +860,1031 @@ function mvp_enqueue_scripts() {
             font-size: 14px;
             line-height: 1;
         }
+        
+        /* ======================
+           RESPONSIVE DESIGN
+           ====================== */
+        
+        /* Service Manager Layout Responsiveness */
+        .mvp-card-body .mvp-manager-layout {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+        }
+        
+        .mvp-manager-sidebar {
+            flex: 0 0 320px;
+            max-width: 320px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .mvp-manager-content {
+            flex: 1;
+            min-width: 300px;
+        }
+        
+        /* Tablet (768px - 1199px) */
+        @media (max-width: 1199px) {
+            .mvp-manager-sidebar {
+                flex: 0 0 280px;
+                max-width: 280px;
+            }
+            
+            .elite-cuts-header.modern-header {
+                padding: 0.8rem;
+            }
+            
+            .brand-title {
+                font-size: 1rem;
+            }
+            
+            .brand-sub {
+                font-size: 0.8rem;
+            }
+            
+            .mvp-service-grid {
+                grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important;
+            }
+        }
+        
+        /* Small Tablet / Large Mobile (768px - 991px) */
+        @media (max-width: 991px) {
+            .elite-cuts-header.modern-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.75rem;
+            }
+            
+            .header-actions {
+                width: 100%;
+            }
+            
+            .header-actions button {
+                width: 100%;
+            }
+            
+            .mvp-manager-sidebar {
+                flex: 0 0 100%;
+                max-width: 100%;
+                order: 1;
+                margin-bottom: 16px;
+            }
+            
+            /* Hide the form container on mobile (collapsed by default anyway) */
+            .mvp-manager-sidebar .mvp-form-container {
+                order: 2;
+            }
+            
+            /* Show categories section first in sidebar on mobile */
+            .mvp-manager-sidebar .mvp-section {
+                order: 1;
+                margin-top: 0;
+                margin-bottom: 16px;
+                padding: 14px;
+                background: var(--bg-white);
+                border: 1px solid var(--border-color);
+                border-radius: 8px;
+            }
+            
+            /* Make category input and button responsive */
+            .mvp-manager-sidebar .mvp-add-category {
+                display: flex;
+                gap: 8px;
+                max-width: 100%;
+                margin-bottom: 14px;
+            }
+            
+            .mvp-manager-sidebar .mvp-add-category .mvp-form-control {
+                flex: 1;
+                height: 44px;
+            }
+            
+            .mvp-manager-sidebar #mvp-add-category {
+                width: 44px;
+                height: 44px;
+                flex-shrink: 0;
+            }
+            
+            .mvp-manager-sidebar .mvp-section-title {
+                font-size: 1.05rem;
+                margin-bottom: 12px;
+                padding-bottom: 10px;
+            }
+            
+            .mvp-manager-sidebar .mvp-category-list {
+                max-height: 180px;
+                overflow-y: auto;
+                gap: 8px;
+            }
+            
+            .mvp-manager-sidebar .mvp-category-list li {
+                font-size: 13px;
+                padding: 8px 12px 8px 14px;
+            }
+            
+            .mvp-manager-content {
+                flex: 0 0 100%;
+                order: 2;
+            }
+            
+            .mvp-section {
+                padding: 1rem;
+            }
+            
+            /* Service cards adjustment */
+            .service-item {
+                min-height: auto !important;
+            }
+            
+            .mvp-service-grid {
+                grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) !important;
+                gap: 12px !important;
+            }
+        }
+        
+        /* Mobile (480px - 767px) */
+        @media (max-width: 767px) {
+            .mvp-services {
+                padding: 0.75rem 0.5rem;
+            }
+            
+            .elite-cuts-header {
+                padding: 0.75rem;
+                margin-bottom: 0.75rem;
+            }
+            
+            .brand-icon {
+                width: 36px !important;
+                height: 36px !important;
+                font-size: 16px !important;
+            }
+            
+            .brand-title {
+                font-size: 0.95rem;
+            }
+            
+            .brand-sub {
+                font-size: 0.75rem;
+                display: none; /* Hide subtitle on mobile */
+            }
+            
+            .mvp-card-body {
+                padding: 12px !important;
+            }
+            
+            /* Form controls */
+            .mvp-form-control {
+                font-size: 14px;
+                padding: 0.5rem;
+            }
+            
+            /* Filters section */
+            .mvp-filters-wrapper {
+                flex-direction: column !important;
+                align-items: stretch !important;
+            }
+            
+            .mvp-filters-controls {
+                width: 100%;
+                flex-direction: column !important;
+            }
+            
+            .mvp-service-count {
+                text-align: center;
+                padding: 8px;
+                background: var(--accent-gray);
+                border-radius: 6px;
+            }
+            
+            #mvp-filter-category,
+            #mvp-search-services {
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+            
+            /* Service grid - single column on mobile */
+            .mvp-service-grid {
+                grid-template-columns: 1fr !important;
+                gap: 16px !important;
+            }
+            
+            /* Service item cards */
+            .service-item {
+                min-height: auto !important;
+                overflow: visible;
+            }
+            
+            .service-item > div:first-child {
+                min-height: auto !important;
+                display: flex;
+                flex-direction: column;
+            }
+            
+            .service-item > div:first-child > div:first-child {
+                grid-template-columns: 1fr !important;
+                gap: 12px !important;
+                padding: 14px 12px !important;
+            }
+            
+            /* Service title - ensure visible */
+            .service-item-title,
+            .mvp-service-title {
+                font-size: 16px !important;
+                line-height: 1.4 !important;
+                margin-bottom: 8px !important;
+                word-break: break-word;
+            }
+            
+            /* Service content/description - ensure fully visible */
+            .service-item-content,
+            .mvp-service-content {
+                font-size: 14px !important;
+                line-height: 1.6 !important;
+                color: var(--text-body) !important;
+                margin-bottom: 12px !important;
+                display: block !important;
+                -webkit-line-clamp: unset !important;
+                overflow: visible !important;
+                max-height: none !important;
+                white-space: normal !important;
+                word-break: break-word;
+            }
+            
+            /* Category badges - ensure visible */
+            .service-category-badge,
+            .mvp-category-badge {
+                font-size: 12px !important;
+                padding: 4px 10px !important;
+                display: inline-flex !important;
+                align-items: center;
+                margin-right: 6px;
+                margin-bottom: 6px;
+            }
+            
+            .service-item-categories {
+                margin-bottom: 10px !important;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+            }
+            
+            /* Price and duration in same row on mobile */
+            .service-item .service-item-price,
+            .service-item .service-item-duration {
+                display: inline-block;
+            }
+            
+            .service-item > div:first-child > div:first-child > div:nth-child(2) {
+                width: 100% !important;
+                flex-direction: row !important;
+                justify-content: flex-start !important;
+                align-items: center !important;
+                gap: 12px !important;
+            }
+            
+            .service-item-price {
+                font-size: 16px !important;
+                font-weight: 700 !important;
+                padding: 6px 12px !important;
+            }
+            
+            .service-item-duration {
+                font-size: 13px !important;
+            }
+            
+            /* Service actions */
+            .service-item > div:first-child > div:last-child {
+                flex-direction: column;
+                align-items: stretch !important;
+                padding: 14px 12px !important;
+                gap: 10px !important;
+            }
+            
+            .service-item > div:first-child > div:last-child > div:first-child {
+                width: 100%;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .service-item > div:first-child > div:last-child button {
+                flex: 1;
+                width: 100%;
+            }
+            
+            /* Category badges */
+            .service-category-badge,
+            .mvp-category-badge {
+                font-size: 11px !important;
+                padding: 3px 6px !important;
+            }
+            
+            /* Form in sidebar */
+            .mvp-form-container {
+                padding: 12px;
+            }
+            
+            .mvp-form-group {
+                margin-bottom: 12px;
+            }
+            
+            .mvp-form-group label {
+                font-size: 13px;
+                margin-bottom: 4px;
+            }
+            
+            /* Add category input */
+            .mvp-add-category {
+                flex-direction: column;
+                max-width: 100% !important;
+            }
+            
+            .mvp-add-category .mvp-form-control {
+                width: 100% !important;
+            }
+            
+            #mvp-add-category {
+                width: 100% !important;
+            }
+            
+            /* Category list */
+            .mvp-category-list {
+                gap: 6px;
+            }
+            
+            .mvp-category-list li {
+                font-size: 12px;
+            }
+            
+            /* Buttons */
+            .mvp-btn {
+                font-size: 13px;
+                padding: 0.45rem 0.9rem;
+            }
+            
+            .mvp-btn-sm {
+                font-size: 12px;
+                padding: 0.35rem 0.7rem;
+            }
+            
+            /* Form actions */
+            .mvp-form-actions {
+                flex-direction: column;
+                gap: 8px;
+            }
+            
+            .mvp-form-actions button {
+                width: 100%;
+            }
+        }
+        
+        /* Extra Small Mobile (< 480px) */
+        @media (max-width: 479px) {
+            .mvp-services {
+                padding: 0.5rem 0.25rem;
+            }
+            
+            .elite-cuts-header {
+                padding: 0.6rem;
+            }
+            
+            .elite-cuts-header .brand {
+                gap: 0.5rem;
+            }
+            
+            .brand-icon {
+                width: 32px !important;
+                height: 32px !important;
+                font-size: 14px !important;
+            }
+            
+            .brand-title {
+                font-size: 0.9rem;
+            }
+            
+            .mvp-card-body {
+                padding: 8px !important;
+            }
+            
+            /* Service cards */
+            .service-item {
+                border-radius: 8px;
+                font-size: 13px;
+            }
+            
+            .service-item-title {
+                font-size: 14px !important;
+            }
+            
+            .service-item-content {
+                font-size: 13px !important;
+                line-height: 1.5 !important;
+            }
+            
+            .service-item-price {
+                font-size: 14px !important;
+            }
+            
+            .service-item-duration {
+                font-size: 11px !important;
+            }
+            
+            /* Reduce padding everywhere */
+            .service-item > div:first-child > div:first-child {
+                padding: 8px 10px !important;
+            }
+            
+            .service-item > div:first-child > div:last-child {
+                padding: 6px 8px !important;
+            }
+            
+            /* Section styling */
+            .mvp-section {
+                padding: 0.75rem;
+            }
+            
+            .mvp-section-title {
+                font-size: 1rem;
+            }
+            
+            /* Category list - allow scrolling */
+            .mvp-category-list {
+                max-height: 150px;
+            }
+            
+            .mvp-manager-sidebar .mvp-category-list {
+                max-height: 150px;
+            }
+            
+            .mvp-manager-sidebar .mvp-category-list li {
+                font-size: 12px;
+                padding: 6px 10px 6px 12px;
+            }
+            
+            /* Input fields */
+            input.mvp-form-control,
+            textarea.mvp-form-control,
+            select.mvp-form-control {
+                font-size: 14px;
+            }
+            
+            /* Dashicons sizing */
+            .dashicons {
+                width: 18px;
+                height: 18px;
+                font-size: 18px;
+            }
+        }
+        
+        /* Fix for customer-facing services view */
+        @media (max-width: 767px) {
+            .mvp-services-grid {
+                grid-template-columns: 1fr !important;
+            }
+            
+            .mvp-category-filter {
+                max-width: 100%;
+            }
+            
+            .mvp-service-title {
+                font-size: 1.1rem;
+            }
+            
+            .mvp-service-content {
+                font-size: 0.875rem;
+            }
+        }
+        
+        /* Landscape mobile optimization */
+        @media (max-width: 767px) and (orientation: landscape) {
+            .service-item {
+                min-height: auto !important;
+            }
+            
+            .service-item-content {
+                max-height: 80px;
+                overflow: hidden;
+            }
+        }
+        
+        /* Ensure icons are properly sized */
+        .dashicons,
+        .dashicons-before:before {
+            width: 20px;
+            height: 20px;
+            font-size: 20px;
+            line-height: 1;
+        }
+        
+        @media (max-width: 767px) {
+            .dashicons,
+            .dashicons-before:before {
+                width: 18px;
+                height: 18px;
+                font-size: 18px;
+            }
+        }
+        
+        /* Fix text overflow issues */
+        .service-item-title,
+        .mvp-service-title,
+        .brand-title {
+            overflow-wrap: break-word;
+            word-wrap: break-word;
+            word-break: break-word;
+            hyphens: auto;
+        }
+        
+        /* Improve touch targets on mobile */
+        @media (max-width: 767px) {
+            button,
+            .mvp-btn,
+            a.mvp-btn {
+                min-height: 44px;
+                min-width: 44px;
+            }
+        }
+        
+        /* ======================
+           IMPROVED ICON & BUTTON VISIBILITY
+           ====================== */
+        
+        /* Ensure all dashicons are properly sized and visible */
+        .dashicons,
+        .dashicons-before:before {
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+            vertical-align: middle;
+        }
+        
+        button .dashicons,
+        .mvp-btn .dashicons,
+        i.dashicons {
+            flex-shrink: 0;
+            pointer-events: none;
+        }
+        
+        /* Service item action buttons - improved visibility */
+        .service-item .mvp-edit-service,
+        .service-item .mvp-delete {
+            white-space: nowrap;
+            overflow: visible;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            min-height: 36px;
+            padding: 8px 14px;
+        }
+        
+        .service-item > div:first-child > div:last-child {
+            min-height: 54px;
+            align-items: center;
+            display: flex;
+            padding: 10px 12px;
+        }
+        
+        /* Category badges in service cards */
+        .service-category-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 5px 10px;
+            font-size: 12px;
+            border-radius: 12px;
+            background: var(--accent-gray);
+            color: var(--primary-navy);
+            border: 1px solid var(--border-color);
+            white-space: nowrap;
+            line-height: 1.4;
+            font-weight: 500;
+        }
+        
+        .service-item-categories {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        /* Ensure emojis in category badges are visible */
+        .service-category-badge:before,
+        .mvp-category-badge:before {
+            display: inline;
+            margin-right: 4px;
+        }
+        
+        /* Price and duration - no wrapping */
+        .service-item-price,
+        .service-item-duration {
+            white-space: nowrap;
+        }
+        
+        /* Prevent button content clipping */
+        button,
+        .mvp-btn,
+        a.mvp-btn {
+            overflow: visible;
+        }
+        
+        /* Mobile improvements for service cards */
+        @media (max-width: 767px) {
+            .service-item .mvp-edit-service,
+            .service-item .mvp-delete {
+                min-height: 44px;
+                padding: 10px 16px;
+                font-size: 14px;
+                font-weight: 500;
+                display: flex !important;
+                align-items: center;
+                justify-content: center;
+                white-space: nowrap;
+            }
+            
+            .service-item > div:first-child > div:last-child {
+                padding: 12px;
+                gap: 10px;
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .service-item > div:first-child > div:last-child > div:first-child {
+                width: 100%;
+                display: flex;
+                gap: 10px;
+                flex-direction: column;
+            }
+            
+            .service-item .mvp-edit-service,
+            .service-item .mvp-delete {
+                flex: 1;
+                width: 100%;
+            }
+            
+            /* Ensure delete button is visible */
+            .service-item .mvp-delete {
+                background-color: #fee2e2 !important;
+                color: #b91c1c !important;
+                border: 1px solid #fecaca !important;
+            }
+            
+            .service-item .mvp-delete:hover {
+                background-color: #fecaca !important;
+            }
+        }
+        
+        /* Fix for sidebar category section (keep original) */
+        .mvp-manager-sidebar .mvp-section {
+            margin-top: 18px;
+            order: 2;
+        }
+        
+        .mvp-manager-sidebar .mvp-form-container {
+            order: 1;
+        }
+        
+        .mvp-manager-sidebar .mvp-section-title {
+            font-size: 1.1rem;
+            margin: 0 0 1.25rem;
+            color: var(--primary-navy);
+            font-weight: var(--font-semibold);
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .mvp-manager-sidebar .mvp-add-category {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.25rem;
+            max-width: 400px;
+            align-items: center;
+        }
+        
+        .mvp-manager-sidebar .mvp-add-category .mvp-form-control {
+            flex: 1;
+            min-width: 0;
+            margin: 0;
+            height: 40px;
+            padding: 0.5rem 0.875rem;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            transition: border-color 0.2s ease;
+        }
+        
+        .mvp-manager-sidebar #mvp-add-category {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+        }
+        
+        .mvp-manager-sidebar #mvp-add-category .dashicons {
+            margin: 0;
+            width: 20px;
+            height: 20px;
+            font-size: 20px;
+        }
+        
+        .mvp-manager-sidebar .mvp-category-list {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 1.5rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        
+        .mvp-manager-sidebar .mvp-category-list li {
+            background: var(--white);
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            border: 1px solid var(--border-color);
+            padding: 0.25rem 0.75rem 0.25rem 1rem;
+            font-size: 0.8125rem;
+            transition: all 0.2s ease;
+        }
+        
+        .mvp-manager-sidebar .mvp-category-list li:hover {
+            border-color: var(--primary-green);
+            background: rgba(100, 196, 147, 0.05);
+        }
+        
+        .mvp-manager-sidebar .mvp-category-actions {
+            display: flex;
+            gap: 0.25rem;
+            margin-left: 0.5rem;
+        }
+        
+        .mvp-manager-sidebar .mvp-category-actions .mvp-btn {
+            width: 24px;
+            height: 24px;
+            min-width: auto;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+        
+        .mvp-manager-sidebar .mvp-category-actions .mvp-btn i {
+            font-size: 14px;
+            line-height: 1;
+        }
+        
+        /* Table responsiveness (if any tables exist) */
+        @media (max-width: 767px) {
+            table {
+                display: block;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                width: 100%;
+            }
+            
+            table thead {
+                display: none;
+            }
+            
+            table tr {
+                display: block;
+                margin-bottom: 1rem;
+                border: 1px solid var(--border-color);
+                border-radius: 8px;
+            }
+            
+            table td {
+                display: block;
+                text-align: right;
+                padding: 0.5rem 1rem;
+                border-bottom: 1px solid var(--border-color);
+            }
+            
+            table td:last-child {
+                border-bottom: none;
+            }
+            
+            table td:before {
+                content: attr(data-label);
+                float: left;
+                font-weight: 600;
+                color: var(--primary-navy);
+            }
+        }
+        
+        /* Smooth scrolling for category list */
+        .mvp-category-list {
+            scroll-behavior: smooth;
+        }
+        
+        /* Ensure images are responsive */
+        .mvp-services img,
+        .mvp-service-manager-card img,
+        .service-item img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        /* Fix for very long words in service content */
+        .service-item-content,
+        .mvp-service-content {
+            overflow-wrap: break-word;
+            word-break: break-word;
+            hyphens: auto;
+        }
+        
+        /* Prevent horizontal scroll on mobile */
+        @media (max-width: 767px) {
+            .mvp-services,
+            .mvp-service-manager-card,
+            .mvp-card-body {
+                overflow-x: hidden;
+            }
+            
+            * {
+                max-width: 100%;
+            }
+            
+            /* Better spacing for small screens */
+            .mvp-manager-layout {
+                gap: 12px !important;
+            }
+        }
+        
+        /* Loading state improvements */
+        .mvp-loading {
+            border-width: 2px;
+        }
+        
+        @media (max-width: 767px) {
+            .mvp-loading {
+                width: 16px;
+                height: 16px;
+                border-width: 2px;
+            }
+        }
+        
+        /* Select2 dropdown responsiveness */
+        @media (max-width: 767px) {
+            .select2-container {
+                width: 100% !important;
+            }
+            
+            .select2-dropdown {
+                font-size: 14px;
+            }
+            
+            .select2-results__option {
+                padding: 10px 12px;
+            }
+        }
+        
+        /* Improved form layout on mobile */
+        @media (max-width: 767px) {
+            .mvp-form-group {
+                width: 100%;
+            }
+            
+            .mvp-form-group label {
+                display: block;
+                margin-bottom: 6px;
+                font-weight: 500;
+            }
+            
+            .mvp-form-control {
+                width: 100%;
+                box-sizing: border-box;
+            }
+        }
+        
+        /* No services message */
+        .mvp-no-services {
+            padding: 40px 20px !important;
+        }
+        
+        @media (max-width: 767px) {
+            .mvp-no-services {
+                padding: 30px 15px !important;
+                font-size: 14px;
+            }
+        }
+        
+        /* Category badge responsiveness */
+        @media (max-width: 767px) {
+            .service-item-categories {
+                max-width: 100%;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none; /* Firefox */
+                -ms-overflow-style: none; /* IE and Edge */
+            }
+            
+            .service-item-categories::-webkit-scrollbar {
+                display: none; /* Chrome, Safari, Opera */
+            }
+        }
+        
+        /* Elite button responsive styling */
+        @media (max-width: 767px) {
+            .elite-button,
+            button.elite-button {
+                font-size: 14px;
+                padding: 10px 16px;
+                width: 100%;
+            }
+        }
+        
+        /* Emoji and icon visibility improvements */
+        @media (max-width: 767px) {
+            /* Ensure emojis in service titles are visible */
+            .mvp-service-title:after,
+            .service-item-title:after {
+                font-size: 18px;
+            }
+            
+            /* Category badge emojis */
+            .service-category-badge::before,
+            .mvp-category-badge::before {
+                margin-right: 4px;
+            }
+            
+            /* Ensure service card icons are visible */
+            .mvp-card .dashicons,
+            .service-item .dashicons {
+                width: 18px;
+                height: 18px;
+                font-size: 18px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+            }
+        }
+        
+        /* Ensure all text is readable on mobile */
+        @media (max-width: 767px) {
+            .service-item * {
+                line-height: 1.5;
+            }
+            
+            /* Make sure nothing gets hidden by overflow */
+            .service-item,
+            .service-item > *,
+            .service-item > * > * {
+                overflow: visible;
+            }
+            
+            /* Ensure proper word wrapping */
+            .service-item h3,
+            .service-item p,
+            .service-item div {
+                word-wrap: break-word;
+                overflow-wrap: break-word;
+            }
+        }
+        
+        /* Button text must be visible and centered */
+        .mvp-btn,
+        .mvp-edit-service,
+        .mvp-delete {
+            text-align: center;
+            vertical-align: middle;
+            line-height: normal;
+        }
+        
+        @media (max-width: 767px) {
+            .mvp-btn,
+            .mvp-edit-service,
+            .mvp-delete {
+                font-size: 14px !important;
+                letter-spacing: 0.3px;
+            }
+        }
+        
+        /* Ensure service count is visible */
+        @media (max-width: 767px) {
+            .mvp-service-count {
+                font-size: 14px !important;
+                font-weight: 600;
+            }
+        }
+        
+        /* Make sure filter controls are visible */
+        @media (max-width: 767px) {
+            #mvp-filter-category,
+            #mvp-search-services {
+                font-size: 14px;
+                height: 44px;
+                padding: 0 12px;
+                border: 1px solid var(--border-color);
+                border-radius: 8px;
+            }
+        }
     ";
     wp_add_inline_style('mvp-style', $custom_css);
 
@@ -1422,9 +2447,9 @@ function mvp_manager_shortcode() {
         </div>
 
         <div class="mvp-card-body" style="padding:18px 20px;">
-            <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;">
+            <div class="mvp-manager-layout" style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;">
                 <!-- Left: Controls -->
-                <div class="mvp-manager-sidebar" style="flex:0 0 320px;max-width:320px;">
+                <div class="mvp-manager-sidebar">
                     <!-- Add/Edit Form (collapsed by default) -->
                     <div class="mvp-form-container ubf-v3-container" id="mvp-form-container" style="display: none;">
                         <form id="mvp-service-form" class="ubf-v3-form">
@@ -1502,9 +2527,9 @@ function mvp_manager_shortcode() {
                 </div>
 
                 <!-- Right: Filters + Grid -->
-                <div style="flex:1;min-width:300px;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;">
-                        <div style="display:flex;align-items:center;gap:8px;">
+                <div class="mvp-manager-content">
+                    <div class="mvp-filters-wrapper" style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+                        <div class="mvp-filters-controls" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                             <select id="mvp-filter-category" class="mvp-form-control" style="width:220px;">
                                 <option value=""><?php _e('All Categories', 'service-manager'); ?></option>
                                 <?php if (!empty($categories) && !is_wp_error($categories)): ?>
@@ -1515,7 +2540,7 @@ function mvp_manager_shortcode() {
                             </select>
                             <input type="text" id="mvp-search-services" class="mvp-form-control" placeholder="<?php esc_attr_e('Search services...', 'service-manager'); ?>" style="width:260px;">
                         </div>
-                        <div style="color:var(--text-muted);font-size:13px;"><?php echo sprintf(esc_html__('%d services', 'service-manager'), count($services)); ?></div>
+                        <div class="mvp-service-count" style="color:var(--text-muted);font-size:13px;"><?php echo sprintf(esc_html__('%d services', 'service-manager'), count($services)); ?></div>
                     </div>
 
                     <?php if ($services): ?>
@@ -1742,6 +2767,14 @@ function mvp_manager_shortcode() {
                 error: function() { alert('<?php echo esc_js(__('An error occurred. Please try again.', 'service-manager')); ?>'); },
                 complete: function() { $button.prop('disabled', false).html(originalText); }
             });
+        });
+        
+        // Allow Enter key to add category
+        $('#mvp-new-category').on('keypress', function(e) {
+            if (e.which === 13) {
+                e.preventDefault();
+                $('#mvp-add-category').click();
+            }
         });
 
         // Delete Category
