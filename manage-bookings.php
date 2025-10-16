@@ -768,11 +768,45 @@ function elite_cuts_manage_bookings_page($business_id = 0) {
             justify-content:space-between;
         }
         /* Modern compact header variant (used by modern-header class) */
-        .elite-cuts-header.modern-header { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding: 0.75rem 1rem; }
-        .elite-cuts-header .brand { display:flex; align-items:center; gap:0.75rem; }
-        .brand-icon { width:48px; height:48px; border-radius:10px; background: linear-gradient(180deg, rgba(100,196,147,0.12), rgba(79,176,122,0.06)); display:flex; align-items:center; justify-content:center; font-size:1.25rem; }
-        .brand-title { font-size:1.125rem; font-weight:700; color:var(--text-primary); }
-        .brand-sub { font-size:0.85rem; color:var(--text-secondary); }
+        .elite-cuts-header.modern-header { 
+            display:flex; 
+            align-items:center; 
+            justify-content:space-between; 
+            gap:1rem; 
+            padding: 1rem 1.25rem;
+        }
+        .elite-cuts-header .brand { 
+            display:flex; 
+            align-items:center; 
+            gap:0.75rem;
+            flex: 1;
+        }
+        .brand-icon { 
+            width:48px; 
+            height:48px; 
+            border-radius:10px; 
+            background: linear-gradient(180deg, rgba(100,196,147,0.12), rgba(79,176,122,0.06)); 
+            display:flex; 
+            align-items:center; 
+            justify-content:center; 
+            font-size:1.5rem;
+            flex-shrink: 0;
+        }
+        .brand-meta {
+            flex: 1;
+            min-width: 0;
+        }
+        .brand-title { 
+            font-size:1.125rem; 
+            font-weight:700; 
+            color:var(--text-primary);
+            line-height: 1.3;
+        }
+        .brand-sub { 
+            font-size:0.85rem; 
+            color:var(--text-secondary);
+            line-height: 1.4;
+        }
 
         .shop-name {
             color: var(--accent);
@@ -1003,37 +1037,22 @@ function elite_cuts_manage_bookings_page($business_id = 0) {
             width: 100%;
             border-collapse: collapse;
             color: var(--text-primary);
-            /* Use auto layout so columns can shrink and wrap inside boxed containers */
             table-layout: auto;
-            /* allow the table to shrink below previously forced minimums when the WP container is boxed */
             min-width: 0;
         }
 
-        /* Prefer flexible columns; avoid forcing rigid percentages so content can wrap */
-        .elite-cuts-table th:nth-child(1), /* ID */
-        .elite-cuts-table th:nth-child(2), /* Customer */
-        .elite-cuts-table th:nth-child(3), /* Service */
-        .elite-cuts-table th:nth-child(4), /* Staff */
-        .elite-cuts-table th:nth-child(5), /* Contact */
-        .elite-cuts-table th:nth-child(6), /* Date & Time */
-        .elite-cuts-table th:nth-child(7), /* Status */
-        .elite-cuts-table th:nth-child(8)  /* Actions */ {
-            /* let the browser size columns naturally and allow wrapping of cell content */
-            width: auto;
-            max-width: none;
-        }
-
+        /* Desktop table layout */
         .elite-cuts-table th {
             background: var(--bg-tertiary);
             color: var(--text-secondary);
-            font-weight: 500;
+            font-weight: 600;
             text-align: left;
-            padding: 0.65rem 0.9rem;
-            font-size: 0.78rem;
+            padding: 1rem 1rem;
+            font-size: 0.75rem;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            border-bottom: 1px solid var(--border-color);
-            white-space: normal;
+            border-bottom: 2px solid var(--border-color);
+            white-space: nowrap;
         }
 
         /* Center the Actions header only */
@@ -1042,61 +1061,35 @@ function elite_cuts_manage_bookings_page($business_id = 0) {
         }
 
         .elite-cuts-table td {
-            padding: 0.5rem 0.75rem;
+            padding: 1rem 1rem;
             border-bottom: 1px solid var(--border-color);
             vertical-align: middle;
-            /* Let rows expand naturally to fit wrapped content */
             height: auto;
-            white-space: normal; /* allow wrapping */
-            word-break: break-word;
-            overflow-wrap: anywhere;
         }
 
-        /* Truncate long unbroken strings with ellipsis for specific columns to avoid ugly breaks */
-        .elite-cuts-table td:nth-child(1), /* ID */
-        .elite-cuts-table td:nth-child(3), /* Service */
-        .elite-cuts-table td:nth-child(4), /* Staff */
-        .elite-cuts-table td:nth-child(5)  /* Contact */ {
-            max-width: 12rem;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+        .elite-cuts-table td strong {
+            font-weight: 600;
+            color: var(--text-primary);
         }
 
-        /* On very small screens (or extremely narrow boxed containers) allow wrapping instead of ellipsis */
-        @media (max-width: 480px) {
-            .elite-cuts-table td:nth-child(1),
-            .elite-cuts-table td:nth-child(3),
-            .elite-cuts-table td:nth-child(4),
-            .elite-cuts-table td:nth-child(5) {
-                max-width: none;
-                white-space: normal;
-                overflow-wrap: anywhere;
-            }
+        .elite-cuts-table td small {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
         }
 
-        /* Actions column - keep centered, but allow buttons to wrap/stack on small widths */
+        /* Actions column */
         .elite-cuts-table td.actions {
             text-align: center;
             vertical-align: middle;
-            display: table-cell; /* Ensure proper table cell behavior */
-            padding-top: 0.5rem;
-            padding-bottom: 0.5rem;
+            white-space: nowrap;
         }
 
-        /* Buttons inside action cells should wrap and be compact */
         .elite-cuts-table td.actions .elite-button {
             display: inline-flex;
-            margin: 0 0.2rem 0.2rem 0.2rem;
-            min-width: 0;
-            padding: 0.35rem 0.6rem;
-            font-size: 0.75rem;
+            margin: 0 0.25rem;
+            padding: 0.5rem 1rem;
+            font-size: 0.813rem;
             height: auto;
-        }
-
-        /* Stack action buttons vertically on narrow containers so they don't force horizontal scrolling */
-        @media (max-width: 720px) {
-            .elite-cuts-table td.actions .elite-button { display: block; width: 100%; margin: 0 0 0.5rem 0; }
         }
 
         .elite-cuts-table tbody tr:last-child td {
@@ -1105,6 +1098,228 @@ function elite_cuts_manage_bookings_page($business_id = 0) {
 
         .elite-cuts-table tbody tr:hover {
             background: rgba(100, 196, 147, 0.04);
+            transition: background 0.2s ease;
+        }
+
+        /* Tablet responsive (below 1024px) */
+        @media (max-width: 1024px) {
+            .elite-cuts-table th,
+            .elite-cuts-table td {
+                padding: 0.75rem 0.75rem;
+                font-size: 0.875rem;
+            }
+
+            .elite-cuts-table th {
+                font-size: 0.7rem;
+            }
+        }
+
+        /* Mobile responsive - Card layout (below 768px) */
+        @media (max-width: 768px) {
+            .table-container {
+                overflow-x: visible;
+                border: none;
+                background: transparent;
+                box-shadow: none;
+            }
+
+            .elite-cuts-table {
+                display: block;
+            }
+
+            .elite-cuts-table thead {
+                display: none;
+            }
+
+            .elite-cuts-table tbody {
+                display: block;
+            }
+
+            .elite-cuts-table tbody tr {
+                display: block;
+                background: var(--card-bg);
+                border: 1px solid var(--border-color);
+                border-radius: var(--radius);
+                margin-bottom: 1rem;
+                padding: 1rem;
+                box-shadow: var(--shadow);
+                position: relative;
+            }
+
+            .elite-cuts-table tbody tr:hover {
+                background: var(--card-bg);
+                box-shadow: 0 4px 12px rgba(12, 25, 48, 0.08);
+                transform: translateY(-2px);
+                transition: all 0.3s ease;
+            }
+
+            .elite-cuts-table td {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                padding: 0.75rem 0;
+                border-bottom: 1px solid rgba(188, 195, 200, 0.3);
+                text-align: right;
+            }
+
+            .elite-cuts-table td:last-child {
+                border-bottom: none;
+            }
+
+            .elite-cuts-table td::before {
+                content: attr(data-label);
+                font-weight: 600;
+                color: var(--text-secondary);
+                text-transform: uppercase;
+                font-size: 0.7rem;
+                letter-spacing: 0.05em;
+                flex: 0 0 40%;
+                text-align: left;
+                padding-right: 1rem;
+            }
+
+            .elite-cuts-table td[data-label="ID"] {
+                position: absolute;
+                top: 1rem;
+                right: 1rem;
+                padding: 0.25rem 0.5rem;
+                background: var(--bg-tertiary);
+                border-radius: 4px;
+                font-size: 0.75rem;
+                font-weight: 600;
+                border-bottom: none;
+            }
+
+            .elite-cuts-table td[data-label="ID"]::before {
+                content: '#';
+                font-weight: 700;
+                padding-right: 0.25rem;
+            }
+
+            .elite-cuts-table td[data-label="Customer"] {
+                margin-top: 1.5rem;
+                font-size: 1.125rem;
+                font-weight: 600;
+            }
+
+            /* Service column in mobile - ensure grouped label displays properly */
+            .elite-cuts-table td[data-label="Service"] {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .elite-cuts-table td[data-label="Service"] .service-name {
+                text-align: right;
+                width: 100%;
+            }
+
+            .elite-cuts-table td[data-label="Service"] .grouped-booking-label {
+                width: auto;
+                margin-left: auto;
+            }
+
+            /* Staff column in mobile */
+            .elite-cuts-table td[data-label="Staff"] {
+                flex-direction: column;
+                align-items: flex-end;
+            }
+
+            .elite-cuts-table td[data-label="Staff"] .staff-info {
+                text-align: right;
+            }
+
+            .elite-cuts-table td.actions {
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+                padding-top: 1rem;
+                border-top: 2px solid var(--border-color);
+                margin-top: 0.5rem;
+            }
+
+            .elite-cuts-table td.actions::before {
+                display: none;
+            }
+
+            .elite-cuts-table td.actions .elite-button {
+                width: 100%;
+                margin: 0;
+                justify-content: center;
+                padding: 0.75rem 1rem;
+                font-size: 0.875rem;
+            }
+
+            /* Status badge in mobile */
+            .status-badge {
+                padding: 0.5rem 1rem;
+                font-size: 0.85rem;
+            }
+
+            /* Contact info mobile styling */
+            .elite-cuts-table td.contact-info {
+                flex-direction: column;
+                align-items: flex-end;
+            }
+
+            .elite-cuts-table td.contact-info::before {
+                align-self: flex-start;
+            }
+        }
+
+        /* Extra small mobile (below 480px) */
+        @media (max-width: 480px) {
+            .elite-cuts-table tbody tr {
+                padding: 0.875rem;
+            }
+
+            .elite-cuts-table td {
+                padding: 0.625rem 0;
+                font-size: 0.875rem;
+            }
+
+            .elite-cuts-table td::before {
+                font-size: 0.65rem;
+                flex: 0 0 35%;
+            }
+
+            .elite-cuts-table td[data-label="Customer"] {
+                font-size: 1rem;
+            }
+
+            .elite-cuts-table td.actions .elite-button {
+                padding: 0.625rem 0.875rem;
+                font-size: 0.813rem;
+            }
+        }
+
+        /* Grouped booking label */
+        .grouped-booking-label {
+            margin-top: 0.375rem;
+            padding: 0.25rem 0.5rem;
+            background: rgba(100, 196, 147, 0.08);
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        .grouped-booking-label small {
+            font-size: 0.75rem;
+            color: var(--accent);
+            font-weight: 500;
+        }
+
+        /* No bookings message */
+        .no-bookings {
+            text-align: center;
+            padding: 3rem 1.5rem;
+            color: var(--text-secondary);
+            font-size: 0.938rem;
+        }
+
+        .no-bookings small {
+            display: block;
+            margin-top: 0.5rem;
+            font-size: 0.813rem;
+            opacity: 0.7;
         }
 
         /* Status Badges */
@@ -1116,6 +1331,26 @@ function elite_cuts_manage_bookings_page($business_id = 0) {
             font-size: 0.8rem;
             font-weight: 500;
             letter-spacing: 0.3px;
+            white-space: nowrap;
+        }
+
+        /* Mobile enhancements for grouped bookings */
+        @media (max-width: 768px) {
+            .grouped-booking-label {
+                margin-top: 0.5rem;
+                padding: 0.375rem 0.625rem;
+                width: 100%;
+                text-align: center;
+            }
+
+            .grouped-booking-label small {
+                font-size: 0.7rem;
+            }
+
+            .no-bookings {
+                padding: 2rem 1rem;
+                font-size: 0.875rem;
+            }
         }
 
         .status-pending {
@@ -1198,12 +1433,17 @@ function elite_cuts_manage_bookings_page($business_id = 0) {
             text-transform: uppercase;
             letter-spacing: 0.5px;
             font-size: 0.8rem;
+            min-height: 44px; /* Minimum touch target size */
         }
 
         .elite-button:hover {
             background: var(--accent-hover);
             transform: translateY(-1px);
             box-shadow: 0 2px 8px rgba(100, 196, 147, 0.18);
+        }
+
+        .elite-button:active {
+            transform: translateY(0);
         }
 
         .elite-button.secondary {
@@ -1224,6 +1464,7 @@ function elite_cuts_manage_bookings_page($business_id = 0) {
             font-size: 0.75rem;
             font-weight: 500;
             min-width: 60px;
+            min-height: 36px;
             text-transform: none;
             letter-spacing: 0.2px;
             border-radius: 4px;
@@ -1232,6 +1473,28 @@ function elite_cuts_manage_bookings_page($business_id = 0) {
         .elite-button.small:hover {
             transform: translateY(-1px);
             box-shadow: 0 2px 6px rgba(100, 196, 147, 0.15);
+        }
+
+        /* Mobile button enhancements - larger touch targets */
+        @media (max-width: 768px) {
+            .elite-button {
+                min-height: 48px; /* Larger touch target on mobile */
+                padding: 0.75rem 1.25rem;
+                font-size: 0.875rem;
+            }
+
+            .elite-button.small {
+                min-height: 44px;
+                padding: 0.625rem 1rem;
+                font-size: 0.813rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .elite-button {
+                min-height: 44px;
+                justify-content: center;
+            }
         }
 
         /* Loading State */
@@ -1257,7 +1520,7 @@ function elite_cuts_manage_bookings_page($business_id = 0) {
             to { transform: rotate(360deg); }
         }
 
-        /* Responsive */
+        /* Responsive - Main Layout */
         @media (max-width: 1200px) {
             .stats-container {
                 grid-template-columns: repeat(2, 1fr);
@@ -1266,43 +1529,164 @@ function elite_cuts_manage_bookings_page($business_id = 0) {
 
         @media (max-width: 768px) {
             .elite-cuts-admin {
-                padding: 1rem;
+                padding: 0.875rem;
             }
 
             .elite-cuts-header {
                 flex-direction: column;
                 align-items: flex-start;
                 gap: 1rem;
+                padding: 1rem;
+            }
+
+            .elite-cuts-header.modern-header {
+                padding: 1rem;
+            }
+
+            .brand-icon {
+                width: 40px;
+                height: 40px;
+                font-size: 1.1rem;
+            }
+
+            .brand-title {
+                font-size: 1rem;
+            }
+
+            .brand-sub {
+                font-size: 0.8rem;
+            }
+
+            .header-actions {
+                width: 100%;
+            }
+
+            .header-actions #add-booking-btn {
+                width: 100%;
+                justify-content: center;
+                padding: 0.75rem 1.25rem;
+                font-size: 0.875rem;
             }
 
             .elite-cuts-filters {
-                flex-direction: column;
-                align-items: stretch;
+                padding: 1rem;
             }
 
-            .filters-left {
+            .filter-row {
                 flex-direction: column;
-                gap: 0.75rem;
+                gap: 1rem;
             }
 
             .filter-group {
                 width: 100%;
-                justify-content: space-between;
+                min-width: 100%;
+            }
+
+            .date-range {
+                flex-direction: row;
+                gap: 0.75rem;
+            }
+
+            .search-filter {
+                max-width: 100%;
+                min-width: 100%;
             }
 
             .search-container {
                 width: 100%;
             }
+
+            .filter-actions {
+                width: 100%;
+                margin-left: 0;
+                justify-content: stretch;
+            }
+
+            .filter-actions .elite-button {
+                flex: 1;
+                min-width: 0;
+            }
         }
 
         @media (max-width: 480px) {
+            .elite-cuts-admin {
+                padding: 0.5rem;
+            }
+
+            .elite-cuts-header {
+                padding: 0.875rem;
+            }
+
+            .brand {
+                gap: 0.5rem;
+            }
+
+            .brand-icon {
+                width: 36px;
+                height: 36px;
+                font-size: 1rem;
+            }
+
+            .brand-title {
+                font-size: 0.938rem;
+            }
+
+            .brand-sub {
+                font-size: 0.75rem;
+            }
+
+            .header-actions #add-booking-btn {
+                padding: 0.625rem 1rem;
+                font-size: 0.813rem;
+            }
+
             .stats-container {
                 grid-template-columns: 1fr;
+                gap: 0.75rem;
+            }
+
+            .elite-cuts-filters {
+                padding: 0.875rem;
+            }
+
+            .filter-row {
+                gap: 0.875rem;
+            }
+
+            .date-range {
+                flex-direction: column;
+                gap: 0.875rem;
+            }
+
+            .filter-item label {
+                font-size: 0.75rem;
+            }
+
+            .elite-input,
+            .elite-select {
+                font-size: 0.875rem;
+                padding: 0.5rem 0.75rem;
+            }
+
+            .search-input {
+                font-size: 0.875rem;
+                padding: 0.5rem 0.875rem 0.5rem 2.75rem;
+            }
+
+            .filter-actions {
+                flex-direction: column;
+                gap: 0.625rem;
+            }
+
+            .filter-actions .elite-button {
+                width: 100%;
+                padding: 0.625rem 1rem;
+                font-size: 0.813rem;
             }
 
             .elite-button {
-                width: 100%;
-                justify-content: center;
+                font-size: 0.75rem;
+                padding: 0.5rem 1rem;
             }
         }
 
