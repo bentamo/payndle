@@ -203,12 +203,12 @@ jQuery(document).ready(function($) {
 
             const row = `
                 <tr data-id="${member.id}">
-                    <td class="staff-name"><div class="staff-cell">${avatarHtml}<div class="staff-meta"><div class="staff-name-text">${member.name || ''}</div></div></div></td>
-                    <td class="staff-role">${roleHtml}</td>
-                    <td class="staff-contact">${contactHtml || '—'}</td>
-                    <td class="staff-availability">${availabilityHtml}</td>
-                    <td><span class="status-badge ${statusClass}">${statusText}</span></td>
-                    <td class="staff-actions">
+                    <td class="staff-name" data-label="Staff"><div class="staff-cell">${avatarHtml}<div class="staff-meta"><div class="staff-name-text">${member.name || ''}</div></div></div></td>
+                    <td class="staff-role" data-label="Role">${roleHtml}</td>
+                    <td class="staff-contact" data-label="Contact">${contactHtml || '—'}</td>
+                    <td class="staff-availability" data-label="Availability">${availabilityHtml}</td>
+                    <td data-label="Status"><span class="status-badge ${statusClass}">${statusText}</span></td>
+                    <td class="staff-actions" data-label="Actions">
                         <button class="button button-small edit-staff" data-id="${member.id}" title="Edit">
                             <span class="dashicons dashicons-edit"></span>
                         </button>

@@ -336,9 +336,240 @@ if (!function_exists('elite_cuts_render_staff_ui')) {
     .loading-spinner { display: inline-block; width: 1.5rem; height: 1.5rem; border: 2px solid rgba(12,25,48,0.06); border-radius: 50%; border-top-color: var(--accent); animation: spin 0.8s linear infinite; margin-right: 0.5rem; vertical-align: middle; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Responsive */
-        @media (max-width: 1024px) { .filter-row { flex-direction: column; align-items: stretch; } .filter-group { min-width: 100%; } .search-filter { max-width: 100%; } .filter-actions { margin-left: 0; margin-top: 0.5rem; justify-content: flex-end; } }
-        @media (max-width: 480px) { .form-row { flex-direction: column; } .filter-actions { flex-direction: column; gap: 0.5rem; } .filter-actions .elite-button { width: 100%; } }
+        /* Enhanced Responsive Design for Multiple Devices */
+        @media (max-width: 1200px) { 
+            .elite-cuts-admin { padding: 1.25rem; }
+            .elite-cuts-table { font-size: 0.88rem; }
+        }
+        
+        @media (max-width: 1024px) { 
+            .elite-cuts-admin { padding: 1rem; }
+            .filter-row { flex-direction: column; align-items: stretch; } 
+            .filter-group { min-width: 100%; } 
+            .search-filter { max-width: 100%; } 
+            .filter-actions { margin-left: 0; margin-top: 0.5rem; justify-content: flex-end; }
+            .elite-cuts-header.modern-header { flex-wrap: wrap; }
+            .elite-cuts-table th, .elite-cuts-table td { padding: 0.65rem 0.5rem; font-size: 0.85rem; }
+        }
+        
+        @media (max-width: 782px) {
+            .elite-cuts-admin { padding: 0.75rem; }
+            .elite-cuts-header { padding: 1rem; margin-bottom: 1rem; }
+            .brand-title { font-size: 1rem; }
+            .brand-sub { font-size: 0.8rem; }
+            .brand-icon { width: 40px; height: 40px; font-size: 1.1rem; }
+            .elite-button { padding: 0.5rem 1rem; font-size: 0.75rem; }
+            
+            /* Stack header on smaller tablets */
+            .elite-cuts-header.modern-header { flex-direction: column; align-items: flex-start; }
+            .header-actions { width: 100%; }
+            .header-actions .elite-button { width: 100%; justify-content: center; }
+        }
+        
+        @media (max-width: 640px) {
+            .elite-cuts-admin { padding: 0.5rem; max-width: 100%; }
+            
+            /* Convert table to card layout on mobile */
+            .table-container { overflow-x: visible; -webkit-overflow-scrolling: touch; }
+            .elite-cuts-table { display: block; border: 0; width: 100%; }
+            .elite-cuts-table colgroup { display: none; }
+            .elite-cuts-table thead { display: none; }
+            .elite-cuts-table tbody { display: block; width: 100%; }
+            .elite-cuts-table tbody tr { 
+                display: block; 
+                margin-bottom: 1rem; 
+                padding: 1rem; 
+                border: 1px solid var(--border-color); 
+                border-radius: var(--radius); 
+                background: var(--card-bg);
+                box-shadow: var(--shadow);
+                width: 100%;
+                box-sizing: border-box;
+                margin-left: 0;
+                margin-right: 0;
+            }
+            .elite-cuts-table td { 
+                display: block; 
+                text-align: left !important; 
+                padding: 0.5rem 0; 
+                border-bottom: none; 
+                position: relative;
+                padding-left: 0;
+                min-height: auto;
+                width: 100%;
+            }
+            .elite-cuts-table td::before {
+                content: attr(data-label);
+                display: block;
+                font-weight: 600;
+                color: var(--text-secondary);
+                font-size: 0.7rem;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                margin-bottom: 0.3rem;
+                opacity: 0.8;
+            }
+            .elite-cuts-table td:first-child { 
+                padding-bottom: 0.75rem; 
+                border-bottom: 1px solid rgba(0,0,0,0.05);
+                margin-bottom: 0.5rem;
+            }
+            .elite-cuts-table td:first-child::before { display: none; }
+            .elite-cuts-table td:last-child { 
+                padding-left: 0; 
+                text-align: center !important; 
+                border-top: 1px solid var(--border-color);
+                padding-top: 1rem;
+                margin-top: 0.75rem;
+            }
+            .elite-cuts-table td:last-child::before { display: none; }
+            
+            /* Enhanced touch targets for mobile */
+            .action-buttons { justify-content: center; gap: 0.75rem; flex-wrap: wrap; width: 100%; }
+            .icon-btn { width: 44px !important; height: 44px !important; min-width: 44px; }
+            
+            /* Avatar adjustments */
+            .staff-cell { padding-left: 0 !important; width: 100%; gap: 0.75rem; }
+            .staff-cell::before { display: none; }
+            .avatar { width: 48px; height: 48px; }
+            .avatar-initial { width: 48px; height: 48px; font-size: 1rem; }
+            
+            /* Status and availability badges */
+            .status-badge, .availability-badge { font-size: 0.7rem; padding: 0.3rem 0.7rem; }
+        }
+        
+        @media (max-width: 480px) { 
+            .elite-cuts-admin { padding: 0.4rem; min-height: auto; max-width: 100%; }
+            .elite-cuts-header { padding: 0.75rem; border-radius: 6px; margin-bottom: 0.75rem; margin-left: 0; margin-right: 0; }
+            .elite-cuts-filters { margin-bottom: 10px; padding: 0.5rem; margin-left: 0; margin-right: 0; }
+            
+            .form-row { flex-direction: column; gap: 0.75rem; } 
+            .filter-row { gap: 0.75rem; }
+            .filter-actions { flex-direction: column; gap: 0.5rem; width: 100%; } 
+            .filter-actions .elite-button { width: 100%; justify-content: center; }
+            
+            .brand-title { font-size: 0.95rem; }
+            .brand-sub { font-size: 0.75rem; }
+            .brand-icon { width: 36px; height: 36px; font-size: 1rem; }
+            
+            /* Mobile-optimized table cards - full width */
+            .elite-cuts-table tbody tr { 
+                padding: 0.85rem; 
+                margin-bottom: 0.75rem; 
+                margin-left: 0;
+                margin-right: 0;
+                width: 100%;
+                box-sizing: border-box;
+            }
+            .elite-cuts-table td { 
+                padding: 0.4rem 0; 
+                padding-left: 0; 
+                font-size: 0.82rem;
+                min-height: auto;
+                width: 100%;
+            }
+            .elite-cuts-table td::before { 
+                font-size: 0.7rem; 
+                display: block;
+                margin-bottom: 0.25rem;
+            }
+            
+            /* Compact action buttons */
+            .action-buttons { gap: 0.5rem; width: 100%; }
+            .icon-btn { width: 42px !important; height: 42px !important; }
+            
+            /* Avatar size increase for better visibility */
+            .avatar { width: 50px; height: 50px; }
+            .avatar-initial { width: 50px; height: 50px; font-size: 1.1rem; }
+            
+            /* Modal full-screen on mobile */
+            .elite-modal { padding: 0; }
+            .elite-modal-content { 
+                width: 100%; 
+                max-width: 100%; 
+                max-height: 100vh; 
+                border-radius: 0;
+                margin: 0;
+            }
+            
+            /* Form optimizations */
+            .elite-input, .elite-select { 
+                padding: 0.7rem; 
+                font-size: 16px; /* Prevents zoom on iOS */
+            }
+            .form-group label { font-size: 0.8rem; }
+            
+            /* Search input */
+            .search-input { 
+                padding: 0.7rem 0.7rem 0.7rem 2.5rem; 
+                font-size: 14px;
+            }
+            .search-icon { left: 8px; font-size: 0.85rem; }
+            
+            /* Toast positioning */
+            #elite-toast-container { 
+                left: 6px; 
+                right: 6px; 
+                bottom: 8px;
+                max-width: calc(100% - 12px);
+            }
+            .elite-toast { 
+                max-width: 100%; 
+                min-width: 100%;
+                font-size: 0.85rem;
+            }
+        }
+        
+        @media (max-width: 360px) {
+            .elite-cuts-admin { padding: 0.3rem; max-width: 100%; }
+            .elite-cuts-header { padding: 0.6rem; margin-left: 0; margin-right: 0; }
+            .elite-cuts-filters { padding: 0.4rem; margin-left: 0; margin-right: 0; }
+            .brand-title { font-size: 0.9rem; }
+            .brand-sub { font-size: 0.7rem; }
+            .elite-cuts-table tbody tr { padding: 0.7rem; margin-left: 0; margin-right: 0; }
+            .elite-cuts-table td { padding-left: 0; font-size: 0.78rem; width: 100%; }
+            .elite-cuts-table td::before { font-size: 0.65rem; display: block; margin-bottom: 0.2rem; }
+            .icon-btn { width: 40px !important; height: 40px !important; }
+            .action-buttons { gap: 0.4rem; }
+            .avatar { width: 46px; height: 46px; }
+            .avatar-initial { width: 46px; height: 46px; font-size: 1rem; }
+        }
+        
+        /* Landscape orientation adjustments */
+        @media screen and (max-height: 500px) and (orientation: landscape) {
+            .elite-modal-content { max-height: 95vh; overflow-y: auto; }
+            .elite-cuts-header { padding: 0.6rem 1rem; margin-bottom: 0.75rem; }
+            .elite-cuts-filters { padding: 0.6rem; margin-bottom: 10px; }
+        }
+        
+        /* Touch device optimizations */
+        @media (hover: none) and (pointer: coarse) {
+            .icon-btn, .elite-button { min-height: 44px; min-width: 44px; }
+            .elite-input, .elite-select { min-height: 44px; }
+            .elite-cuts-table tbody tr:hover { background: var(--bg-primary); }
+            .icon-btn:active, .elite-button:active { 
+                transform: scale(0.96); 
+                opacity: 0.85; 
+            }
+        }
+        
+        /* High DPI displays */
+        @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+            .icon-btn, .avatar, .avatar-initial { 
+                -webkit-font-smoothing: antialiased; 
+                -moz-osx-font-smoothing: grayscale; 
+            }
+            .elite-cuts-table { border-width: 0.5px; }
+        }
+        
+        /* Reduced motion preference */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
 
         /* Boxed container adjustments: reduce padding and font sizes slightly so cells fit better */
         @media (min-width: 800px) and (max-width: 1400px) {
