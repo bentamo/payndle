@@ -119,9 +119,9 @@
 /* Select wrappers (custom chevron) */
 .service-selector, .staff-selector { position: relative; width: 100%; }
 .service-selector select, .staff-selector select { 
-    appearance: none; 
     -webkit-appearance: none; 
     -moz-appearance: none; 
+    appearance: none; 
     padding-right: 3rem; 
     padding-left: var(--input-padding-left);
     width: 100%;
@@ -192,7 +192,7 @@ input[type="date"], input[type="time"], select { height: calc(2 * 0.875rem + 1re
 .selected-service-info p { margin:0.25rem 0; color:#666; font-size:0.9rem; }
 .service-price { font-weight:600; color:var(--accent); }
 
-.payment-methods { display:flex; flex-direction:row; gap:0.75rem; flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:0.25rem; }
+.payment-methods { display:flex; flex-direction:row; gap:0.75rem; flex-wrap:nowrap; overflow-x:auto; padding-bottom:0.25rem; }
 .payment-option { position:relative; }
 .payment-option input[type="radio"] { position:absolute; opacity:0; width:0; height:0; }
 .payment-label { display:flex; align-items:center; padding:0.6rem 0.9rem; border:1px solid var(--border-color); border-radius:6px; cursor:pointer; transition: all 0.18s ease; background:var(--bg-primary); min-width:220px; white-space:nowrap; }
@@ -265,7 +265,14 @@ input[type="date"], input[type="time"], select { height: calc(2 * 0.875rem + 1re
 /* Payment step two-column layout */
 /* Payment step: two-column layout (options left, breakdown right) */
 .ubf-payment-grid { display:grid; grid-template-columns: 1fr 320px; gap: 1.25rem; align-items:start; }
-@media (max-width:767px) { .ubf-payment-grid { grid-template-columns: 1fr; } .payment-methods { gap:0.6rem; } }
+@media (max-width:767px) { 
+    .ubf-payment-grid { grid-template-columns: 1fr; gap: 1rem; } 
+    .payment-methods { gap:0.6rem; } 
+}
+@media (max-width:600px) { 
+    .ubf-payment-grid { gap: 0.75rem; } 
+    .payment-methods { gap:0.5rem; } 
+}
 
 /* Make breakdown container full-width below payment options */
 .ubf-payment-breakdown { width:100%; }
@@ -319,6 +326,15 @@ input[type="date"], input[type="time"], select { height: calc(2 * 0.875rem + 1re
 .breakdown-row { display:flex; justify-content:space-between; padding:0.5rem 0; }
 .breakdown-total { display:flex; justify-content:space-between; padding-top:0.75rem; border-top:1px solid var(--border-color); font-weight:700; font-size:1.05rem; }
 
+/* Mobile payment breakdown improvements */
+@media (max-width:600px){
+    .ubf-payment-breakdown{padding:0.75rem;font-size:0.9rem}
+    .ubf-payment-breakdown .breakdown-services{max-height:180px}
+    .breakdown-service{font-size:0.85rem;padding:0.4rem 0}
+    .breakdown-row{font-size:0.85rem;padding:0.4rem 0}
+    .breakdown-total{font-size:0.95rem;padding-top:0.6rem}
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar { width:8px; }
 ::-webkit-scrollbar-track { background:#f1f1f1; border-radius:4px; }
@@ -358,8 +374,18 @@ input[type="date"], input[type="time"], select { height: calc(2 * 0.875rem + 1re
 .ubf-progress{height:6px;background:var(--ubf-accent-gray);border-radius:6px;margin-top:12px;overflow:hidden}
 .ubf-progress-fill{height:100%;background:linear-gradient(90deg,var(--ubf-primary-green),#4fb88a);width:0%;transition:width 300ms ease}
 
-.ubf-v3-form input[type="text"],.ubf-v3-form input[type="email"],.ubf-v3-form input[type="tel"],.ubf-v3-form input[type="date"],.ubf-v3-form input[type="time"],.ubf-v3-form select,.ubf-v3-form textarea{width:100%;padding:12px;border:1px solid #e6eaef;border-radius:var(--ubf-radius);margin-bottom:12px;font-size:0.95rem}
+.ubf-v3-form input[type="text"],.ubf-v3-form input[type="email"],.ubf-v3-form input[type="tel"],.ubf-v3-form input[type="date"],.ubf-v3-form input[type="time"],.ubf-v3-form select,.ubf-v3-form textarea{width:100%;padding:12px;border:1px solid #e6eaef;border-radius:var(--ubf-radius);margin-bottom:12px;font-size:0.95rem;box-sizing:border-box}
 .ubf-v3-form textarea{min-height:100px}
+
+/* Mobile form improvements */
+@media (max-width:600px){
+    .ubf-v3-form input[type="text"],.ubf-v3-form input[type="email"],.ubf-v3-form input[type="tel"],.ubf-v3-form input[type="date"],.ubf-v3-form input[type="time"],.ubf-v3-form select,.ubf-v3-form textarea{
+        padding:10px;
+        font-size:16px; /* Prevents iOS zoom on focus */
+        margin-bottom:10px
+    }
+    .ubf-v3-form textarea{min-height:80px}
+}
 
 .ubf-form-step{display:none}
 .ubf-form-step[data-step="1"]{display:block}
@@ -384,13 +410,27 @@ input[type="date"], input[type="time"], select { height: calc(2 * 0.875rem + 1re
 .ubf-prev i{font-size:0.95rem;color:var(--ubf-white)}
 .ubf-next,.ubf-submit{background:var(--ubf-primary-green);color:var(--ubf-white);border:none;padding:10px 18px;border-radius:var(--ubf-radius);cursor:pointer;font-weight:600;transition:all 160ms ease}
 
+/* Mobile button improvements */
+@media (max-width:600px){
+    .ubf-step-nav{flex-direction:column;gap:8px;margin-top:12px}
+    .ubf-prev,.ubf-next,.ubf-submit{width:100%;justify-content:center;padding:12px 16px;font-size:0.95rem}
+}
+
 .ubf-next:hover,.ubf-submit:hover{background:var(--ubf-primary-green);color:var(--ubf-primary-navy);box-shadow:inset 0 -2px 0 rgba(12,25,48,0.04),0 8px 20px rgba(100,196,147,0.08);transform:translateY(-1px)}
 
 .ubf-payment{display:block;padding:10px;border:1px solid #eef3f6;border-radius:8px;margin-bottom:8px}
 
 @media (max-width:600px){
-    .ubf-steps{flex-wrap:wrap}
-    .ubf-step{width:50%}
+    .ubf-v3-container{padding:12px 8px}
+    .ubf-v3-form-wrapper{padding:12px;box-shadow:0 4px 12px rgba(12,25,48,0.04)}
+    .ubf-v3-header{margin-bottom:12px}
+    .ubf-v3-title{font-size:1.3rem}
+    .ubf-v3-sub{font-size:0.85rem}
+    .ubf-steps{flex-wrap:wrap;gap:8px}
+    .ubf-step{width:calc(50% - 4px);margin-bottom:8px}
+    .ubf-step .num{width:36px;height:36px;font-size:0.9rem}
+    .ubf-step .label{font-size:0.75rem;margin-top:4px}
+    .ubf-progress{margin-top:8px;height:4px}
 }
 
 /* Success panel */
@@ -399,9 +439,20 @@ input[type="date"], input[type="time"], select { height: calc(2 * 0.875rem + 1re
 .ubf-success-icon{background:var(--ubf-primary-green);color:var(--ubf-white);width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;margin-bottom:12px}
 .ubf-success-title{color:var(--ubf-primary-navy);margin:0 0 8px 0}
 .ubf-success-message{color:#445566;text-align:center;margin:0 0 16px 0}
-.ubf-success-actions{display:flex;gap:10px}
-.ubf-btn-primary{background:var(--ubf-primary-green);color:var(--ubf-white);padding:10px 14px;border-radius:8px;border:none}
-.ubf-btn-secondary{background:var(--ubf-primary-navy);color:var(--ubf-white);padding:10px 14px;border-radius:8px;border:none}
+.ubf-success-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.ubf-btn-primary{background:var(--ubf-primary-green);color:var(--ubf-white);padding:10px 14px;border-radius:8px;border:none;cursor:pointer}
+.ubf-btn-secondary{background:var(--ubf-primary-navy);color:var(--ubf-white);padding:10px 14px;border-radius:8px;border:none;cursor:pointer}
+
+/* Mobile success panel improvements */
+@media (max-width:600px){
+    .ubf-v3-success{padding:12px;margin:12px auto}
+    .ubf-success-box{padding:16px}
+    .ubf-success-icon{width:50px;height:50px;font-size:1.2rem;margin-bottom:10px}
+    .ubf-success-title{font-size:1.1rem}
+    .ubf-success-message{font-size:0.9rem;margin:0 0 12px 0}
+    .ubf-success-actions{flex-direction:column;width:100%;gap:8px}
+    .ubf-btn-primary,.ubf-btn-secondary{width:100%;padding:12px 16px}
+}
 
 /* Prevent blue hover fallout from global styles: enforce brand hover colors for v3 buttons */
 .ubf-v3-container .ubf-btn-primary:hover,
@@ -424,12 +475,23 @@ input[type="date"], input[type="time"], select { height: calc(2 * 0.875rem + 1re
 .ubf-v3-container .payment-option input[type="radio"]{position:absolute;opacity:0;width:0;height:0}
 .ubf-v3-container .payment-label{display:flex;align-items:center;padding:14px;border:2px solid rgba(0,0,0,0.04);border-radius:12px;cursor:pointer;transition:all 0.25s ease;background:var(--ubf-white)}
 .ubf-v3-container .payment-option input[type="radio"]:checked + .payment-label{border-color:var(--ubf-primary-green);background:linear-gradient(90deg, rgba(100,196,147,0.06), rgba(100,196,147,0.03))}
-.ubf-v3-container .payment-icon{width:48px;height:48px;background:rgba(100,196,147,0.06);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-right:12px}
+.ubf-v3-container .payment-icon{width:48px;height:48px;background:rgba(100,196,147,0.06);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0}
 .ubf-v3-container .payment-icon i{font-size:18px;color:var(--ubf-primary-green)}
 .ubf-v3-container .payment-option input[type="radio"]:checked + .payment-label .payment-icon{background:var(--ubf-primary-green)}
 .ubf-v3-container .payment-option input[type="radio"]:checked + .payment-label .payment-icon i{color:#fff}
 .ubf-v3-container .payment-details h4{margin:0 0 4px 0;font-size:1rem;color:var(--ubf-primary-navy)}
 .ubf-v3-container .payment-details p{margin:0;color:#667585;font-size:0.9rem}
+
+/* Mobile payment improvements */
+@media (max-width:600px){
+    .ubf-v3-container .payment-label{padding:10px;flex-direction:row;align-items:center}
+    .ubf-v3-container .payment-icon{width:40px;height:40px;margin-right:10px}
+    .ubf-v3-container .payment-icon i{font-size:16px}
+    .ubf-v3-container .payment-details h4{font-size:0.9rem}
+    .ubf-v3-container .payment-details p{font-size:0.8rem}
+    .ubf-payment-headers{margin-bottom:12px}
+    .ubf-breakdown-heading-header{font-size:1.1rem}
+}
 
 /* ============================
     Staff Grid (Legacy + V3)
@@ -446,6 +508,15 @@ input[type="date"], input[type="time"], select { height: calc(2 * 0.875rem + 1re
 .staff-initials{width:72px;height:72px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700}
 .staff-name{font-weight:600;color:#0C1930;text-align:center;font-size:0.95rem}
 
+/* Mobile staff grid improvements */
+@media (max-width:600px){
+    .staff-grid, .ubf-staff-grid{grid-template-columns:repeat(2,1fr);gap:8px}
+    .staff-card{padding:8px;gap:6px}
+    .staff-avatar{width:56px;height:56px}
+    .staff-initials{width:56px;height:56px;font-size:0.9rem}
+    .staff-name{font-size:0.85rem}
+}
+
 /* Add/Remove service buttons (v3 service blocks) */
 .ubf-service-block{
     background: #fff;
@@ -455,6 +526,13 @@ input[type="date"], input[type="time"], select { height: calc(2 * 0.875rem + 1re
     margin-bottom: 12px;
     position: relative; /* for absolute remove button */
     box-shadow: 0 6px 18px rgba(12,25,48,0.04);
+}
+
+/* Mobile service block improvements */
+@media (max-width:600px){
+    .ubf-service-block{padding:10px;margin-bottom:10px;box-shadow:0 4px 12px rgba(12,25,48,0.04)}
+    .ubf-service-block label{font-size:0.9rem;margin-bottom:6px}
+    .ubf-service-blocks{margin-bottom:10px}
 }
 
 .ubf-add-service{
@@ -509,5 +587,23 @@ input[type="date"], input[type="time"], select { height: calc(2 * 0.875rem + 1re
     .ubf-service-block .ubf-remove-service{top:8px;right:8px}
 }
 
+/* Additional mobile improvements for selects and section titles */
+@media (max-width:600px){
+    .section-title,.ubf-v3-form .section-title{font-size:1.05rem;margin-bottom:10px}
+    .ubf-service-select,.ubf-staff-input,.ubf-v3-form select{font-size:16px;padding:10px;-webkit-appearance:menulist;-moz-appearance:menulist;appearance:auto}
+    small{font-size:0.8rem;line-height:1.4}
+    /* Improve touch targets on mobile */
+    button,input[type="radio"]+label,.staff-card{min-height:44px}
+    .ubf-add-service{padding:12px 18px;font-size:0.95rem}
+    .ubf-service-block .ubf-remove-service{padding:8px 12px;font-size:0.85rem}
+}
+
 /* Hide remove button when only one block remains to avoid accidental removal */
 .ubf-service-block:only-child .ubf-remove-service{display:none}
+
+/* Per-service schedule improvements for mobile */
+@media (max-width:600px){
+    #ubf-per-service-schedule{font-size:0.9rem}
+    .ubf-schedule-row{padding:10px;margin-bottom:10px}
+    .ubf-schedule-placeholder{font-size:0.85rem;padding:12px}
+}
