@@ -401,11 +401,11 @@ function elite_cuts_manage_bookings_page($business_id = 0) {
                                     </span>
                                 </td>
                                 <td class="actions" data-label="Actions">
-                                    <button class="elite-button small edit-booking" data-id="<?php echo $booking->id; ?>">
-                                        Edit
+                                    <button class="elite-button small edit-booking" data-booking-id="<?php echo $booking->id; ?>">
+                                        <i class="fas fa-edit"></i> Edit
                                     </button>
-                                    <button class="elite-button small delete-booking" data-id="<?php echo $booking->id; ?>">
-                                        Delete
+                                    <button class="elite-button small delete-booking" data-booking-id="<?php echo $booking->id; ?>">
+                                        <i class="fas fa-trash"></i> Delete
                                     </button>
                                 </td>
                             </tr>
@@ -4192,13 +4192,17 @@ add_action('wp_ajax_elite_cuts_delete_booking', 'elite_cuts_delete_booking_ajax'
 function elite_cuts_get_booking_ajax() {
     check_ajax_referer('manage_bookings_nonce', 'nonce');
 
-    if (!current_user_can('manage_options')) {
-        wp_send_json_error(['message' => 'Permission denied']);
+    if (!is_user_logged_in()) {
+        wp_send_json_error(['message' => 'You must be logged in to perform this action']);
     }
 
-    $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+    $id = isset($_POST['booking_id']) ? intval($_POST['booking_id']) : 0;
     if (!$id) {
-        wp_send_json_error(['message' => 'Invalid booking id']);
+        $id = isset($_POST['id']) ? intval($_POST['id']) : 0; // Fallback to 'id' for backward compatibility
+    }
+    
+    if (!$id) {
+        wp_send_json_error(['message' => 'Invalid booking ID']);
     }
 
     // Try CPT first
@@ -4342,16 +4346,35 @@ function elite_cuts_manage_bookings_shortcode() {
     
     // Enqueue required scripts and styles for frontend
     wp_enqueue_script('jquery');
-    wp_enqueue_script('elite-manage-bookings', plugin_dir_url(__FILE__) . 'js/elite-manage-bookings.js', array('jquery'), '1.0.0', true);
+    
+    // Enqueue Bootstrap CSS and JS
+    wp_enqueue_style('bootstrap-css', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css');
+    wp_enqueue_script('bootstrap-js', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js', array('jquery'), '5.3.0', true);
+    
+    // Enqueue plugin scripts after Bootstrap
+    wp_enqueue_script('elite-manage-bookings', plugin_dir_url(__FILE__) . 'assets/js/elite-manage-bookings.js', array('jquery', 'bootstrap-js'), '1.0.1', true);
+    
+    // Enqueue other styles
     wp_enqueue_style('font-awesome', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css');
     wp_enqueue_style('google-fonts', 'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
     
     // Localize script for AJAX
-    wp_localize_script('jquery', 'eliteManageBookings', array(
+    wp_localize_script('elite-manage-bookings', 'eliteManageBookings', array(
         'ajaxUrl' => admin_url('admin-ajax.php'),
         'nonce' => wp_create_nonce('manage_bookings_nonce'),
         'businessId' => $business_id
     ));
+    
+    // Add inline styles for the modal
+    $custom_css = "
+        .modal-backdrop {
+            z-index: 1040 !important;
+        }
+        .modal {
+            z-index: 1050 !important;
+        }
+    ";
+    wp_add_inline_style('bootstrap-css', $custom_css);
     
     // Start output buffering to capture the HTML
     ob_start();
