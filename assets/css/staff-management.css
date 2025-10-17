@@ -324,7 +324,7 @@
     padding: 6px 14px !important;
     font-size: 14px;
     border: 1px solid var(--color-navy);
-    background: var(--color-white);
+    background: #64C493;
     color: var(--color-navy);
     transition: all 0.25s ease;
     cursor: pointer;
@@ -386,7 +386,6 @@
     padding: 0 !important;
     border-radius: 8px !important;
     box-sizing: border-box !important;
-    background: var(--color-white) !important;
     border: 1px solid rgba(12,25,48,0.06) !important;
     color: var(--color-navy) !important;
 }
@@ -641,7 +640,7 @@
     margin-bottom: 6px;
     font-weight: 500;
     font-size: 13px;
-    color: var(--color-navy);
+    color: #0C1930;
 }
 
 .form-group input[type="text"],
@@ -657,8 +656,7 @@
     font-size: 14px;
     line-height: 1.4;
     transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-    background: var(--color-white);
-    color: var(--color-navy);
+    color: #000000;
 }
 
 .form-group input[type="text"]:focus,
@@ -705,7 +703,7 @@
     padding: 6px 12px;
     border-radius: var(--radius-button);
     border: 1px solid var(--color-navy);
-    background: var(--color-white);
+    background: #64C493;
     color: var(--color-navy);
     cursor: pointer;
     transition: all 0.18s ease;
