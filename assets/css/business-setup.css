@@ -27,6 +27,13 @@
   color: var(--text);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 /* Typography */
@@ -119,7 +126,7 @@ p, .setup-subtitle {
   justify-content: space-between;
   position: relative;
   margin: 0 -1rem;
-  padding: 0 1.5rem;
+  padding: 0 1.5rem 2.5rem;
 }
 
 .step {
@@ -130,6 +137,7 @@ p, .setup-subtitle {
   z-index: 1;
   flex: 1;
   padding: 0 0.5rem;
+  min-height: 80px;
 }
 
 .step-number {
@@ -156,8 +164,11 @@ p, .setup-subtitle {
   color: var(--text-light);
   transition: color 0.3s ease;
   position: absolute;
-  bottom: -1.75rem;
+  bottom: 0;
   white-space: nowrap;
+  text-align: center;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 .step.active .step-number {
@@ -282,6 +293,10 @@ p, .setup-subtitle {
   transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
   appearance: none;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  min-height: 44px;
+  box-sizing: border-box;
 }
 
 .form-input:focus,
@@ -340,6 +355,19 @@ p, .setup-subtitle {
   margin-right: 0.75rem;
   margin-top: 0.125rem;
   flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .validation-error {
+    padding: 0.75rem;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+    word-break: break-word;
+  }
+  
+  .validation-error svg {
+    margin-right: 0.5rem;
+  }
 }
 
 @keyframes slideDown {
@@ -421,6 +449,38 @@ p, .setup-subtitle {
     flex-wrap: wrap;
 }
 
+@media (max-width: 640px) {
+  .completion-ui {
+    padding: 30px 15px;
+  }
+  
+  .completion-ui h2 {
+    font-size: 1.5rem;
+  }
+  
+  .completion-ui p {
+    font-size: 1rem;
+  }
+  
+  .success-icon {
+    font-size: 3rem;
+  }
+  
+  .next-steps li {
+    font-size: 0.9375rem;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+  }
+  
+  .action-buttons .btn {
+    width: 100%;
+  }
+}
+
 /* Buttons */
 .btn {
   display: inline-flex;
@@ -438,6 +498,9 @@ p, .setup-subtitle {
   cursor: pointer;
   transition: all 0.2s ease-in-out;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  min-height: 44px;
 }
 
 .btn:focus {
@@ -515,32 +578,183 @@ p, .setup-subtitle {
 /* Responsive Adjustments */
 @media (max-width: 640px) {
   .business-setup-container {
-    padding: 1rem;
+    padding: 0.5rem;
+    margin: 1rem auto;
+  }
+  
+  .business-setup-header {
+    margin-bottom: 2rem;
+  }
+  
+  h1.setup-title {
+    font-size: 1.5rem;
+  }
+  
+  p, .setup-subtitle {
+    font-size: 0.9375rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .business-setup-form {
+    padding: 1.5rem 1rem;
+    border-radius: 12px;
+  }
+  
+  .progress-container {
+    margin-bottom: 2.5rem;
+    max-width: 100%;
+  }
+  
+  .step-indicators {
+    margin: 0;
+    padding: 0 0.5rem 2rem;
+  }
+  
+  .step {
+    padding: 0 0.25rem;
+    min-height: 70px;
+  }
+  
+  .step-number {
+    width: 32px;
+    height: 32px;
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .step-label {
+    font-size: 0.6875rem;
+    bottom: 0;
+    white-space: normal;
+    text-align: center;
+    max-width: 65px;
+    line-height: 1.2;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  
+  .step-header h2 {
+    font-size: 1.25rem;
+  }
+  
+  .step-header p {
+    font-size: 0.9375rem;
+  }
+  
+  .form-section {
+    margin-bottom: 1.5rem;
+  }
+  
+  .form-group {
+    margin-bottom: 1.25rem;
+  }
+  
+  .form-input,
+  .form-select,
+  .form-textarea {
+    padding: 0.875rem;
+    font-size: 1rem;
+  }
+  
+  .form-actions {
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 2rem;
+    padding-top: 1.25rem;
+  }
+  
+  .btn-group {
+    width: 100%;
+    flex-direction: column;
+  }
+  
+  .btn {
+    width: 100%;
+    padding: 0.875rem 1rem;
+    font-size: 1rem;
+  }
+}
+
+/* Extra Small Screens */
+@media (max-width: 375px) {
+  .business-setup-container {
+    padding: 0.25rem;
+  }
+  
+  .business-setup-form {
+    padding: 1.25rem 0.875rem;
+  }
+  
+  h1.setup-title {
+    font-size: 1.375rem;
+  }
+  
+  .step-indicators {
+    padding: 0 0.25rem 1.75rem;
+  }
+  
+  .step {
+    min-height: 65px;
+    padding: 0 0.125rem;
+  }
+  
+  .step-number {
+    width: 28px;
+    height: 28px;
+    font-size: 0.8125rem;
+  }
+  
+  .step-label {
+    font-size: 0.625rem;
+    max-width: 55px;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  
+  .step-header h2 {
+    font-size: 1.125rem;
+  }
+  
+  .step-header p {
+    font-size: 0.875rem;
+  }
+  
+  .form-input,
+  .form-select,
+  .form-textarea {
+    padding: 0.75rem;
+    font-size: 0.9375rem;
+  }
+}
+
+/* Landscape Mode for Mobile */
+@media (max-width: 768px) and (orientation: landscape) {
+  .business-setup-container {
+    margin: 0.5rem auto;
+  }
+  
+  .business-setup-header {
+    margin-bottom: 1.5rem;
+  }
+  
+  .progress-container {
+    margin-bottom: 2rem;
   }
   
   .business-setup-form {
     padding: 1.5rem 1.25rem;
   }
   
-  .step-label {
-    font-size: 0.75rem;
-    bottom: -1.5rem;
+  .step-header {
+    margin-bottom: 1.5rem;
   }
   
-  .form-actions {
-    flex-direction: column;
-    gap: 1rem;
-  }
-  
-  .btn-group {
-    width: 100%;
-  }
-  
-  .btn {
-    flex: 1;
-    padding: 0.75rem;
+  .form-section {
+    margin-bottom: 1.25rem;
   }
 }
+
 /* Removed duplicate button styles */
 
 
@@ -584,6 +798,15 @@ p, .setup-subtitle {
     padding: 0;
     width: 20px;
     height: 20px;
+}
+
+@media (max-width: 640px) {
+  .error-banner {
+    padding: 10px 12px;
+    font-size: 0.875rem;
+    gap: 8px;
+    word-break: break-word;
+  }
 }
 
 @keyframes bounceIn {
@@ -899,40 +1122,80 @@ p, .setup-subtitle {
 
 @media (max-width: 768px) {
     .business-setup-container {
-        padding: 1rem;
+        padding: 0.75rem;
+        margin: 1.5rem auto;
+    }
+    
+    .business-setup-header {
+        margin-bottom: 2.5rem;
     }
     
     .business-setup-form {
-        padding: 1.5rem;
-        padding-bottom: 6rem; /* Extra space for buttons */
+        padding: 2rem 1.5rem;
+        border-radius: 14px;
     }
     
     h1.setup-title {
-        font-size: 1.75rem;
+        font-size: 1.625rem;
+    }
+    
+    .progress-container {
+        margin-bottom: 3rem;
+    }
+    
+    .step-indicators {
+        padding: 0 1rem 2.25rem;
+    }
+    
+    .step {
+        padding: 0 0.375rem;
+        min-height: 75px;
+    }
+    
+    .step-number {
+        width: 34px;
+        height: 34px;
+        font-size: 0.9375rem;
+    }
+    
+    .step-label {
+        font-size: 0.75rem;
+        bottom: 0;
+        max-width: 80px;
+        white-space: normal;
+        line-height: 1.2;
+        left: 50%;
+        transform: translateX(-50%);
     }
     
     .form-actions {
         flex-direction: column;
-        gap: 0.75rem;
+        gap: 0.875rem;
         position: static;
         margin-top: 2rem;
-        padding-top: 1rem;
+        padding-top: 1.25rem;
     }
     
     .form-actions .btn-group {
+        width: 100%;
         justify-content: center;
+        flex-direction: column;
+    }
+    
+    .btn {
+        width: 100%;
     }
     
     .success-actions {
         flex-direction: column;
     }
     
-    .step-indicators {
-        gap: 0.5rem;
+    .success-content {
+        padding: 2.5rem 2rem;
     }
     
-    .step-label {
-        font-size: 0.75rem;
+    .loading-spinner {
+        padding: 2rem;
     }
 }
 
@@ -953,6 +1216,17 @@ p, .setup-subtitle {
     z-index: 10000;
     max-width: 400px;
     animation: slideIn 0.3s ease;
+}
+
+@media (max-width: 640px) {
+  .notification {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+    max-width: none;
+    padding: 0.875rem 1rem;
+    font-size: 0.9375rem;
+  }
 }
 
 @keyframes slideIn {
